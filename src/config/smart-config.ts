@@ -6,44 +6,89 @@ import type { SmartChartConfig, ChartConfig, EChartsOption, ParsedChartData } fr
 import { DataParser } from '../utils/data-parser';
 import { chartLoader } from '../loader/chart-loader';
 import { themeManager } from '../themes/manager';
-import { deepMerge, isObject } from '../utils/helpers';
+import { deepMerge, isObject, memoize } from '../utils/helpers';
+import { chartCache } from '../memory/cache';
 
 /**
  * 智能配置生成器
  */
 export class SmartConfigGenerator {
   private parser = new DataParser();
+  private templateCache = new Map<string, EChartsOption>();
+
+  // 记忆化配置生成函数
+  private memoizedGenerate = memoize(
+    (key: string, parsedData: ParsedChartData, config: SmartChartConfig) =>
+      this._generateInternal(parsedData, config),
+    { maxSize: 50, ttl: 5 * 60 * 1000 }
+  );
 
   /**
-   * 生成 ECharts 配置
+   * 生成 ECharts 配置（带缓存）
    */
   async generate(config: SmartChartConfig | ChartConfig): Promise<EChartsOption> {
-    const { type, data, echarts: customOption } = config;
+    const { type, data, echarts: customOption, cache: enableCache } = config;
+
+    // 生成缓存键
+    const cacheKey = this.generateCacheKey(config);
+
+    // 尝试从缓存获取
+    if (enableCache) {
+      const cached = chartCache.get<EChartsOption>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
 
     // 1. 解析数据
     const parsedData = this.parser.parse(data);
 
-    // 2. 加载对应的配置生成器
+    // 2. 生成配置
+    const finalOption = await this._generateInternal(parsedData, config);
+
+    // 3. 缓存结果
+    if (enableCache) {
+      chartCache.set(cacheKey, finalOption, 5 * 60 * 1000);
+    }
+
+    return finalOption;
+  }
+
+  /**
+   * 内部配置生成方法
+   */
+  private async _generateInternal(parsedData: ParsedChartData, config: SmartChartConfig | ChartConfig): Promise<EChartsOption> {
+    const { type, echarts: customOption } = config;
+
+    // 1. 加载对应的配置生成器
     const generator = await chartLoader.loadGenerator(type);
 
-    // 3. 生成基础配置
+    // 2. 生成基础配置
     const baseOption = generator.generate(parsedData, config);
 
-    // 4. 应用通用配置
+    // 3. 应用通用配置
     const configuredOption = this.applyCommonConfig(baseOption, config, parsedData);
 
-    // 5. 应用主题
+    // 4. 应用主题
     const themedOption = this.applyTheme(configuredOption, config);
 
-    // 6. 应用字体大小
+    // 5. 应用字体大小
     const fontOption = this.applyFontSize(themedOption, config);
 
-    // 7. 合并自定义配置
+    // 6. 合并自定义配置
     const mergeStrategy = (config as ChartConfig).mergeStrategy || 'deep-merge';
     const finalOption = this.mergeCustomConfig(fontOption, customOption, mergeStrategy);
 
-    // 8. 优化配置（性能）
+    // 7. 优化配置（性能）
     return this.optimizeConfig(finalOption, config);
+  }
+
+  /**
+   * 生成缓存键
+   */
+  private generateCacheKey(config: SmartChartConfig | ChartConfig): string {
+    const { type, data, theme, darkMode, fontSize } = config;
+    return chartCache.constructor['generateKey']({ type, data, theme, darkMode, fontSize });
   }
 
   /**

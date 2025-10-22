@@ -75,6 +75,7 @@ export type ChartType =
   | 'parallel'
   | 'gauge'
   | 'funnel'
+  | 'waterfall' // 新增：瀑布图
   | 'sankey'
   | 'graph'
   | 'tree'

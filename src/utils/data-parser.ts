@@ -1,15 +1,54 @@
 /**
- * 数据解析器 - 智能识别和解析各种数据格式
+ * 数据解析器 - 智能识别和解析各种数据格式（优化版）
  */
 
 import type { ChartData, ParsedChartData, SimpleArray, ObjectArray, SimpleChartData } from '../types';
-import { isArray, isObject } from './helpers';
+import { isArray, isObject, memoize } from './helpers';
 
 export class DataParser {
+  // 解析结果缓存
+  private parseCache = new Map<string, ParsedChartData>();
+  private maxCacheSize = 100;
+
+  // 记忆化解析函数
+  private memoizedParse = memoize(
+    (key: string, data: ChartData) => this._parseInternal(data),
+    { maxSize: 100, ttl: 5 * 60 * 1000 }
+  );
+
   /**
-   * 解析图表数据
+   * 解析图表数据（带缓存）
    */
-  parse(data: ChartData): ParsedChartData {
+  parse(data: ChartData, useCache = true): ParsedChartData {
+    if (!useCache) {
+      return this._parseInternal(data);
+    }
+
+    // 生成缓存键
+    const cacheKey = this.generateCacheKey(data);
+
+    // 尝试从缓存获取
+    if (this.parseCache.has(cacheKey)) {
+      return this.parseCache.get(cacheKey)!;
+    }
+
+    // 解析数据
+    const result = this._parseInternal(data);
+
+    // 缓存结果（LRU 策略）
+    if (this.parseCache.size >= this.maxCacheSize) {
+      const firstKey = this.parseCache.keys().next().value;
+      this.parseCache.delete(firstKey);
+    }
+    this.parseCache.set(cacheKey, result);
+
+    return result;
+  }
+
+  /**
+   * 内部解析方法
+   */
+  private _parseInternal(data: ChartData): ParsedChartData {
     // 判断数据类型
     if (this.isSimpleArray(data)) {
       return this.parseSimpleArray(data);
@@ -28,6 +67,116 @@ export class DataParser {
       isTimeSeries: false,
       totalPoints: 0,
     };
+  }
+
+  /**
+   * 生成缓存键
+   */
+  private generateCacheKey(data: ChartData): string {
+    if (isArray(data)) {
+      // 对于数组，使用采样策略
+      const len = data.length;
+      if (len > 100) {
+        return `array-${len}-${JSON.stringify(data.slice(0, 3))}-${JSON.stringify(data.slice(-3))}`;
+      }
+      return `array-${JSON.stringify(data)}`;
+    }
+    if (isObject(data)) {
+      return `object-${JSON.stringify(data)}`;
+    }
+    return String(data);
+  }
+
+  /**
+   * 清除缓存
+   */
+  clearCache(): void {
+    this.parseCache.clear();
+  }
+
+  /**
+   * 流式解析大数据集
+   */
+  parseStream(
+    data: ChartData,
+    onChunk: (chunk: ParsedChartData, progress: number) => void,
+    chunkSize = 1000
+  ): Promise<ParsedChartData> {
+    return new Promise((resolve) => {
+      if (!isArray(data) || data.length <= chunkSize) {
+        const result = this._parseInternal(data);
+        onChunk(result, 1);
+        resolve(result);
+        return;
+      }
+
+      // 分块解析
+      const chunks: any[] = [];
+      let index = 0;
+
+      const processChunk = () => {
+        if (index >= (data as any[]).length) {
+          // 合并所有块
+          const finalResult = this.mergeChunks(chunks);
+          resolve(finalResult);
+          return;
+        }
+
+        const chunk = (data as any[]).slice(index, index + chunkSize);
+        const parsedChunk = this._parseInternal(chunk);
+        chunks.push(parsedChunk);
+
+        index += chunkSize;
+        const progress = Math.min(index / (data as any[]).length, 1);
+        onChunk(parsedChunk, progress);
+
+        // 异步处理下一块
+        setTimeout(processChunk, 0);
+      };
+
+      processChunk();
+    });
+  }
+
+  /**
+   * 合并数据块
+   */
+  private mergeChunks(chunks: ParsedChartData[]): ParsedChartData {
+    if (chunks.length === 0) {
+      return {
+        xData: [],
+        series: [[]],
+        seriesNames: ['Series 1'],
+        dataType: 'simple',
+        isTimeSeries: false,
+        totalPoints: 0,
+      };
+    }
+
+    if (chunks.length === 1) {
+      return chunks[0];
+    }
+
+    const merged: ParsedChartData = {
+      xData: [],
+      series: chunks[0].series.map(() => []),
+      seriesNames: chunks[0].seriesNames,
+      dataType: chunks[0].dataType,
+      isTimeSeries: chunks[0].isTimeSeries,
+      totalPoints: 0,
+    };
+
+    for (const chunk of chunks) {
+      if (chunk.xData) {
+        merged.xData!.push(...chunk.xData);
+      }
+      chunk.series.forEach((s, i) => {
+        merged.series[i].push(...s);
+      });
+      merged.totalPoints += chunk.totalPoints;
+    }
+
+    return merged;
   }
 
   /**

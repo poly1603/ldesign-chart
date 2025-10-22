@@ -290,12 +290,15 @@ export class ErrorHandler {
 }
 
 /**
- * 性能监控器
+ * 性能监控器（增强版）
  */
 export class PerformanceMonitor {
   private marks = new Map<string, number>();
   private measures: Array<{ name: string; duration: number; timestamp: number }> = [];
   private maxMeasures = 100;
+  private thresholds = new Map<string, number>();
+  private warnings: Array<{ name: string; duration: number; threshold: number }> = [];
+  private onSlowCallback?: (name: string, duration: number) => void;
 
   /**
    * 标记开始
@@ -327,10 +330,46 @@ export class PerformanceMonitor {
       this.measures.shift();
     }
 
+    // 检查性能阈值
+    this.checkThreshold(name, duration);
+
     // 清除标记
     this.marks.delete(startMark);
 
     return duration;
+  }
+
+  /**
+   * 设置性能阈值
+   */
+  setThreshold(name: string, threshold: number): void {
+    this.thresholds.set(name, threshold);
+  }
+
+  /**
+   * 检查性能阈值
+   */
+  private checkThreshold(name: string, duration: number): void {
+    const threshold = this.thresholds.get(name);
+
+    if (threshold && duration > threshold) {
+      console.warn(
+        `Performance warning: ${name} took ${duration.toFixed(2)}ms (threshold: ${threshold}ms)`
+      );
+
+      this.warnings.push({ name, duration, threshold });
+
+      if (this.onSlowCallback) {
+        this.onSlowCallback(name, duration);
+      }
+    }
+  }
+
+  /**
+   * 监听慢操作
+   */
+  onSlow(callback: (name: string, duration: number) => void): void {
+    this.onSlowCallback = callback;
   }
 
   /**
@@ -340,12 +379,14 @@ export class PerformanceMonitor {
     measures: typeof this.measures;
     average: number;
     slowest: typeof this.measures[0] | null;
+    warnings: typeof this.warnings;
   } {
     if (this.measures.length === 0) {
       return {
         measures: [],
         average: 0,
         slowest: null,
+        warnings: this.warnings,
       };
     }
 
@@ -359,7 +400,67 @@ export class PerformanceMonitor {
       measures: [...this.measures],
       average,
       slowest,
+      warnings: [...this.warnings],
     };
+  }
+
+  /**
+   * 生成性能报告
+   */
+  generateReport(): string {
+    const stats = this.getStats();
+
+    let report = '=== 性能监控报告 ===\n\n';
+    report += `总测量次数: ${stats.measures.length}\n`;
+    report += `平均耗时: ${stats.average.toFixed(2)}ms\n`;
+
+    if (stats.slowest) {
+      report += `最慢操作: ${stats.slowest.name} (${stats.slowest.duration.toFixed(2)}ms)\n`;
+    }
+
+    if (stats.warnings.length > 0) {
+      report += `\n性能警告: ${stats.warnings.length} 个\n`;
+      stats.warnings.slice(-5).forEach(w => {
+        report += `  - ${w.name}: ${w.duration.toFixed(2)}ms > ${w.threshold}ms\n`;
+      });
+    }
+
+    report += '\n最近测量:\n';
+    stats.measures.slice(-10).forEach(m => {
+      report += `  - ${m.name}: ${m.duration.toFixed(2)}ms\n`;
+    });
+
+    return report;
+  }
+
+  /**
+   * 自动检测性能瓶颈
+   */
+  detectBottlenecks(): Array<{ name: string; avgDuration: number; count: number }> {
+    const grouped = new Map<string, number[]>();
+
+    for (const measure of this.measures) {
+      if (!grouped.has(measure.name)) {
+        grouped.set(measure.name, []);
+      }
+      grouped.get(measure.name)!.push(measure.duration);
+    }
+
+    const bottlenecks: Array<{ name: string; avgDuration: number; count: number }> = [];
+
+    for (const [name, durations] of grouped.entries()) {
+      const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+
+      // 平均耗时超过 100ms 的视为瓶颈
+      if (avg > 100) {
+        bottlenecks.push({ name, avgDuration: avg, count: durations.length });
+      }
+    }
+
+    // 按平均耗时排序
+    bottlenecks.sort((a, b) => b.avgDuration - a.avgDuration);
+
+    return bottlenecks;
   }
 
   /**
@@ -368,7 +469,33 @@ export class PerformanceMonitor {
   clear(): void {
     this.marks.clear();
     this.measures = [];
+    this.warnings = [];
   }
+}
+
+/**
+ * React 错误边界（辅助组件）
+ */
+export interface ErrorBoundaryProps {
+  fallback?: React.ReactNode;
+  onError?: (error: Error, errorInfo: any) => void;
+}
+
+/**
+ * 创建 React 错误边界（示例）
+ */
+export function createErrorBoundary(): any {
+  // 这需要在 React 组件中实现
+  // 这里提供一个框架
+  return class ChartErrorBoundary {
+    static getDerivedStateFromError(error: Error) {
+      return { hasError: true, error };
+    }
+
+    componentDidCatch(error: Error, errorInfo: any) {
+      errorHandler.handle(error, { errorInfo });
+    }
+  };
 }
 
 // 全局实例

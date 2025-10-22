@@ -1,5 +1,5 @@
 /**
- * ECharts 模块按需加载器 - 并行加载、预加载、优先级队列
+ * ECharts 模块按需加载器 - 并行加载、预加载、优先级队列、缓存持久化
  */
 
 import type { ChartType } from '../types';
@@ -14,7 +14,16 @@ interface LoadTask {
 }
 
 /**
- * ECharts 加载器（优化版）
+ * 模块使用统计
+ */
+interface ModuleStats {
+  loadCount: number;
+  lastUsed: number;
+  avgLoadTime: number;
+}
+
+/**
+ * ECharts 加载器（优化增强版）
  */
 export class EChartsLoader {
   private loadedModules = new Set<string>();
@@ -22,6 +31,14 @@ export class EChartsLoader {
   private loadQueue: LoadTask[] = [];
   private isProcessingQueue = false;
   private maxParallel = 3; // 最大并行加载数
+
+  // 模块使用统计（用于智能预加载）
+  private moduleStats = new Map<string, ModuleStats>();
+  private persistKey = 'ldesign-chart-loader-cache';
+
+  // 重试配置
+  private maxRetries = 3;
+  private retryDelay = 1000;
 
   /**
    * 动态加载 ECharts 核心
@@ -48,7 +65,7 @@ export class EChartsLoader {
   }
 
   /**
-   * 按需加载图表类型
+   * 按需加载图表类型（带重试）
    */
   async loadChart(type: ChartType): Promise<void> {
     const moduleKey = `chart-${type}`;
@@ -88,11 +105,12 @@ export class EChartsLoader {
       return;
     }
 
-    const promise = loader().then((ChartClass) => {
+    const promise = this.loadWithRetry(async () => {
+      const ChartClass = await loader();
       const echarts = require('echarts/core');
       echarts.use(ChartClass);
       this.loadedModules.add(moduleKey);
-    });
+    }, moduleKey);
 
     this.loading.set(moduleKey, promise);
     await promise;
@@ -231,19 +249,129 @@ export class EChartsLoader {
   }
 
   /**
-   * 预加载常用模块
+   * 智能预加载（基于使用统计）
    */
-  async preload(types: ChartType[] = ['line', 'bar', 'pie']): Promise<void> {
+  async preload(types?: ChartType[]): Promise<void> {
+    // 如果没有指定类型，使用统计数据预测
+    if (!types) {
+      types = this.predictNextModules();
+    }
+
     const commonComponents = ['grid', 'tooltip', 'legend', 'title'];
 
     // 低优先级预加载
     setTimeout(async () => {
       try {
-        await this.loadParallel(types, commonComponents);
+        await this.loadParallel(types!, commonComponents);
       } catch (error) {
         console.warn('Preload failed:', error);
       }
     }, 1000); // 延迟 1 秒，避免影响首屏
+  }
+
+  /**
+   * 预测下一个可能使用的模块
+   */
+  private predictNextModules(): ChartType[] {
+    // 从持久化缓存读取统计信息
+    this.loadStatsFromCache();
+
+    // 根据使用频率排序
+    const sorted = Array.from(this.moduleStats.entries())
+      .filter(([key]) => key.startsWith('chart-'))
+      .sort((a, b) => {
+        // 综合考虑使用次数和最近使用时间
+        const scoreA = a[1].loadCount * 0.7 + (Date.now() - a[1].lastUsed < 86400000 ? 100 : 0);
+        const scoreB = b[1].loadCount * 0.7 + (Date.now() - b[1].lastUsed < 86400000 ? 100 : 0);
+        return scoreB - scoreA;
+      })
+      .slice(0, 3)
+      .map(([key]) => key.replace('chart-', '') as ChartType);
+
+    // 如果没有统计数据，返回默认值
+    return sorted.length > 0 ? sorted : ['line', 'bar', 'pie'];
+  }
+
+  /**
+   * 从 localStorage 加载统计信息
+   */
+  private loadStatsFromCache(): void {
+    if (typeof localStorage === 'undefined') return;
+
+    try {
+      const cached = localStorage.getItem(this.persistKey);
+      if (cached) {
+        const stats = JSON.parse(cached);
+        this.moduleStats = new Map(Object.entries(stats));
+      }
+    } catch (error) {
+      console.warn('Failed to load module stats:', error);
+    }
+  }
+
+  /**
+   * 保存统计信息到 localStorage
+   */
+  private saveStatsToCache(): void {
+    if (typeof localStorage === 'undefined') return;
+
+    try {
+      const stats = Object.fromEntries(this.moduleStats.entries());
+      localStorage.setItem(this.persistKey, JSON.stringify(stats));
+    } catch (error) {
+      console.warn('Failed to save module stats:', error);
+    }
+  }
+
+  /**
+   * 更新模块统计信息
+   */
+  private updateModuleStats(moduleKey: string, loadTime: number): void {
+    const stats = this.moduleStats.get(moduleKey) || {
+      loadCount: 0,
+      lastUsed: 0,
+      avgLoadTime: 0,
+    };
+
+    stats.loadCount++;
+    stats.lastUsed = Date.now();
+    stats.avgLoadTime = (stats.avgLoadTime * (stats.loadCount - 1) + loadTime) / stats.loadCount;
+
+    this.moduleStats.set(moduleKey, stats);
+
+    // 定期保存到缓存
+    if (stats.loadCount % 5 === 0) {
+      this.saveStatsToCache();
+    }
+  }
+
+  /**
+   * 带重试的加载
+   */
+  private async loadWithRetry<T>(
+    loader: () => Promise<T>,
+    moduleKey: string,
+    retries = this.maxRetries
+  ): Promise<T> {
+    const startTime = Date.now();
+
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const result = await loader();
+        const loadTime = Date.now() - startTime;
+        this.updateModuleStats(moduleKey, loadTime);
+        return result;
+      } catch (error) {
+        if (i < retries) {
+          console.warn(`Load ${moduleKey} failed, retrying (${i + 1}/${retries})...`);
+          await new Promise(resolve => setTimeout(resolve, this.retryDelay * Math.pow(2, i)));
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    throw new Error(`Failed to load ${moduleKey} after ${retries} retries`);
   }
 
   /**

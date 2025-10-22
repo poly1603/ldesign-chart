@@ -1,0 +1,62 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["./src/index.ts"],
+  "out": "./docs/api",
+  "name": "@ldesign/chart API Documentation",
+  "includeVersion": true,
+  "readme": "./README.md",
+  "categorizeByGroup": true,
+  "categoryOrder": [
+    "Core",
+    "Chart Types",
+    "Data",
+    "Interaction",
+    "Performance",
+    "Memory",
+    "Themes",
+    "Utilities",
+    "*"
+  ],
+  "exclude": [
+    "**/__tests__/**",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/examples/**"
+  ],
+  "excludePrivate": false,
+  "excludeProtected": false,
+  "excludeInternal": false,
+  "plugin": [],
+  "theme": "default",
+  "lightHighlightTheme": "light-plus",
+  "darkHighlightTheme": "dark-plus",
+  "navigation": {
+    "includeCategories": true,
+    "includeGroups": true
+  },
+  "visibilityFilters": {
+    "protected": false,
+    "private": false,
+    "inherited": true,
+    "external": false
+  },
+  "searchInComments": true,
+  "validation": {
+    "notExported": true,
+    "invalidLink": true,
+    "notDocumented": false
+  },
+  "treatWarningsAsErrors": false,
+  "treatValidationWarningsAsErrors": false,
+  "intentionallyNotExported": [],
+  "sort": ["source-order"],
+  "kindSortOrder": [
+    "Class",
+    "Interface",
+    "TypeAlias",
+    "Function",
+    "Variable",
+    "Enum"
+  ]
+}
+

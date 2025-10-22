@@ -35,6 +35,28 @@ export { chartLoader, ChartLoader } from './loader/chart-loader';
 // 导出配置生成器
 export { SmartConfigGenerator } from './config/smart-config';
 
+// 导出数据解析器
+export { CSVParser, csvParser } from './utils/parsers/csv-parser';
+
+// 导出数据验证器
+export { SchemaValidator, schemaValidator, chartDataSchema, chartConfigSchema } from './utils/validators/schema-validator';
+export type { Schema, SchemaProperty, ValidationResult, ValidationError } from './utils/validators/schema-validator';
+
+// 导出实时数据流
+export { DataStreamManager, createChartStream, mergeStreamData } from './utils/data-stream';
+export type { StreamOptions, StreamEvent, StreamCallback } from './utils/data-stream';
+
+// 导出导出工具
+export { ChartExporter, chartExporter } from './utils/export';
+export type { ExportImageOptions, ExportPDFOptions, ExportDataOptions } from './utils/export';
+
+// 导出交互功能
+export { ChartSyncManager, chartSyncManager, connectCharts, connectMultipleCharts } from './interaction/chart-sync';
+export type { SyncOptions, ChartSyncItem } from './interaction/chart-sync';
+
+export { GestureHandler, enableGestures } from './interaction/gesture-handler';
+export type { GestureOptions, GestureEvent, GestureCallback } from './interaction/gesture-handler';
+
 /**
  * 创建图表实例（便捷方法）
  */
