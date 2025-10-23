@@ -155,11 +155,13 @@ defineExpose({
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #666;
+  color: var(--color-text-secondary);
+  font-size: var(--size-font-base);
+  padding: var(--size-spacing-xl);
 }
 
 .chart-error {
-  color: #f56c6c;
+  color: var(--color-danger-default);
 }
 </style>
 
