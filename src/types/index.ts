@@ -353,6 +353,24 @@ export interface ChartConfig extends SmartChartConfig {
 
   /** 渲染器类型 */
   renderer?: 'canvas' | 'svg';
+
+  /** 引擎选择 */
+  engine?: 'echarts' | 'vchart' | 'auto';
+
+  /** 平台标识（小程序等） */
+  platform?: string;
+
+  /** 渲染模式 */
+  mode?: string;
+
+  /** Canvas 对象（小程序） */
+  canvas?: any;
+
+  /** Canvas 上下文（小程序） */
+  context?: any;
+
+  /** 设备像素比（小程序） */
+  pixelRatio?: number;
 }
 
 // ============ 解析后的数据格式 ============

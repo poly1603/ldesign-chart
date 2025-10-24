@@ -34,6 +34,7 @@ interface Props {
   cache?: boolean
   responsive?: boolean
   echarts?: any
+  engine?: 'echarts' | 'vchart' | 'auto'  // 🆕 引擎选择
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -76,6 +77,7 @@ const chartConfig = computed<ChartConfig>(() => ({
   cache: props.cache,
   responsive: props.responsive,
   echarts: props.echarts,
+  engine: props.engine,  // 🆕 传递引擎选择
 }))
 
 // Methods

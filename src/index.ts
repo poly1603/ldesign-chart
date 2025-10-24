@@ -3,6 +3,9 @@
  * 主入口文件
  */
 
+// 导出引擎相关
+export * from './engines';
+
 // 导出核心类
 export { Chart } from './core/chart';
 export { ChartInstanceManager, instanceManager } from './core/instance-manager';
@@ -56,6 +59,9 @@ export type { SyncOptions, ChartSyncItem } from './interaction/chart-sync';
 
 export { GestureHandler, enableGestures } from './interaction/gesture-handler';
 export type { GestureOptions, GestureEvent, GestureCallback } from './interaction/gesture-handler';
+
+// 导出小程序平台支持
+export * from './platforms/miniprogram';
 
 /**
  * 创建图表实例（便捷方法）

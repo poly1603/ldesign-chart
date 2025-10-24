@@ -46,6 +46,7 @@ export class ChartElement extends LitElement {
   @property({ type: Boolean }) worker = false
   @property({ type: Boolean }) cache = true
   @property({ type: Object }) echarts?: any
+  @property() engine?: 'echarts' | 'vchart' | 'auto'  // 🆕 引擎选择
 
   @state() private isLoading = true
   @state() private error: Error | null = null
@@ -101,6 +102,7 @@ export class ChartElement extends LitElement {
         fontSize: this.fontSize,
         lazy: this.lazy,
         virtual: this.virtual,
+        engine: this.engine,  // 🆕 传递引擎选择
         worker: this.worker,
         cache: this.cache,
         echarts: this.echarts,

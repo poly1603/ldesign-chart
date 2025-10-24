@@ -21,6 +21,7 @@ export interface ChartProps {
   cache?: boolean
   responsive?: boolean
   echarts?: any
+  engine?: 'echarts' | 'vchart' | 'auto'  // 🆕 引擎选择
   className?: string
   style?: React.CSSProperties
   onReady?: (chart: ChartCore) => void
@@ -52,6 +53,7 @@ export const Chart = forwardRef<ChartRef, ChartProps>((props, ref) => {
     cache,
     responsive,
     echarts,
+    engine,  // 🆕 引擎选择
     className,
     style,
     onReady,
@@ -90,6 +92,7 @@ export const Chart = forwardRef<ChartRef, ChartProps>((props, ref) => {
           cache,
           responsive,
           echarts,
+          engine,  // 🆕 传递引擎选择
         }
 
         instanceRef.current = new ChartCore(chartRef.current, config)

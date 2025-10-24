@@ -3,6 +3,8 @@ import commonjs from '@rollup/plugin-commonjs';
 import typescript from '@rollup/plugin-typescript';
 import terser from '@rollup/plugin-terser';
 import dts from 'rollup-plugin-dts';
+import vue from 'rollup-plugin-vue';
+import postcss from 'rollup-plugin-postcss';
 
 // 优化后的外部依赖配置
 const external = [
@@ -14,7 +16,9 @@ const external = [
   'echarts/core',
   'echarts/charts',
   'echarts/components',
-  'echarts/renderers'
+  'echarts/renderers',
+  '@visactor/vchart',
+  /^@visactor\//,  // 所有 @visactor 的包
 ];
 
 // 优化的 Terser 配置
@@ -35,10 +39,22 @@ const terserOptions = {
   },
 };
 
-const createConfig = (input, outputName, globals = {}) => ({
+const createConfig = (input, outputName, globals = {}, needsVue = false) => ({
   input,
   external,
   plugins: [
+    ...(needsVue ? [
+      vue({
+        css: false,
+        compileTemplate: true,
+        preprocessStyles: true,
+      }),
+      postcss({
+        extract: false,
+        inject: true,
+        minimize: true,
+      })
+    ] : []),
     resolve({
       // 优化依赖解析
       preferBuiltins: true,
@@ -121,9 +137,8 @@ export default [
   createConfig('src/index.ts', 'index'),
   createDtsConfig('src/index.ts', 'dist/index.d.ts'),
 
-  // Vue adapter
-  createConfig('src/adapters/vue/index.ts', 'vue', { vue: 'Vue', echarts: 'echarts' }),
-  createDtsConfig('src/adapters/vue/index.ts', 'dist/vue.d.ts'),
+  // Vue adapter - export source directly, let user's bundler handle .vue files
+  // Users should use Vite or webpack with vue-loader
 
   // React adapter
   createConfig('src/adapters/react/index.tsx', 'react', {

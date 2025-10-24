@@ -2,54 +2,6 @@
   "name": "@ldesign/chart",
   "version": "1.3.0",
   "description": "企业级智能图表插件，支持多框架，基于 ECharts，按需加载，性能优异。v1.3.0: 新增瀑布图、CSV/实时数据支持、图表联动、手势交互，全面功能增强",
-  "main": "dist/index.cjs.js",
-  "module": "dist/index.esm.js",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.esm.js",
-      "require": "./dist/index.cjs.js",
-      "types": "./dist/index.d.ts"
-    },
-    "./vue": {
-      "import": "./dist/vue.esm.js",
-      "require": "./dist/vue.cjs.js",
-      "types": "./dist/vue.d.ts"
-    },
-    "./react": {
-      "import": "./dist/react.esm.js",
-      "require": "./dist/react.cjs.js",
-      "types": "./dist/react.d.ts"
-    },
-    "./lit": {
-      "import": "./dist/lit.esm.js",
-      "require": "./dist/lit.cjs.js",
-      "types": "./dist/lit.d.ts"
-    }
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
-  "scripts": {
-    "dev": "rollup -c -w",
-    "build": "rimraf dist && rollup -c",
-    "build:prod": "NODE_ENV=production rimraf dist && rollup -c",
-    "analyze": "rollup -c --environment ANALYZE",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
-    "test:run": "vitest run",
-    "lint": "eslint src --ext .ts,.tsx,.vue",
-    "format": "prettier --write \"src/**/*.{ts,tsx,vue}\"",
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
-    "docs:api": "typedoc",
-    "docs:api:watch": "typedoc --watch",
-    "prepublishOnly": "npm run build:prod"
-  },
-  "sideEffects": false,
   "keywords": [
     "chart",
     "echarts",
@@ -66,6 +18,7 @@
   ],
   "author": "ldesign",
   "license": "MIT",
+  "homepage": "https://github.com/ldesign/chart#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/ldesign/chart"
@@ -73,27 +26,145 @@
   "bugs": {
     "url": "https://github.com/ldesign/chart/issues"
   },
-  "homepage": "https://github.com/ldesign/chart#readme",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./es/index.d.ts",
+      "import": "./es/index.js",
+      "require": "./lib/index.cjs"
+    },
+    "./config/*": {
+      "types": "./es/config/*.d.ts",
+      "import": "./es/config/*.js",
+      "require": "./lib/config/*.cjs"
+    },
+    "./core/*": {
+      "types": "./es/core/*.d.ts",
+      "import": "./es/core/*.js",
+      "require": "./lib/core/*.cjs"
+    },
+    "./engines": {
+      "types": "./es/engines/index.d.ts",
+      "import": "./es/engines/index.js",
+      "require": "./lib/engines/index.cjs"
+    },
+    "./engines/*": {
+      "types": "./es/engines/*.d.ts",
+      "import": "./es/engines/*.js",
+      "require": "./lib/engines/*.cjs"
+    },
+    "./vue": {
+      "types": "./es/adapters/vue/index.d.ts",
+      "import": "./es/adapters/vue/index.js",
+      "require": "./lib/adapters/vue/index.cjs"
+    },
+    "./react": {
+      "types": "./es/adapters/react/index.d.ts",
+      "import": "./es/adapters/react/index.js",
+      "require": "./lib/adapters/react/index.cjs"
+    },
+    "./lit": {
+      "types": "./es/adapters/lit/index.d.ts",
+      "import": "./es/adapters/lit/index.js",
+      "require": "./lib/adapters/lit/index.cjs"
+    },
+    "./interaction/*": {
+      "types": "./es/interaction/*.d.ts",
+      "import": "./es/interaction/*.js",
+      "require": "./lib/interaction/*.cjs"
+    },
+    "./loader/*": {
+      "types": "./es/loader/*.d.ts",
+      "import": "./es/loader/*.js",
+      "require": "./lib/loader/*.cjs"
+    },
+    "./memory/*": {
+      "types": "./es/memory/*.d.ts",
+      "import": "./es/memory/*.js",
+      "require": "./lib/memory/*.cjs"
+    },
+    "./performance/*": {
+      "types": "./es/performance/*.d.ts",
+      "import": "./es/performance/*.js",
+      "require": "./lib/performance/*.cjs"
+    },
+    "./themes": {
+      "types": "./es/themes/index.d.ts",
+      "import": "./es/themes/index.js",
+      "require": "./lib/themes/index.cjs"
+    },
+    "./themes/*": {
+      "types": "./es/themes/*.d.ts",
+      "import": "./es/themes/*.js",
+      "require": "./lib/themes/*.cjs"
+    },
+    "./types": {
+      "types": "./es/types/index.d.ts",
+      "import": "./es/types/index.js",
+      "require": "./lib/types/index.cjs"
+    },
+    "./types/*": {
+      "types": "./es/types/*.d.ts",
+      "import": "./es/types/*.js",
+      "require": "./lib/types/*.cjs"
+    },
+    "./utils/*": {
+      "types": "./es/utils/*.d.ts",
+      "import": "./es/utils/*.js",
+      "require": "./lib/utils/*.cjs"
+    },
+    "./__tests__/*": {
+      "types": "./es/__tests__/*.d.ts",
+      "import": "./es/__tests__/*.js",
+      "require": "./lib/__tests__/*.cjs"
+    },
+    "./es/adapters/vue/index.css": "./es/adapters/vue/index.css",
+    "./lib/adapters/vue/index.css": "./lib/adapters/vue/index.css"
+  },
+  "main": "./lib/index.cjs",
+  "module": "./es/index.js",
+  "types": "./es/index.d.ts",
+  "unpkg": "./dist/index.min.js",
+  "jsdelivr": "./dist/index.min.js",
+  "files": [
+    "README.md",
+    "LICENSE",
+    "package.json",
+    "es",
+    "lib"
+  ],
+  "scripts": {
+    "dev": "rollup -c -w",
+    "build": "rimraf dist && rollup -c",
+    "build:builder": "ldesign-builder build",
+    "build:prod": "NODE_ENV=production rimraf dist && rollup -c",
+    "build:prod:builder": "ldesign-builder build --minify --clean",
+    "analyze": "rollup -c --environment ANALYZE",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "test:run": "vitest run",
+    "lint": "eslint src --ext .ts,.tsx,.vue",
+    "format": "prettier --write \"src/**/*.{ts,tsx,vue}\"",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:api": "typedoc",
+    "docs:api:watch": "typedoc --watch",
+    "prepublishOnly": "npm run build:prod"
+  },
   "peerDependencies": {
     "echarts": "^5.4.0",
-    "vue": "^3.0.0",
+    "@visactor/vchart": "^1.0.0",
+    "lit": "^2.0.0 || ^3.0.0",
     "react": "^16.8.0 || ^17.0.0 || ^18.0.0",
-    "lit": "^2.0.0 || ^3.0.0"
-  },
-  "peerDependenciesMeta": {
-    "vue": {
-      "optional": true
-    },
-    "react": {
-      "optional": true
-    },
-    "lit": {
-      "optional": true
-    }
+    "vue": "^3.0.0"
   },
   "devDependencies": {
+    "@ldesign/builder": "workspace:*",
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-replace": "^6.0.2",
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^11.1.6",
     "@types/node": "^20.11.16",
@@ -112,6 +183,7 @@
     "rimraf": "^5.0.5",
     "rollup": "^4.9.6",
     "rollup-plugin-dts": "^6.1.0",
+    "rollup-plugin-postcss": "^4.0.2",
     "rollup-plugin-vue": "^6.0.0",
     "tslib": "^2.6.2",
     "typescript": "^5.3.3",
@@ -119,6 +191,19 @@
     "vitepress": "^1.0.0-rc.40",
     "vitest": "^1.2.1",
     "vue": "^3.4.15"
+  },
+  "peerDependenciesMeta": {
+    "vue": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "lit": {
+      "optional": true
+    },
+    "@visactor/vchart": {
+      "optional": true
+    }
   }
 }
-
