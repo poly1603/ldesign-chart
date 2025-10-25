@@ -106,8 +106,8 @@ export class WechatMiniProgramAdapter {
    * 获取微信小程序系统信息
    */
   static getSystemInfo(): any {
-    if (typeof wx !== 'undefined' && wx.getSystemInfoSync) {
-      return wx.getSystemInfoSync();
+    if (typeof wx !== 'undefined' && (wx as any).getSystemInfoSync) {
+      return (wx as any).getSystemInfoSync();
     }
     return null;
   }

@@ -4,7 +4,8 @@
  */
 
 import { BaseConfigAdapter } from '../base/config-adapter';
-import type { UniversalChartConfig, ChartType } from '../base/engine-interface';
+import type { UniversalChartConfig } from '../base/engine-interface';
+import type { ChartType } from '../../types';
 
 /**
  * VChart 配置适配器

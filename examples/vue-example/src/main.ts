@@ -1,6 +1,5 @@
 import { createApp } from 'vue'
-// import App from './App.vue' // 原始示例
-import App from './App-dual-engine.vue' // 双引擎演示
+import App from './App.vue'
 
 createApp(App).mount('#app')
 

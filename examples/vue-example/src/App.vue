@@ -95,19 +95,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Chart } from '@ldesign/chart/vue'
-
-// 尝试导入监控工具（如果可用）
-let chartCache: any, instanceManager: any, cleanupManager: any
-try {
-  const monitoring = await import('@ldesign/chart')
-  chartCache = monitoring.chartCache
-  instanceManager = monitoring.instanceManager
-  cleanupManager = monitoring.cleanupManager
-} catch (e) {
-  console.log('监控工具未加载，使用基础功能')
-}
+import { chartCache, instanceManager, cleanupManager } from '@ldesign/chart'
 
 // 状态
 const darkMode = ref(false)
@@ -237,53 +227,53 @@ const generateLargeData = () => {
 .container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 20px;
+  padding: var(--size-space-xl);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 h1 {
   text-align: center;
-  color: #333;
-  margin-bottom: 10px;
+  color: var(--color-text-primary);
+  margin-bottom: var(--size-space-md);
 }
 
 .version-badge {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: var(--size-space-xl);
 }
 
 .badge {
   display: inline-block;
-  padding: 6px 12px;
-  margin: 0 5px;
-  background: #52c41a;
-  color: white;
-  border-radius: 4px;
-  font-size: 12px;
+  padding: var(--size-space-xs) var(--size-space-md);
+  margin: 0 var(--size-space-xs);
+  background: var(--color-success-default);
+  color: var(--color-text-inverse);
+  border-radius: var(--size-radius-md);
+  font-size: var(--size-font-sm);
   font-weight: bold;
 }
 
 .controls {
   text-align: center;
-  margin: 20px 0;
+  margin: var(--size-space-xl) 0;
 }
 
 button {
-  padding: 10px 20px;
-  margin: 0 5px;
+  padding: var(--size-space-sm) var(--size-space-lg);
+  margin: 0 var(--size-space-xs);
   border: none;
-  border-radius: 4px;
-  background: #1890ff;
-  color: white;
+  border-radius: var(--size-radius-md);
+  background: var(--color-primary-default);
+  color: var(--color-text-inverse);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--size-font-base);
   transition: all 0.3s;
 }
 
 button:hover {
-  background: #40a9ff;
+  background: var(--color-primary-hover);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(24, 144, 255, 0.3);
+  box-shadow: var(--shadow-md);
 }
 
 button:active {
@@ -291,81 +281,81 @@ button:active {
 }
 
 .stats-panel {
-  background: #f0f2f5;
-  padding: 20px;
-  border-radius: 8px;
-  margin: 20px 0;
+  background: var(--color-bg-layout);
+  padding: var(--size-space-xl);
+  border-radius: var(--size-radius-lg);
+  margin: var(--size-space-xl) 0;
 }
 
 .stats-panel h3 {
   margin-top: 0;
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 .stats-panel button {
-  margin-top: 15px;
-  background: #ff4d4f;
+  margin-top: var(--size-space-lg);
+  background: var(--color-danger-default);
 }
 
 .stats-panel button:hover {
-  background: #ff7875;
+  background: var(--color-danger-hover);
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-  margin-bottom: 15px;
+  gap: var(--size-space-lg);
+  margin-bottom: var(--size-space-lg);
 }
 
 .stat-item {
-  background: white;
-  padding: 15px;
-  border-radius: 6px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  background: var(--color-bg-container);
+  padding: var(--size-space-lg);
+  border-radius: var(--size-radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
 .stat-item .label {
   display: block;
-  color: #666;
-  font-size: 12px;
-  margin-bottom: 5px;
+  color: var(--color-text-secondary);
+  font-size: var(--size-font-sm);
+  margin-bottom: var(--size-space-xs);
 }
 
 .stat-item .value {
   display: block;
-  color: #1890ff;
-  font-size: 20px;
+  color: var(--color-primary-default);
+  font-size: var(--size-font-xl);
   font-weight: bold;
 }
 
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-  gap: 20px;
-  margin-top: 30px;
+  gap: var(--size-space-xl);
+  margin-top: var(--size-space-2xl);
 }
 
 .chart-card {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: var(--color-bg-container);
+  padding: var(--size-space-xl);
+  border-radius: var(--size-radius-lg);
+  box-shadow: var(--shadow-md);
   transition: transform 0.3s, box-shadow 0.3s;
 }
 
 .chart-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg);
 }
 
 .chart-card h2 {
   margin-top: 0;
-  color: #666;
-  font-size: 18px;
+  color: var(--color-text-secondary);
+  font-size: var(--size-font-lg);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--size-space-md);
   flex-wrap: wrap;
 }
 
@@ -374,41 +364,42 @@ button:active {
 }
 
 .opt-tag {
-  font-size: 12px;
-  background: #1890ff;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
+  font-size: var(--size-font-sm);
+  background: var(--color-primary-default);
+  color: var(--color-text-inverse);
+  padding: var(--size-space-xs) var(--size-space-sm);
+  border-radius: var(--size-radius-md);
   font-weight: normal;
 }
 
 .chart-desc {
-  color: #999;
-  font-size: 13px;
-  margin: 10px 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--size-font-sm);
+  margin: var(--size-space-md) 0;
 }
 
 .feature-tag {
-  margin: 10px 0;
+  margin: var(--size-space-md) 0;
 }
 
 .tag {
   display: inline-block;
-  background: #e6f7ff;
-  color: #1890ff;
-  padding: 4px 8px;
-  border-radius: 3px;
-  font-size: 12px;
-  margin-right: 8px;
-  border: 1px solid #91d5ff;
+  background: var(--color-primary-lighter);
+  color: var(--color-primary-default);
+  padding: var(--size-space-xs) var(--size-space-sm);
+  border-radius: var(--size-radius-sm);
+  font-size: var(--size-font-sm);
+  margin-right: var(--size-space-sm);
+  border: 1px solid var(--color-primary-light);
 }
 
 pre {
-  background: white;
-  padding: 15px;
-  border-radius: 6px;
+  background: var(--color-bg-container);
+  padding: var(--size-space-lg);
+  border-radius: var(--size-radius-md);
   overflow: auto;
   max-height: 300px;
-  font-size: 12px;
-  color: #333;
+  font-size: var(--size-font-sm);
+  color: var(--color-text-primary);
 }
+</style>

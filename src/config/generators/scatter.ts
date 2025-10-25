@@ -18,7 +18,7 @@ export default {
         scale: true,
       },
       series: series.map((data, index) => {
-        const dataset = config.datasets?.[index] || {};
+        const dataset = config.datasets?.[index] || {} as any;
 
         // 将数据转换为 [x, y] 格式
         const scatterData = data.map((value, i) => {

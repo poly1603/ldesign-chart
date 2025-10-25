@@ -2,6 +2,13 @@ import React, { useState, useEffect } from 'react'
 import { Chart } from '@ldesign/chart/react'
 import './App.css'
 
+// 生成模拟数据的辅助函数
+const generateMockData = (count: number, range: [number, number] = [0, 100]) => {
+  return Array.from({ length: count }, () =>
+    Math.floor(Math.random() * (range[1] - range[0]) + range[0])
+  )
+}
+
 function App() {
   const [darkMode, setDarkMode] = useState(false)
   const [fontSize, setFontSize] = useState(12)
@@ -59,6 +66,49 @@ function App() {
 
   // 大数据集
   const [largeData, setLargeData] = useState<number[]>([])
+
+  // 新增图表数据
+  const [waterfallData] = useState({
+    labels: ['初始', '收入', '支出', '税费', '利润'],
+    datasets: [{
+      name: '瀑布图',
+      data: [100, 50, -30, -10, 110],
+      waterfall: true
+    }]
+  })
+
+  const [gaugeData] = useState({
+    value: 75,
+    min: 0,
+    max: 100,
+    title: '完成率'
+  })
+
+  const [heatmapData] = useState({
+    labels: ['周一', '周二', '周三', '周四', '周五'],
+    yLabels: ['早上', '中午', '晚上'],
+    datasets: [{
+      data: [
+        [10, 20, 30, 40, 50],
+        [15, 25, 35, 45, 55],
+        [20, 30, 40, 50, 60]
+      ]
+    }]
+  })
+
+  const [candlestickData] = useState({
+    labels: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5'],
+    datasets: [{
+      type: 'candlestick',
+      data: [
+        [20, 34, 10, 38],
+        [40, 35, 30, 50],
+        [31, 38, 33, 44],
+        [38, 15, 5, 42],
+        [50, 60, 45, 65]
+      ]
+    }]
+  })
 
   // 实时数据
   const [realtimeData, setRealtimeData] = useState({
@@ -320,6 +370,78 @@ function App() {
             type="bar"
             data={realtimeData}
             title="Real-time Data Stream"
+            darkMode={darkMode}
+            fontSize={fontSize}
+            height={300}
+            cache
+          />
+        </div>
+
+        {/* 瀑布图 */}
+        <div className="chart-card">
+          <h2>Waterfall Chart <span className="opt-tag">🌊 新功能</span></h2>
+          <Chart
+            type="waterfall"
+            data={waterfallData}
+            title="财务瀑布图"
+            darkMode={darkMode}
+            fontSize={fontSize}
+            height={300}
+          />
+        </div>
+
+        {/* 仪表盘 */}
+        <div className="chart-card">
+          <h2>Gauge Chart <span className="opt-tag">⏱️ 仪表盘</span></h2>
+          <Chart
+            type="gauge"
+            data={gaugeData}
+            title="项目完成率"
+            darkMode={darkMode}
+            fontSize={fontSize}
+            height={300}
+          />
+        </div>
+
+        {/* 热力图 */}
+        <div className="chart-card">
+          <h2>Heatmap <span className="opt-tag">🔥 热力图</span></h2>
+          <Chart
+            type="heatmap"
+            data={heatmapData}
+            title="活动热度分布"
+            darkMode={darkMode}
+            fontSize={fontSize}
+            height={300}
+          />
+        </div>
+
+        {/* K线图 */}
+        <div className="chart-card">
+          <h2>Candlestick Chart <span className="opt-tag">📈 K线图</span></h2>
+          <Chart
+            type="candlestick"
+            data={candlestickData}
+            title="股票K线图"
+            darkMode={darkMode}
+            fontSize={fontSize}
+            height={300}
+          />
+        </div>
+
+        {/* 混合图表 */}
+        <div className="chart-card chart-large">
+          <h2>Mixed Chart <span className="opt-tag">🎨 混合图表</span></h2>
+          <Chart
+            type="mixed"
+            data={{
+              labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+              datasets: [
+                { name: 'Bar Sales', type: 'bar', data: [30, 50, 40, 60, 70, 90] },
+                { name: 'Line Trend', type: 'line', data: [20, 40, 35, 50, 65, 80], smooth: true }
+              ]
+            }}
+            title="销售趋势对比"
             darkMode={darkMode}
             fontSize={fontSize}
             height={300}

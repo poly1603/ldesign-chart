@@ -93,8 +93,8 @@ export class AlipayMiniProgramAdapter {
    * 获取支付宝小程序系统信息
    */
   static getSystemInfo(): any {
-    if (typeof my !== 'undefined' && my.getSystemInfoSync) {
-      return my.getSystemInfoSync();
+    if (typeof my !== 'undefined' && (my as any).getSystemInfoSync) {
+      return (my as any).getSystemInfoSync();
     }
     return null;
   }

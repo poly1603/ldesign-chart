@@ -3,7 +3,8 @@
  * 负责引擎的注册、选择和管理
  */
 
-import type { ChartEngine, ChartFeature } from './base/engine-interface';
+import { ChartFeature } from './base/engine-interface';
+import type { ChartEngine } from './base/engine-interface';
 
 /**
  * 引擎选择策略

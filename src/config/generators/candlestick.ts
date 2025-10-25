@@ -7,7 +7,7 @@ import type { ParsedChartData, SmartChartConfig, EChartsOption } from '../../typ
 export default {
   generate(parsedData: ParsedChartData, config: SmartChartConfig): EChartsOption {
     const { xData, series } = parsedData;
-    const dataset = config.datasets?.[0] || {};
+    const dataset = config.datasets?.[0] || {} as any;
 
     // K线图数据格式: [open, close, lowest, highest]
     const candlestickData = series[0] || [];

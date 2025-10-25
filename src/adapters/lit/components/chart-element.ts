@@ -37,7 +37,7 @@ export class ChartElement extends LitElement {
 
   @property() type!: string
   @property({ type: Object }) data!: ChartData
-  @property() title?: string
+  @property({ attribute: 'chart-title' }) chartTitle?: string
   @property() theme?: string
   @property({ type: Boolean }) darkMode = false
   @property({ type: Number }) fontSize?: number
@@ -96,7 +96,7 @@ export class ChartElement extends LitElement {
       const config: ChartConfig = {
         type: this.type as any,
         data: this.data,
-        title: this.title,
+        title: this.chartTitle,
         theme: this.theme,
         darkMode: this.darkMode,
         fontSize: this.fontSize,

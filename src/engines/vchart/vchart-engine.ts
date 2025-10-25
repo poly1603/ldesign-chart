@@ -5,10 +5,10 @@
  * 官网: https://www.visactor.io/vchart
  */
 
+import { ChartFeature } from '../base/engine-interface';
 import type {
   ChartEngine,
   EngineInstance,
-  ChartFeature,
   ConfigAdapter,
 } from '../base/engine-interface';
 import { VChartConfigAdapter } from './vchart-adapter';

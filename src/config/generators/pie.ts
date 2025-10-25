@@ -14,7 +14,7 @@ export default {
       value: series[0]?.[index] || 0,
     }));
 
-    const dataset = config.datasets?.[0] || {};
+    const dataset = config.datasets?.[0] || {} as any;
 
     return {
       series: [

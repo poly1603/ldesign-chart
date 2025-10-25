@@ -18,7 +18,7 @@ export interface WaterfallDataPoint {
 export default {
   generate(parsedData: ParsedChartData, config: SmartChartConfig): EChartsOption {
     const { xData, series } = parsedData;
-    const dataset = config.datasets?.[0] || {};
+    const dataset = config.datasets?.[0] || {} as any;
 
     // 计算瀑布图数据
     const waterfallData = this.calculateWaterfallData(

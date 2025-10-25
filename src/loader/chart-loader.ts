@@ -47,7 +47,7 @@ export class ChartLoader {
    */
   private async importGenerator(type: ChartType): Promise<any> {
     try {
-      const module = await import(`../config/generators/${type}`);
+      const module = await import(`../config/generators/${type}.js`);
       return module.default || module;
     } catch (error) {
       // 如果模块不存在，使用默认生成器

@@ -9,6 +9,7 @@ export * from './engines';
 // 导出核心类
 export { Chart } from './core/chart';
 export { ChartInstanceManager, instanceManager } from './core/instance-manager';
+import { instanceManager as _instanceManager } from './core/instance-manager';
 
 // 导出类型
 export * from './types';
@@ -23,6 +24,7 @@ export * from './themes';
 
 // 导出内存管理
 export { chartCache, ChartCache } from './memory/cache';
+import { chartCache as _chartCache } from './memory/cache';
 export { ObjectPool, arrayPool, poolFactory } from './memory/pool';
 export { cleanupManager, CleanupManager } from './memory/cleanup';
 
@@ -33,7 +35,9 @@ export { ChartWorker, WorkerPool } from './performance/web-worker';
 
 // 导出加载器
 export { echartsLoader, EChartsLoader } from './loader/echarts-loader';
+import { echartsLoader as _echartsLoader } from './loader/echarts-loader';
 export { chartLoader, ChartLoader } from './loader/chart-loader';
+import { chartLoader as _chartLoader } from './loader/chart-loader';
 
 // 导出配置生成器
 export { SmartConfigGenerator } from './config/smart-config';
@@ -91,9 +95,9 @@ export function createChart(
 export default {
   Chart,
   createChart,
-  instanceManager,
-  chartCache,
-  echartsLoader,
-  chartLoader,
+  instanceManager: _instanceManager,
+  chartCache: _chartCache,
+  echartsLoader: _echartsLoader,
+  chartLoader: _chartLoader,
 };
 

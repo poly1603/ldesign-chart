@@ -17,10 +17,10 @@ export default {
         type: 'value',
       },
       series: series.map((data, index) => {
-        const dataset = config.datasets?.[index] || {};
+        const dataset = config.datasets?.[index] || {} as any;
         return {
           name: seriesNames[index],
-          type: 'bar',
+          type: 'bar' as const,
           data,
           barMaxWidth: dataset.barMaxWidth || 50,
           barGap: dataset.barGap || '30%',

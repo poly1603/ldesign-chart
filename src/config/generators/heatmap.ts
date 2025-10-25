@@ -7,7 +7,7 @@ import type { ParsedChartData, SmartChartConfig, EChartsOption } from '../../typ
 export default {
   generate(parsedData: ParsedChartData, config: SmartChartConfig): EChartsOption {
     const { xData, series } = parsedData;
-    const dataset = config.datasets?.[0] || {};
+    const dataset = config.datasets?.[0] || {} as any;
 
     // 将数据转换为热力图格式 [x, y, value]
     const heatmapData: any[] = [];

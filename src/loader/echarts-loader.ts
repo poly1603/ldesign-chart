@@ -107,7 +107,7 @@ export class EChartsLoader {
 
     const promise = this.loadWithRetry(async () => {
       const ChartClass = await loader();
-      const echarts = require('echarts/core');
+      const echarts = await import('echarts/core');
       echarts.use(ChartClass);
       this.loadedModules.add(moduleKey);
     }, moduleKey);
@@ -154,8 +154,8 @@ export class EChartsLoader {
         return;
       }
 
-      const promise = loader().then((ComponentClass) => {
-        const echarts = require('echarts/core');
+      const promise = loader().then(async (ComponentClass) => {
+        const echarts = await import('echarts/core');
         echarts.use(ComponentClass);
         this.loadedModules.add(moduleKey);
       });
@@ -181,7 +181,7 @@ export class EChartsLoader {
     }
 
     const promise = (async () => {
-      const echarts = require('echarts/core');
+      const echarts = await import('echarts/core');
 
       if (type === 'canvas') {
         const { CanvasRenderer } = await import('echarts/renderers');

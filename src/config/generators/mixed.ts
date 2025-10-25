@@ -31,7 +31,7 @@ export default {
         },
       ],
       series: series.map((data, index) => {
-        const dataset = config.datasets![index] || {};
+        const dataset = config.datasets![index] || {} as any;
         const seriesType = dataset.type || 'line';
 
         return {

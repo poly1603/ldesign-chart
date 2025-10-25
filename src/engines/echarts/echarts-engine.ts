@@ -3,10 +3,10 @@
  */
 
 import * as echarts from 'echarts/core';
+import { ChartFeature } from '../base/engine-interface';
 import type {
   ChartEngine,
   EngineInstance,
-  ChartFeature,
   ConfigAdapter,
 } from '../base/engine-interface';
 import { EChartsConfigAdapter } from './echarts-adapter';

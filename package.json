@@ -135,11 +135,13 @@
     "lib"
   ],
   "scripts": {
-    "dev": "rollup -c -w",
-    "build": "rimraf dist && rollup -c",
+    "dev": "ldesign-builder build --watch",
+    "build": "rimraf es lib && rollup -c",
     "build:builder": "ldesign-builder build",
-    "build:prod": "NODE_ENV=production rimraf dist && rollup -c",
-    "build:prod:builder": "ldesign-builder build --minify --clean",
+    "build:clean": "rimraf es lib && rollup -c",
+    "build:prod": "NODE_ENV=production rimraf es lib && rollup -c",
+    "build:rollup": "rimraf dist && rollup -c",
+    "build:rollup:prod": "NODE_ENV=production rimraf dist && rollup -c",
     "analyze": "rollup -c --environment ANALYZE",
     "test": "vitest",
     "test:ui": "vitest --ui",

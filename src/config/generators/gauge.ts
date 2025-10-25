@@ -8,7 +8,7 @@ import type { ParsedChartData, SmartChartConfig, EChartsOption } from '../../typ
 export default {
   generate(parsedData: ParsedChartData, config: SmartChartConfig): EChartsOption {
     const { series, seriesNames } = parsedData;
-    const dataset = config.datasets?.[0] || {};
+    const dataset = config.datasets?.[0] || {} as any;
 
     // 仪表盘模式
     const mode = dataset.mode || 'gauge'; // 'gauge' | 'progress' | 'clock' | 'multi'

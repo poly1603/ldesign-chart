@@ -8,7 +8,7 @@ import type { ParsedChartData, SmartChartConfig, EChartsOption } from '../../typ
 export default {
   generate(parsedData: ParsedChartData, config: SmartChartConfig): EChartsOption {
     const { xData, series } = parsedData;
-    const dataset = config.datasets?.[0] || {};
+    const dataset = config.datasets?.[0] || {} as any;
 
     // 漏斗图模式
     const mode = dataset.mode || 'funnel'; // 'funnel' | 'pyramid' | 'compare'

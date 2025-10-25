@@ -5,7 +5,13 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     port: 9000,
-    host: true
+    host: true,
+    watch: {
+      ignored: ['!**/node_modules/@ldesign/**']
+    }
+  },
+  optimizeDeps: {
+    exclude: ['@ldesign/chart']
   }
 })
 

@@ -108,7 +108,7 @@ export class Chart implements ChartInstance {
     await echartsLoader.loadChart(type);
 
     // 加载必需组件
-    const components = RequiredComponents.common || ['grid', 'tooltip', 'legend', 'title'];
+    const components = [...(RequiredComponents.common || ['grid', 'tooltip', 'legend', 'title'])];
 
     if (dataZoom) components.push('dataZoom');
     if (toolbox) components.push('toolbox');
