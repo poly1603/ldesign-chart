@@ -8,7 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ldesign/chart": "workspace:*",
+    "@ldesign/chart-react": "workspace:*",
     "echarts": "^5.4.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

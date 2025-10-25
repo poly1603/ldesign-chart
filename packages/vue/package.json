@@ -1,0 +1,58 @@
+{
+  "name": "@ldesign/chart-vue",
+  "version": "2.0.0",
+  "description": "企业级图表 Vue 3 适配器",
+  "keywords": [
+    "chart",
+    "vue",
+    "vue3",
+    "echarts",
+    "visualization"
+  ],
+  "author": "ldesign",
+  "license": "MIT",
+  "homepage": "https://github.com/ldesign/chart#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ldesign/chart",
+    "directory": "packages/vue"
+  },
+  "type": "module",
+  "main": "./lib/index.cjs",
+  "module": "./es/index.js",
+  "types": "./es/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./es/index.d.ts",
+      "import": "./es/index.js",
+      "require": "./lib/index.cjs"
+    },
+    "./style.css": "./es/index.css"
+  },
+  "files": [
+    "README.md",
+    "package.json",
+    "es",
+    "lib"
+  ],
+  "scripts": {
+    "build": "ldesign-builder build",
+    "dev": "ldesign-builder build --watch",
+    "clean": "rimraf es lib"
+  },
+  "dependencies": {
+    "@ldesign/chart-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "vue": "^3.0.0",
+    "echarts": "^5.4.0"
+  },
+  "devDependencies": {
+    "@ldesign/builder": "workspace:*",
+    "@vue/compiler-sfc": "^3.4.0",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.3",
+    "vue": "^3.4.15"
+  }
+}
+

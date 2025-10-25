@@ -45,8 +45,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { Chart } from '@ldesign/chart/vue'
-import { EChartsEngine, VChartEngine, engineManager } from '@ldesign/chart'
+import { Chart } from '@ldesign/chart-vue'
+import { EChartsEngine, VChartEngine, engineManager } from '@ldesign/chart-core'
 
 // 初始化引擎
 onMounted(() => {

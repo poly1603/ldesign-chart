@@ -1,0 +1,113 @@
+{
+  "name": "@ldesign/chart-core",
+  "version": "2.0.0",
+  "description": "企业级图表核心库 - 框架无关",
+  "keywords": [
+    "chart",
+    "echarts",
+    "vchart",
+    "visualization",
+    "data-visualization",
+    "typescript"
+  ],
+  "author": "ldesign",
+  "license": "MIT",
+  "homepage": "https://github.com/ldesign/chart#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ldesign/chart",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/ldesign/chart/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./lib/index.cjs",
+  "module": "./es/index.js",
+  "types": "./es/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./es/index.d.ts",
+      "import": "./es/index.js",
+      "require": "./lib/index.cjs"
+    },
+    "./engines": {
+      "types": "./es/engines/index.d.ts",
+      "import": "./es/engines/index.js",
+      "require": "./lib/engines/index.cjs"
+    },
+    "./engines/*": {
+      "types": "./es/engines/*.d.ts",
+      "import": "./es/engines/*.js",
+      "require": "./lib/engines/*.cjs"
+    },
+    "./types": {
+      "types": "./es/types/index.d.ts",
+      "import": "./es/types/index.js",
+      "require": "./lib/types/index.cjs"
+    },
+    "./types/*": {
+      "types": "./es/types/*.d.ts",
+      "import": "./es/types/*.js",
+      "require": "./lib/types/*.cjs"
+    },
+    "./utils/*": {
+      "types": "./es/utils/*.d.ts",
+      "import": "./es/utils/*.js",
+      "require": "./lib/utils/*.cjs"
+    },
+    "./themes": {
+      "types": "./es/themes/index.d.ts",
+      "import": "./es/themes/index.js",
+      "require": "./lib/themes/index.cjs"
+    },
+    "./memory/*": {
+      "types": "./es/memory/*.d.ts",
+      "import": "./es/memory/*.js",
+      "require": "./lib/memory/*.cjs"
+    },
+    "./performance/*": {
+      "types": "./es/performance/*.d.ts",
+      "import": "./es/performance/*.js",
+      "require": "./lib/performance/*.cjs"
+    },
+    "./loader/*": {
+      "types": "./es/loader/*.d.ts",
+      "import": "./es/loader/*.js",
+      "require": "./lib/loader/*.cjs"
+    }
+  },
+  "files": [
+    "README.md",
+    "LICENSE",
+    "package.json",
+    "es",
+    "lib"
+  ],
+  "scripts": {
+    "build": "ldesign-builder build",
+    "dev": "ldesign-builder build --watch",
+    "clean": "rimraf es lib",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "peerDependencies": {
+    "echarts": "^5.4.0",
+    "@visactor/vchart": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@visactor/vchart": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@ldesign/builder": "workspace:*",
+    "@types/node": "^20.11.16",
+    "echarts": "^5.4.3",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.1"
+  }
+}
+

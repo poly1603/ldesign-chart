@@ -8,7 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ldesign/chart": "workspace:*",
+    "@ldesign/chart-vue": "workspace:*",
     "echarts": "^5.4.3",
     "vue": "^3.4.15"
   },
