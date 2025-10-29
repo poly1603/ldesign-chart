@@ -1,0 +1,67 @@
+{
+  "name": "@ldesign/chart-angular",
+  "version": "2.0.0",
+  "description": "企业级图表 Angular 适配器",
+  "keywords": [
+    "chart",
+    "angular",
+    "echarts",
+    "visualization"
+  ],
+  "author": "ldesign",
+  "license": "MIT",
+  "homepage": "https://github.com/ldesign/chart#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ldesign/chart",
+    "directory": "packages/angular"
+  },
+  "type": "module",
+  "main": "./lib/index.cjs",
+  "module": "./es/index.js",
+  "types": "./es/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./es/index.d.ts",
+      "import": "./es/index.js",
+      "require": "./lib/index.cjs"
+    }
+  },
+  "files": [
+    "README.md",
+    "package.json",
+    "es",
+    "lib"
+  ],
+  "scripts": {
+    "build": "ldesign-builder build",
+    "dev": "ldesign-builder build --watch",
+    "clean": "rimraf es lib",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@ldesign/chart-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@angular/core": ">=14.0.0",
+    "@angular/common": ">=14.0.0",
+    "echarts": "^5.4.0"
+  },
+  "devDependencies": {
+    "@angular/core": "^18.0.0",
+    "@angular/common": "^18.0.0",
+    "@antfu/eslint-config": "^6.0.0",
+    "@ldesign/builder": "workspace:*",
+    "@types/node": "^20.11.16",
+    "echarts": "^5.4.3",
+    "eslint": "^9.18.0",
+    "rimraf": "^5.0.5",
+    "rxjs": "^7.8.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.1"
+  }
+}

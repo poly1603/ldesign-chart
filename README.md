@@ -12,6 +12,10 @@
 | [@ldesign/chart-vue](./packages/vue) | Vue 3 适配器 | Vue 3 项目 |
 | [@ldesign/chart-react](./packages/react) | React 适配器 | React 项目 |
 | [@ldesign/chart-lit](./packages/lit) | Lit/Web Components 适配器 | Web Components 项目 |
+| [@ldesign/chart-angular](./packages/angular) | Angular 适配器 | Angular 14+ 项目 |
+| [@ldesign/chart-svelte](./packages/svelte) | Svelte 适配器 | Svelte 4/5 项目 |
+| [@ldesign/chart-solid](./packages/solid) | Solid.js 适配器 | Solid.js 项目 |
+| [@ldesign/chart-qwik](./packages/qwik) | Qwik 适配器 | Qwik 项目 |
 
 ## 🚀 快速开始
 
