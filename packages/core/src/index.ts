@@ -5,6 +5,7 @@
 
 // 导出引擎相关
 export * from './engines'
+export { engineFactory } from './engines/engine-factory'
 
 // 导出核心类
 export { Chart } from './core/chart'
@@ -37,6 +38,7 @@ export { chartLoader, ChartLoader } from './loader/chart-loader'
 
 // 导出配置生成器
 export { SmartConfigGenerator } from './config/smart-config'
+export { AIConfigGenerator, aiConfigGenerator } from './config/ai-config-generator'
 
 // 导出数据解析器
 export { CSVParser, csvParser } from './utils/parsers/csv-parser'

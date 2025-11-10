@@ -59,7 +59,7 @@ export interface EngineInstance {
  */
 export interface ChartEngine {
   /** 引擎名称 */
-  readonly name: 'echarts' | 'vchart';
+  readonly name: 'echarts' | 'vchart' | 'chartjs' | 'g2' | 'd3';
   /** 引擎版本 */
   readonly version: string;
 
@@ -88,6 +88,16 @@ export interface ChartEngine {
    * 销毁引擎（清理全局资源）
    */
   dispose(): void;
+  
+  /**
+   * 获取支持的图表类型
+   */
+  getSupportedChartTypes?(): string[];
+  
+  /**
+   * 获取引擎能力
+   */
+  getCapabilities?(): Record<string, any>;
 }
 
 /**
@@ -144,7 +154,7 @@ export interface UniversalChartConfig {
   /** 性能优化选项 */
   performance?: any;
   /** 引擎选择 */
-  engine?: 'echarts' | 'vchart' | 'auto';
+  engine?: 'echarts' | 'vchart' | 'chartjs' | 'g2' | 'd3' | 'auto';
   /** 平台标识 */
   platform?: string;
   /** 渲染模式 */
