@@ -1,43 +1,34 @@
-/**
- * @ldesign/chart-vue 构建配置
- * Vue 3 适配器
- */
-
 import { defineConfig } from '@ldesign/builder'
 
 export default defineConfig({
-  name: 'LDesignChartVue',
+  entry: 'src/index.ts',
+
   libraryType: 'vue3',
-  
-  input: 'src/index.ts',
-  
+
   output: {
+    formats: ['esm', 'cjs', 'dts'],
     esm: {
-      dir: 'es'
+      dir: 'es',
     },
     cjs: {
-      dir: 'lib'
+      dir: 'lib',
     },
-    umd: {
-      enabled: false
-    }
+    dts: {
+      dir: 'es',
+    },
+    umd: false,
+    name: 'LChartVue',
   },
-  
-  external: [
-    'vue',
-    '@ldesign/chart-core',
-    'echarts',
-    /^echarts\//
-  ],
-  
-  typescript: {
-    declaration: true,
-    sourceMap: true
-  },
-  
-  style: {
-    extract: true,
-    minimize: true
-  }
-})
 
+  external: ['vue', '@ldesign/chart-core'],
+
+  vue: {
+    version: 3,
+  },
+
+  bundler: 'rollup',
+
+  minify: false,
+  sourcemap: true,
+  dts: true,
+})

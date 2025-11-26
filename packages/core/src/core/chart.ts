@@ -1,385 +1,505 @@
 /**
- * 核心 Chart 类
+ * 图表主类
  */
 
-import * as echarts from 'echarts/core';
-import type { EChartsInstance, ChartConfig, ChartData, ChartInstance, ThemeConfig } from '../types';
-import { echartsLoader } from '../loader/echarts-loader';
-import { SmartConfigGenerator } from '../config/smart-config';
-import { VirtualRenderer } from '../performance/virtual-render';
-import { ChartWorker } from '../performance/web-worker';
-import { chartCache, ChartCache } from '../memory/cache';
-import { instanceManager } from './instance-manager';
-import { ChartResizeObserver } from '../utils/resize-observer';
-import { generateId } from '../utils/helpers';
-import { getChartDefaults, hasAxis, RequiredComponents } from '../types/chart-types';
-import { renderScheduler } from '../performance/render-scheduler';
-import { EventManager } from '../utils/event-manager';
-import { errorHandler, ErrorType, performanceMonitor } from '../utils/error-handler';
+import type {
+  ChartOptions,
+  ChartEventMap,
+  Rect,
+  Point,
+  SeriesOptions,
+  MouseEventParams,
+} from '../types'
+import { EventEmitter } from './EventEmitter'
+import { CanvasRenderer } from '../renderers/CanvasRenderer'
+import { BaseRenderer } from '../renderers/BaseRenderer'
+import { Title } from '../components/Title'
+import { Legend, LegendItem } from '../components/Legend'
+import { Axis } from '../components/Axis'
+import { Tooltip } from '../components/Tooltip'
+import { BaseSeries, SeriesContext } from '../series/BaseSeries'
+import { LineSeries } from '../series/LineSeries'
+import { BarSeries } from '../series/BarSeries'
+import { PieSeries } from '../series/PieSeries'
+import { ScatterSeries } from '../series/ScatterSeries'
+import { getElementSize, getMousePosition } from '../utils/dom'
+import { debounce, deepMerge, isString, parseSize } from '../utils/data'
+import { defaultTheme, getTheme } from '../theme'
 
-/**
- * Chart 类
- */
-export class Chart implements ChartInstance {
-  private echartsInstance?: EChartsInstance;
-  private container: HTMLElement;
-  private config: ChartConfig;
-  private id: string;
+export class Chart extends EventEmitter<ChartEventMap> {
+  private container: HTMLElement
+  private options: ChartOptions
+  private renderer: BaseRenderer
+  private width: number = 0
+  private height: number = 0
 
-  // 功能模块
-  private configGenerator = new SmartConfigGenerator();
-  private virtualRenderer?: VirtualRenderer;
-  private worker?: ChartWorker;
-  private resizeObserver?: ChartResizeObserver;
-  private eventManager = new EventManager();
+  // 组件
+  private title: Title | null = null
+  private legend: Legend | null = null
+  private xAxis: Axis | null = null
+  private yAxis: Axis | null = null
+  private tooltip: Tooltip
+
+  // 系列
+  private seriesList: BaseSeries[] = []
+
+  // 区域
+  private plotArea: Rect = { x: 0, y: 0, width: 0, height: 0 }
+
+  // 主题颜色
+  private colors: string[] = defaultTheme.colors
 
   // 状态
-  private isDisposed = false;
-  private isLoading = false;
+  private isDisposed: boolean = false
+  private resizeObserver: ResizeObserver | null = null
 
-  constructor(container: HTMLElement, config: ChartConfig) {
-    this.container = container;
-    this.config = config;
-    this.id = generateId('chart');
+  constructor(container: HTMLElement | string, options: ChartOptions = {}) {
+    super()
 
-    // 注册实例
-    instanceManager.register(this.id, this);
+    // 获取容器元素
+    this.container = isString(container)
+      ? document.querySelector(container) as HTMLElement
+      : container
 
-    // 初始化
-    this.init();
+    if (!this.container) {
+      throw new Error('LChart: Container element not found')
+    }
+
+    // 初始化配置
+    this.options = this.normalizeOptions(options)
+
+    // 应用主题
+    this.applyTheme()
+
+    // 创建渲染器
+    this.renderer = new CanvasRenderer(this.container, {
+      devicePixelRatio: this.options.devicePixelRatio,
+    })
+
+    // 创建提示框
+    this.tooltip = new Tooltip(this.options.tooltip)
+
+    // 初始化尺寸
+    this.resize()
+
+    // 初始化组件和系列
+    this.initComponents()
+    this.initSeries()
+
+    // 绑定事件
+    this.bindEvents()
+
+    // 监听容器大小变化
+    if (this.options.responsive !== false) {
+      this.observeResize()
+    }
+
+    // 首次渲染
+    this.render()
   }
 
-  /**
-   * 初始化图表（带性能监控和错误处理）
-   */
-  private async init(): Promise<void> {
-    performanceMonitor.mark(`init-${this.id}`);
+  /** 标准化配置 */
+  private normalizeOptions(options: ChartOptions): ChartOptions {
+    const normalized = { ...options }
 
-    try {
-      this.isLoading = true;
+    // 简化配置转换
+    if (options.type && options.data) {
+      normalized.series = this.convertSimpleData(options.type, options.data)
+    }
 
-      // 1. 按需加载 ECharts 模块
-      await this.loadModules();
+    // 标题字符串转对象
+    if (isString(options.title)) {
+      normalized.title = { text: options.title }
+    }
 
-      // 2. 生成配置
-      const option = await this.generateOption();
+    return normalized
+  }
 
-      // 3. 创建实例
-      await this.createInstance(option);
+  /** 转换简化数据格式 */
+  private convertSimpleData(type: string, data: ChartOptions['data']): SeriesOptions[] {
+    if (!data) return []
 
-      // 4. 设置响应式
-      this.setupResize();
+    return data.datasets.map((dataset, index) => {
+      const seriesData = dataset.data.map((value, i) => {
+        if (typeof value === 'number') {
+          return {
+            x: data.labels?.[i] ?? i,
+            y: value,
+          }
+        }
+        return value
+      })
 
-      // 5. 启用性能优化
-      this.setupPerformance();
+      return {
+        type,
+        name: dataset.name ?? `Series ${index + 1}`,
+        data: seriesData,
+        style: dataset.style,
+      } as SeriesOptions
+    })
+  }
 
-      this.isLoading = false;
+  /** 应用主题 */
+  private applyTheme(): void {
+    const { theme } = this.options
 
-      // 记录初始化性能
-      const duration = performanceMonitor.measure('chart-init', `init-${this.id}`);
-      if (duration > 1000) {
-        console.warn(`图表初始化耗时 ${duration.toFixed(2)}ms，建议优化`);
+    if (theme) {
+      const themeConfig = isString(theme) ? getTheme(theme) : theme
+      this.colors = themeConfig?.colors ?? defaultTheme.colors
+    }
+  }
+
+  /** 初始化组件 */
+  private initComponents(): void {
+    const { title, legend, xAxis, yAxis } = this.options
+
+    // 标题
+    if (title) {
+      this.title = new Title(isString(title) ? { text: title } : title)
+    }
+
+    // 图例
+    if (legend?.show !== false) {
+      this.legend = new Legend(legend)
+    }
+
+    // 坐标轴（非饼图）
+    const hasPie = this.options.series?.some(s => s.type === 'pie')
+    if (!hasPie) {
+      this.xAxis = new Axis('bottom', Array.isArray(xAxis) ? xAxis[0] : xAxis)
+      this.yAxis = new Axis('left', Array.isArray(yAxis) ? yAxis[0] : yAxis)
+    }
+  }
+
+  /** 初始化系列 */
+  private initSeries(): void {
+    const { series = [] } = this.options
+
+    this.seriesList = series.map((config) => {
+      switch (config.type) {
+        case 'line':
+          return new LineSeries(config)
+        case 'bar':
+          return new BarSeries(config)
+        case 'pie':
+          return new PieSeries(config)
+        case 'scatter':
+          return new ScatterSeries(config)
+        default:
+          return new LineSeries(config as any)
       }
-    } catch (error) {
-      this.isLoading = false;
-      errorHandler.handle(error as Error, {
-        chartId: this.id,
-        config: this.config,
-        errorType: ErrorType.INITIALIZATION,
-      });
-      throw error;
+    })
+
+    // 更新图例数据
+    if (this.legend) {
+      const legendItems: LegendItem[] = this.seriesList.map((series, index) => ({
+        name: series.getName(),
+        color: this.colors[index % this.colors.length],
+      }))
+      this.legend.setItems(legendItems)
     }
   }
 
-  /**
-   * 按需加载模块
-   */
-  private async loadModules(): Promise<void> {
-    const { type, dataZoom, toolbox } = this.config;
+  /** 绑定事件 */
+  private bindEvents(): void {
+    const canvas = this.container.querySelector('canvas')
+    if (!canvas) return
 
-    // 加载核心
-    await echartsLoader.loadCore();
-
-    // 加载渲染器
-    const rendererType = this.config.renderer || 'canvas';
-    await echartsLoader.loadRenderer(rendererType);
-
-    // 加载图表类型
-    await echartsLoader.loadChart(type);
-
-    // 加载必需组件
-    const components = [...(RequiredComponents.common || ['grid', 'tooltip', 'legend', 'title'])];
-
-    if (dataZoom) components.push('dataZoom');
-    if (toolbox) components.push('toolbox');
-    if (hasAxis(type)) {
-      // 添加坐标轴相关组件
-    }
-
-    await echartsLoader.loadComponents([...new Set(components)]);
+    canvas.addEventListener('mousemove', this.handleMouseMove)
+    canvas.addEventListener('click', this.handleClick)
+    canvas.addEventListener('mouseout', this.handleMouseOut)
   }
 
-  /**
-   * 生成配置
-   */
-  private async generateOption(): Promise<any> {
-    // 尝试从缓存获取
-    const cacheKey = this.getCacheKey();
-    if (this.config.cache) {
-      const cached = chartCache.get(cacheKey);
-      if (cached) return cached;
-    }
+  /** 解绑事件 */
+  private unbindEvents(): void {
+    const canvas = this.container.querySelector('canvas')
+    if (!canvas) return
 
-    // 生成配置
-    const option = await this.configGenerator.generate(this.config);
-
-    // 缓存配置
-    if (this.config.cache) {
-      chartCache.set(cacheKey, option, 5 * 60 * 1000); // 5分钟
-    }
-
-    return option;
+    canvas.removeEventListener('mousemove', this.handleMouseMove)
+    canvas.removeEventListener('click', this.handleClick)
+    canvas.removeEventListener('mouseout', this.handleMouseOut)
   }
 
-  /**
-   * 创建实例
-   */
-  private async createInstance(option: any): Promise<void> {
-    // 使用 Worker 处理大数据
-    if (this.config.worker && this.isLargeDataset()) {
-      this.worker = new ChartWorker();
-      option = await this.worker.processData(option, 'optimize');
+  private handleMouseMove = (event: MouseEvent): void => {
+    const point = getMousePosition(event, this.container)
+
+    // 命中测试
+    for (let i = 0; i < this.seriesList.length; i++) {
+      const series = this.seriesList[i]
+      const hit = series.hitTest(point)
+
+      if (hit) {
+        this.tooltip.show(point, {
+          seriesName: series.getName(),
+          name: String(hit.x),
+          value: hit.y,
+          dataIndex: series.getData().indexOf(hit),
+          seriesIndex: i,
+          color: series.getColor(),
+        })
+        this.render()
+        return
+      }
     }
 
-    // 创建 ECharts 实例
-    this.echartsInstance = echarts.init(
-      this.container,
-      this.config.theme as any
-    );
-
-    // 设置配置
-    this.echartsInstance.setOption(option, {
-      notMerge: true,
-      lazyUpdate: this.config.lazy,
-    });
+    this.tooltip.hide()
+    this.render()
   }
 
-  /**
-   * 设置响应式
-   */
-  private setupResize(): void {
-    const responsive = this.config.responsive;
-    if (responsive === false) return;
+  private handleClick = (event: MouseEvent): void => {
+    const point = getMousePosition(event, this.container)
 
-    const debounceDelay = typeof responsive === 'object' ? responsive.debounce || 100 : 100;
+    for (let i = 0; i < this.seriesList.length; i++) {
+      const series = this.seriesList[i]
+      const hit = series.hitTest(point)
 
-    this.resizeObserver = new ChartResizeObserver(() => {
-      this.resize();
-    }, debounceDelay);
-
-    this.resizeObserver.observe(this.container);
-  }
-
-  /**
-   * 设置性能优化
-   */
-  private setupPerformance(): void {
-    // 虚拟渲染
-    if (this.config.virtual && this.isLargeDataset()) {
-      this.virtualRenderer = new VirtualRenderer();
-      this.enableVirtualRender();
+      if (hit) {
+        const params: MouseEventParams = {
+          type: 'click',
+          componentType: 'series',
+          seriesType: series.getOptions().type,
+          seriesIndex: i,
+          seriesName: series.getName(),
+          name: String(hit.x),
+          dataIndex: series.getData().indexOf(hit),
+          value: hit.y,
+          color: series.getColor(),
+          event,
+          point,
+        }
+        this.emit('click', params)
+        return
+      }
     }
   }
 
-  /**
-   * 更新数据（使用调度器批量处理）
-   */
-  async updateData(data: ChartData): Promise<void> {
-    if (this.isDisposed) return;
-
-    const newConfig = { ...this.config, data };
-    const option = await this.configGenerator.generate(newConfig);
-
-    // 使用渲染调度器批量处理更新
-    renderScheduler.schedule(`update-${this.id}`, () => {
-      this.echartsInstance?.setOption(option, {
-        notMerge: false,
-        lazyUpdate: this.config.lazy,
-      });
-    }, 6); // 中高优先级
-
-    this.config = newConfig;
+  private handleMouseOut = (): void => {
+    this.tooltip.hide()
+    this.render()
   }
 
-  /**
-   * 设置主题
-   */
-  setTheme(theme: string | ThemeConfig): void {
-    // 重新创建实例以应用新主题
-    this.config.theme = theme;
-    this.dispose();
-    this.init();
+  /** 监听容器大小变化 */
+  private observeResize(): void {
+    const debouncedResize = debounce(() => {
+      if (!this.isDisposed) {
+        this.resize()
+        this.render()
+      }
+    }, 100)
+
+    this.resizeObserver = new ResizeObserver(debouncedResize)
+    this.resizeObserver.observe(this.container)
   }
 
-  /**
-   * 设置暗黑模式
-   */
-  setDarkMode(enabled: boolean): void {
-    this.config.darkMode = enabled;
-    const theme = enabled ? 'dark' : 'light';
-    this.setTheme(theme);
-  }
-
-  /**
-   * 设置字体大小
-   */
-  setFontSize(size: number): void {
-    this.config.fontSize = size;
-    // 重新生成配置
-    this.refresh();
-  }
-
-  /**
-   * 刷新图表
-   */
-  async refresh(): Promise<void> {
-    const option = await this.generateOption();
-    this.echartsInstance?.setOption(option, { notMerge: true });
-  }
-
-  /**
-   * 调整大小（使用调度器）
-   */
+  /** 调整尺寸 */
   resize(): void {
-    renderScheduler.schedule(`resize-${this.id}`, () => {
-      this.echartsInstance?.resize();
-    }, 7); // 高优先级
+    const { width: optWidth, height: optHeight } = this.options
+    const containerSize = getElementSize(this.container)
+
+    this.width = optWidth ? parseSize(optWidth, containerSize.width) : containerSize.width
+    this.height = optHeight ? parseSize(optHeight, containerSize.height) : containerSize.height
+
+    if (this.width === 0) this.width = 600
+    if (this.height === 0) this.height = 400
+
+    this.renderer.setSize(this.width, this.height)
+    this.calculateLayout()
   }
 
-  /**
-   * 获取 DataURL
-   */
-  getDataURL(options?: any): string {
-    return this.echartsInstance?.getDataURL(options) || '';
+  /** 计算布局 */
+  private calculateLayout(): void {
+    let contentArea: Rect = { x: 20, y: 20, width: this.width - 40, height: this.height - 40 }
+
+    // 标题布局
+    if (this.title?.isVisible()) {
+      const titleBounds = this.title.layout(contentArea)
+      contentArea = {
+        ...contentArea,
+        y: contentArea.y + titleBounds.height,
+        height: contentArea.height - titleBounds.height,
+      }
+    }
+
+    // 图例布局
+    if (this.legend?.isVisible()) {
+      const legendBounds = this.legend.layout(contentArea)
+      const position = this.legend.getOptions().position ?? 'top'
+
+      if (position === 'top') {
+        contentArea = {
+          ...contentArea,
+          y: contentArea.y + legendBounds.height,
+          height: contentArea.height - legendBounds.height,
+        }
+      } else if (position === 'bottom') {
+        contentArea = {
+          ...contentArea,
+          height: contentArea.height - legendBounds.height,
+        }
+      }
+    }
+
+    // 坐标轴布局
+    if (this.xAxis?.isVisible()) {
+      const xAxisBounds = this.xAxis.layout(contentArea)
+      contentArea = {
+        ...contentArea,
+        height: contentArea.height - xAxisBounds.height,
+      }
+    }
+
+    if (this.yAxis?.isVisible()) {
+      const yAxisBounds = this.yAxis.layout(contentArea)
+      contentArea = {
+        ...contentArea,
+        x: contentArea.x + yAxisBounds.width,
+        width: contentArea.width - yAxisBounds.width,
+      }
+    }
+
+    // 绑图区域
+    this.plotArea = contentArea
+
+    // 更新坐标轴数据范围
+    this.updateAxisRange()
+
+    // 设置系列上下文
+    this.seriesList.forEach((series, index) => {
+      series.processData()
+      series.setContext({
+        xAxis: this.xAxis ?? undefined,
+        yAxis: this.yAxis ?? undefined,
+        plotArea: this.plotArea,
+        colors: this.colors,
+        seriesIndex: index,
+      })
+    })
+
+    // 提示框布局
+    this.tooltip.layout({ x: 0, y: 0, width: this.width, height: this.height })
   }
 
-  /**
-   * 事件监听（自动管理）
-   */
-  on(eventName: string, handler: Function): void {
-    if (!this.echartsInstance) return;
+  /** 更新坐标轴数据范围 */
+  private updateAxisRange(): void {
+    if (!this.xAxis || !this.yAxis) return
 
-    this.echartsInstance.on(eventName, handler as any);
-    // 不使用 EventTarget 的事件管理器，因为 ECharts 有自己的事件系统
-    // 但我们记录这个监听器以便在 dispose 时清理
+    const allYValues: number[] = []
+    const allXValues: (string | number)[] = []
+
+    this.seriesList.forEach(series => {
+      series.processData()
+      const data = series.getData()
+
+      data.forEach(d => {
+        allYValues.push(d.y)
+        if (typeof d.x === 'string' || typeof d.x === 'number') {
+          allXValues.push(d.x)
+        }
+      })
+    })
+
+    // 设置 X 轴数据
+    const xAxisOptions = Array.isArray(this.options.xAxis)
+      ? this.options.xAxis[0]
+      : this.options.xAxis
+
+    if (xAxisOptions?.type === 'category' || typeof allXValues[0] === 'string') {
+      this.xAxis.setOptions({ type: 'category' })
+      this.xAxis.setCategoryData([...new Set(allXValues)])
+    } else {
+      this.xAxis.setDataRange(allXValues.filter((v): v is number => typeof v === 'number'))
+    }
+
+    // 设置 Y 轴数据范围
+    this.yAxis.setDataRange(allYValues)
   }
 
-  /**
-   * 取消事件监听
-   */
-  off(eventName: string, handler?: Function): void {
-    this.echartsInstance?.off(eventName, handler as any);
+  /** 渲染 */
+  render(): void {
+    if (this.isDisposed) return
+
+    this.renderer.clear()
+
+    // 绘制背景
+    if (this.options.backgroundColor) {
+      this.renderer.drawRect(
+        { x: 0, y: 0, width: this.width, height: this.height },
+        { color: this.options.backgroundColor }
+      )
+    }
+
+    // 绘制标题
+    this.title?.render(this.renderer)
+
+    // 绘制图例
+    this.legend?.render(this.renderer)
+
+    // 绘制坐标轴
+    this.xAxis?.render(this.renderer)
+    this.yAxis?.render(this.renderer)
+
+    // 绘制系列
+    this.renderer.save()
+    this.renderer.setClip(this.plotArea)
+    this.seriesList.forEach(series => series.render(this.renderer))
+    this.renderer.restore()
+
+    // 绘制提示框
+    this.tooltip.render(this.renderer)
+
+    this.emit('rendered', { elapsedTime: 0 })
   }
 
-  /**
-   * 销毁实例（自动清理所有资源）
-   */
+  /** 更新配置 */
+  setOption(options: Partial<ChartOptions>, merge: boolean = true): void {
+    if (merge) {
+      this.options = deepMerge(this.options, options)
+    } else {
+      this.options = this.normalizeOptions(options as ChartOptions)
+    }
+
+    this.initComponents()
+    this.initSeries()
+    this.calculateLayout()
+    this.render()
+  }
+
+  /** 获取配置 */
+  getOption(): ChartOptions {
+    return this.options
+  }
+
+  /** 获取宽度 */
+  getWidth(): number {
+    return this.width
+  }
+
+  /** 获取高度 */
+  getHeight(): number {
+    return this.height
+  }
+
+  /** 销毁 */
   dispose(): void {
-    if (this.isDisposed) return;
+    if (this.isDisposed) return
 
-    // 取消所有待处理的渲染任务
-    renderScheduler.cancel(`resize-${this.id}`);
-    renderScheduler.cancel(`update-${this.id}`);
+    this.emit('beforeDestroy', undefined as never)
 
-    // 清理 ECharts 实例
-    this.echartsInstance?.dispose();
-    this.echartsInstance = undefined;
+    this.unbindEvents()
+    this.resizeObserver?.disconnect()
+    this.renderer.dispose()
+    super.dispose()
 
-    // 清理观察器
-    this.resizeObserver?.disconnect();
-    this.resizeObserver = undefined;
-
-    // 清理 Worker
-    this.worker?.terminate();
-    this.worker = undefined;
-
-    // 清理事件监听器
-    this.eventManager.clearAll();
-
-    // 从管理器注销
-    instanceManager.dispose(this.id);
-
-    this.isDisposed = true;
-  }
-
-  /**
-   * 获取实例
-   */
-  getInstance(): EChartsInstance | undefined {
-    return this.echartsInstance;
-  }
-
-  // ============ 辅助方法 ============
-
-  /**
-   * 获取缓存键（使用高性能哈希）
-   */
-  private getCacheKey(): string {
-    return ChartCache.generateKey({
-      type: this.config.type,
-      data: this.config.data,
-    });
-  }
-
-  /**
-   * 判断是否是大数据集
-   */
-  private isLargeDataset(): boolean {
-    const data = this.config.data;
-    if (Array.isArray(data)) {
-      return data.length > 10000;
-    }
-    if (typeof data === 'object' && data && 'datasets' in data) {
-      const totalPoints = (data as any).datasets.reduce(
-        (sum: number, dataset: any) => sum + (dataset.data?.length || 0),
-        0
-      );
-      return totalPoints > 10000;
-    }
-    return false;
-  }
-
-  /**
-   * 启用虚拟渲染
-   */
-  private enableVirtualRender(): void {
-    if (!this.virtualRenderer || !this.echartsInstance) return;
-
-    // 监听 dataZoom 事件
-    this.echartsInstance.on('dataZoom', (event: any) => {
-      this.virtualRenderer?.updateVisibleRange(event);
-    });
-  }
-
-  /**
-   * 获取图表 ID
-   */
-  getId(): string {
-    return this.id;
-  }
-
-  /**
-   * 获取配置
-   */
-  getConfig(): ChartConfig {
-    return { ...this.config };
-  }
-
-  /**
-   * 是否已销毁
-   */
-  isDestroyed(): boolean {
-    return this.isDisposed;
+    this.isDisposed = true
   }
 }
 
+/**
+ * 创建图表实例
+ */
+export function createChart(
+  container: HTMLElement | string,
+  options?: ChartOptions
+): Chart {
+  return new Chart(container, options)
+}

@@ -1,102 +1,75 @@
 /**
- * Vue 组合式函数
+ * useChart - 图表 Composable
  */
 
-import { ref, watch, onUnmounted, unref, type MaybeRef } from 'vue'
-import { Chart } from '@ldesign/chart-core'
-import type { ChartConfig, ChartData } from '@ldesign/chart-core'
+import { ref, shallowRef, onMounted, onBeforeUnmount, watch, type Ref } from 'vue'
+import { createChart, type Chart, type ChartOptions } from '@ldesign/chart-core'
+
+export interface UseChartOptions {
+  /** 初始配置 */
+  options?: ChartOptions
+  /** 是否自动渲染 */
+  autoRender?: boolean
+}
+
+export interface UseChartReturn {
+  /** 容器引用 */
+  containerRef: Ref<HTMLElement | null>
+  /** 图表实例 */
+  chartInstance: Ref<Chart | null>
+  /** 设置配置 */
+  setOption: (options: Partial<ChartOptions>, merge?: boolean) => void
+  /** 调整大小 */
+  resize: () => void
+  /** 重新渲染 */
+  render: () => void
+}
 
 /**
- * 使用图表
+ * 图表 Composable
  */
-export function useChart(config: MaybeRef<ChartConfig>) {
-  const chartRef = ref<HTMLDivElement>()
-  const instance = ref<Chart>()
-  const isLoading = ref(false)
-  const error = ref<Error | null>(null)
+export function useChart(options: UseChartOptions = {}): UseChartReturn {
+  const containerRef = ref<HTMLElement | null>(null)
+  const chartInstance = shallowRef<Chart | null>(null)
 
-  const init = async (container?: HTMLElement) => {
-    const el = container || chartRef.value
-    if (!el) return
+  const initChart = () => {
+    if (!containerRef.value) return
 
-    try {
-      isLoading.value = true
-      error.value = null
-
-      if (instance.value) {
-        instance.value.dispose()
-      }
-
-      instance.value = new Chart(el, unref(config))
-      isLoading.value = false
-    } catch (err) {
-      error.value = err as Error
-      isLoading.value = false
+    // 销毁旧实例
+    if (chartInstance.value) {
+      chartInstance.value.dispose()
     }
+
+    // 创建新实例
+    chartInstance.value = createChart(containerRef.value, options.options)
   }
 
-  watch(() => unref(config).data, (newData) => {
-    instance.value?.updateData(newData)
-  }, { deep: true })
+  const setOption = (newOptions: Partial<ChartOptions>, merge: boolean = true) => {
+    chartInstance.value?.setOption(newOptions, merge)
+  }
 
-  onUnmounted(() => {
-    instance.value?.dispose()
+  const resize = () => {
+    chartInstance.value?.resize()
+  }
+
+  const render = () => {
+    chartInstance.value?.render()
+  }
+
+  onMounted(() => {
+    initChart()
+  })
+
+  onBeforeUnmount(() => {
+    chartInstance.value?.dispose()
+    chartInstance.value = null
   })
 
   return {
-    chartRef,
-    instance,
-    isLoading,
-    error,
-    init,
-    updateData: (data: ChartData) => instance.value?.updateData(data),
-    setTheme: (theme: string) => instance.value?.setTheme(theme),
-    setDarkMode: (enabled: boolean) => instance.value?.setDarkMode(enabled),
-    resize: () => instance.value?.resize(),
-    refresh: () => instance.value?.refresh(),
+    containerRef,
+    chartInstance,
+    setOption,
+    resize,
+    render,
   }
 }
-
-/**
- * 使用图表主题
- */
-export function useChartTheme(initialTheme = 'light') {
-  const theme = ref(initialTheme)
-  const darkMode = ref(false)
-
-  const toggleDarkMode = () => {
-    darkMode.value = !darkMode.value
-    theme.value = darkMode.value ? 'dark' : 'light'
-  }
-
-  const setTheme = (newTheme: string) => {
-    theme.value = newTheme
-  }
-
-  return {
-    theme,
-    darkMode,
-    toggleDarkMode,
-    setTheme,
-  }
-}
-
-/**
- * 使用图表响应式
- */
-export function useChartResize(chart: MaybeRef<Chart | undefined>) {
-  const resize = () => {
-    const instance = unref(chart)
-    instance?.resize()
-  }
-
-  if (typeof window !== 'undefined') {
-    window.addEventListener('resize', resize)
-    onUnmounted(() => {
-      window.removeEventListener('resize', resize)
-    })
-  }
-
-  return { resize }
-}
-

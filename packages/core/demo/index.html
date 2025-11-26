@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LChart Core Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #f5f7fa;
+      padding: 20px;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+    }
+    
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+      gap: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    .chart-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+    
+    .chart-card h3 {
+      padding: 16px 20px;
+      border-bottom: 1px solid #eee;
+      color: #333;
+      font-size: 16px;
+    }
+    
+    .chart-container {
+      width: 100%;
+      height: 350px;
+    }
+    
+    .controls {
+      padding: 16px 20px;
+      border-top: 1px solid #eee;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      background: #5470c6;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    
+    button:hover {
+      background: #4060b6;
+    }
+    
+    button.secondary {
+      background: #91cc75;
+    }
+    
+    button.secondary:hover {
+      background: #81bc65;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 LChart Core Demo</h1>
+  
+  <div class="chart-grid">
+    <!-- 折线图 -->
+    <div class="chart-card">
+      <h3>📈 折线图 - Line Chart</h3>
+      <div id="line-chart" class="chart-container"></div>
+      <div class="controls">
+        <button onclick="updateLineChart()">更新数据</button>
+        <button class="secondary" onclick="toggleLineSmooth()">切换平滑</button>
+      </div>
+    </div>
+    
+    <!-- 柱状图 -->
+    <div class="chart-card">
+      <h3>📊 柱状图 - Bar Chart</h3>
+      <div id="bar-chart" class="chart-container"></div>
+      <div class="controls">
+        <button onclick="updateBarChart()">更新数据</button>
+      </div>
+    </div>
+    
+    <!-- 饼图 -->
+    <div class="chart-card">
+      <h3>🥧 饼图 - Pie Chart</h3>
+      <div id="pie-chart" class="chart-container"></div>
+      <div class="controls">
+        <button onclick="updatePieChart()">更新数据</button>
+        <button class="secondary" onclick="togglePieDonut()">切换环形</button>
+      </div>
+    </div>
+    
+    <!-- 面积图 -->
+    <div class="chart-card">
+      <h3>📉 面积图 - Area Chart</h3>
+      <div id="area-chart" class="chart-container"></div>
+      <div class="controls">
+        <button onclick="updateAreaChart()">更新数据</button>
+      </div>
+    </div>
+    
+    <!-- 多系列图表 -->
+    <div class="chart-card">
+      <h3>📊 多系列混合 - Multi Series</h3>
+      <div id="multi-chart" class="chart-container"></div>
+      <div class="controls">
+        <button onclick="updateMultiChart()">更新数据</button>
+      </div>
+    </div>
+    
+    <!-- 暗色主题 -->
+    <div class="chart-card" style="background: #100c2a;">
+      <h3 style="color: #eee; border-color: #333;">🌙 暗色主题 - Dark Theme</h3>
+      <div id="dark-chart" class="chart-container"></div>
+      <div class="controls" style="border-color: #333;">
+        <button onclick="updateDarkChart()">更新数据</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

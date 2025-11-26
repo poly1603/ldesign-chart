@@ -1,431 +1,635 @@
 /**
- * 图表插件类型定义
+ * LChart 核心类型定义
+ * @module @aspect/lchart-core/types
  */
 
-import type * as echarts from 'echarts/types/dist/echarts';
+// ==================== 基础类型 ====================
 
-// ============ 导出 ECharts 类型 ============
-export type EChartsOption = echarts.EChartsOption;
-export type EChartsInstance = echarts.ECharts;
-
-// ============ 简化数据格式 ============
-
-/**
- * 最简单：纯数字数组
- */
-export type SimpleArray = number[];
-
-/**
- * 对象数组格式
- */
-export type ObjectArray = Array<Record<string, any>>;
-
-/**
- * 数据集配置
- */
-export interface Dataset {
-  /** 系列名称 */
-  name?: string;
-  /** 数据 */
-  data: number[] | any[];
-  /** 系列类型（用于混合图表） */
-  type?: ChartType;
-  /** 颜色 */
-  color?: string;
-  /** 堆叠分组 */
-  stack?: string;
-  /** 平滑曲线（仅折线图） */
-  smooth?: boolean;
-  /** 其他 ECharts 系列配置 */
-  [key: string]: any;
+/** 点坐标 */
+export interface Point {
+  x: number
+  y: number
 }
 
-/**
- * 标准格式：带标签和系列
- */
-export interface SimpleChartData {
-  /** 横坐标标签 */
-  labels?: string[] | number[];
-  /** 数据集 */
-  datasets: Dataset[];
+/** 矩形区域 */
+export interface Rect {
+  x: number
+  y: number
+  width: number
+  height: number
 }
 
-/**
- * 图表数据联合类型
- */
-export type ChartData = SimpleArray | ObjectArray | SimpleChartData;
-
-// ============ 图表类型 ============
-
-/**
- * 支持的图表类型
- */
-export type ChartType =
-  // 基础类型
-  | 'line'
-  | 'bar'
-  | 'pie'
-  | 'scatter'
-  | 'radar'
-  | 'effectScatter'
-  // 高级类型
-  | 'candlestick'
-  | 'boxplot'
-  | 'heatmap'
-  | 'parallel'
-  | 'gauge'
-  | 'funnel'
-  | 'waterfall' // 新增：瀑布图
-  | 'sankey'
-  | 'graph'
-  | 'tree'
-  | 'treemap'
-  | 'sunburst'
-  | 'map'
-  | 'lines'
-  | 'pictorialBar'
-  | 'themeRiver'
-  | 'custom'
-  // 混合类型
-  | 'mixed';
-
-// ============ 配置选项类型 ============
-
-/**
- * 标题配置
- */
-export interface TitleConfig {
-  text?: string;
-  subtext?: string;
-  left?: string | number;
-  top?: string | number;
-  textStyle?: {
-    fontSize?: number;
-    color?: string;
-    fontWeight?: string | number;
-    [key: string]: any;
-  };
-  [key: string]: any;
+/** 内边距 */
+export interface Padding {
+  top: number
+  right: number
+  bottom: number
+  left: number
 }
 
-/**
- * 图例配置
- */
-export interface LegendConfig {
-  show?: boolean;
-  orient?: 'horizontal' | 'vertical';
-  left?: string | number;
-  top?: string | number;
-  bottom?: string | number;
-  right?: string | number;
-  [key: string]: any;
+/** 尺寸 */
+export interface Size {
+  width: number
+  height: number
 }
 
-/**
- * 提示框配置
- */
-export interface TooltipConfig {
-  show?: boolean;
-  trigger?: 'item' | 'axis' | 'none';
-  axisPointer?: {
-    type?: 'line' | 'shadow' | 'cross';
-    [key: string]: any;
-  };
-  formatter?: string | ((params: any) => string);
-  [key: string]: any;
+/** 颜色类型 */
+export type Color = string | CanvasGradient | CanvasPattern
+
+/** 渐变类型 */
+export interface GradientStop {
+  offset: number
+  color: string
 }
 
-/**
- * 网格配置
- */
-export interface GridConfig {
-  left?: string | number;
-  top?: string | number;
-  right?: string | number;
-  bottom?: string | number;
-  containLabel?: boolean;
-  [key: string]: any;
+export interface LinearGradient {
+  type: 'linear'
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  stops: GradientStop[]
 }
 
-/**
- * 坐标轴配置
- */
-export interface AxisConfig {
-  type?: 'category' | 'value' | 'time' | 'log';
-  name?: string;
-  data?: any[];
-  min?: number | string;
-  max?: number | string;
-  axisLabel?: {
-    formatter?: string | ((value: any) => string);
-    rotate?: number;
-    [key: string]: any;
-  };
-  [key: string]: any;
+export interface RadialGradient {
+  type: 'radial'
+  cx: number
+  cy: number
+  r: number
+  stops: GradientStop[]
 }
 
-export type XAxisConfig = AxisConfig;
-export type YAxisConfig = AxisConfig;
+export type Gradient = LinearGradient | RadialGradient
 
-/**
- * 数据缩放配置
- */
-export interface DataZoomConfig {
-  show?: boolean;
-  type?: 'inside' | 'slider';
-  start?: number;
-  end?: number;
-  [key: string]: any;
+// ==================== 数据类型 ====================
+
+/** 数据点 */
+export interface DataPoint {
+  /** x 轴值 */
+  x: number | string | Date
+  /** y 轴值 */
+  y: number
+  /** 附加数据 */
+  extra?: Record<string, unknown>
 }
 
-/**
- * 工具箱配置
- */
-export interface ToolboxConfig {
-  show?: boolean;
-  feature?: {
-    saveAsImage?: { show?: boolean };
-    dataZoom?: { show?: boolean };
-    dataView?: { show?: boolean };
-    restore?: { show?: boolean };
-    [key: string]: any;
-  };
-  [key: string]: any;
+/** 数据集 */
+export interface DataSet {
+  /** 数据集名称 */
+  name?: string
+  /** 数据点列表 */
+  data: DataPoint[] | number[]
+  /** 样式配置 */
+  style?: SeriesStyle
 }
 
-/**
- * 动画配置
- */
-export interface AnimationConfig {
-  animation?: boolean;
-  animationDuration?: number;
-  animationEasing?: string;
-  animationDelay?: number | ((idx: number) => number);
-  [key: string]: any;
+/** 简化的数据格式 */
+export interface SimpleData {
+  /** 分类标签 */
+  labels?: (string | number)[]
+  /** 数据集列表 */
+  datasets: DataSet[]
 }
 
-/**
- * 响应式配置
- */
-export interface ResponsiveConfig {
-  /** 是否启用响应式 */
-  enabled?: boolean;
-  /** 防抖延迟（毫秒） */
-  debounce?: number;
-  /** 是否保持纵横比 */
-  maintainAspectRatio?: boolean;
+// ==================== 样式类型 ====================
+
+/** 线条样式 */
+export interface LineStyle {
+  /** 线条颜色 */
+  color?: Color
+  /** 线条宽度 */
+  width?: number
+  /** 线条类型 */
+  type?: 'solid' | 'dashed' | 'dotted'
+  /** 虚线配置 */
+  dashArray?: number[]
+  /** 线帽样式 */
+  cap?: CanvasLineCap
+  /** 线段连接样式 */
+  join?: CanvasLineJoin
+  /** 透明度 */
+  opacity?: number
 }
 
-/**
- * 字体大小配置
- */
-export interface FontSizeConfig {
-  /** 基础字体大小 */
-  base?: number;
-  /** 标题字体大小 */
-  title?: number;
-  /** 图例字体大小 */
-  legend?: number;
-  /** 坐标轴标签字体大小 */
-  axisLabel?: number;
-  /** 提示框字体大小 */
-  tooltip?: number;
+/** 填充样式 */
+export interface FillStyle {
+  /** 填充颜色 */
+  color?: Color
+  /** 渐变 */
+  gradient?: Gradient
+  /** 透明度 */
+  opacity?: number
 }
 
-/**
- * 颜色配置
- */
-export interface ColorConfig {
-  /** 颜色列表 */
-  palette?: string[];
-  /** 渐变色 */
-  gradient?: {
-    type?: 'linear' | 'radial';
-    colors?: Array<{ offset: number; color: string }>;
-    [key: string]: any;
-  };
-}
-
-/**
- * 主题配置
- */
-export interface ThemeConfig {
-  /** 颜色列表 */
-  color?: string[];
-  /** 背景色 */
-  backgroundColor?: string;
-  /** 文本样式 */
-  textStyle?: {
-    color?: string;
-    fontSize?: number;
-    [key: string]: any;
-  };
-  /** 标题样式 */
-  title?: {
-    textStyle?: {
-      color?: string;
-      fontSize?: number;
-      [key: string]: any;
-    };
-    [key: string]: any;
-  };
-  [key: string]: any;
-}
-
-// ============ 智能配置接口 ============
-
-/**
- * 智能图表配置
- */
-export interface SmartChartConfig {
-  /** 图表类型（必填） */
-  type: ChartType;
-  /** 数据（必填） */
-  data: ChartData;
-
-  // 基础配置
-  /** 标题 */
-  title?: string | TitleConfig;
-  /** 图例 */
-  legend?: boolean | LegendConfig;
-  /** 提示框 */
-  tooltip?: boolean | TooltipConfig;
-  /** 网格 */
-  grid?: GridConfig;
-
-  // 样式
-  /** 主题 */
-  theme?: string | ThemeConfig;
-  /** 暗黑模式 */
-  darkMode?: boolean;
+/** 文本样式 */
+export interface TextStyle {
+  /** 字体颜色 */
+  color?: string
   /** 字体大小 */
-  fontSize?: number | FontSizeConfig;
-  /** 颜色 */
-  color?: string[] | ColorConfig;
-
-  // 坐标轴（可选，自动生成）
-  /** X 轴配置 */
-  xAxis?: XAxisConfig;
-  /** Y 轴配置 */
-  yAxis?: YAxisConfig;
-
-  // 性能优化
-  /** 懒加载 */
-  lazy?: boolean;
-  /** 虚拟渲染 */
-  virtual?: boolean;
-  /** 使用 Worker */
-  worker?: boolean;
-  /** 启用缓存 */
-  cache?: boolean;
-
-  // 响应式
-  /** 响应式配置 */
-  responsive?: boolean | ResponsiveConfig;
-
-  // 交互
-  /** 数据缩放 */
-  dataZoom?: boolean | DataZoomConfig | DataZoomConfig[];
-  /** 工具箱 */
-  toolbox?: boolean | ToolboxConfig;
-
-  // 动画
-  /** 动画配置 */
-  animation?: boolean | AnimationConfig;
-
-  // 其他
-  /** 数据集（用于复杂配置） */
-  datasets?: Dataset[];
+  fontSize?: number
+  /** 字体粗细 */
+  fontWeight?: 'normal' | 'bold' | number
+  /** 字体家族 */
+  fontFamily?: string
+  /** 文本对齐 */
+  align?: CanvasTextAlign
+  /** 基线对齐 */
+  baseline?: CanvasTextBaseline
+  /** 透明度 */
+  opacity?: number
 }
 
-/**
- * 完整图表配置
- */
-export interface ChartConfig extends SmartChartConfig {
-  /** 完整的 ECharts 配置（覆盖自动配置） */
-  echarts?: EChartsOption;
-
-  /** 合并策略 */
-  mergeStrategy?: 'replace' | 'merge' | 'deep-merge';
-
-  /** 容器元素 */
-  container?: HTMLElement;
-
-  /** 渲染器类型 */
-  renderer?: 'canvas' | 'svg';
-
-  /** 引擎选择 */
-  engine?: 'echarts' | 'vchart' | 'auto';
-
-  /** 平台标识（小程序等） */
-  platform?: string;
-
-  /** 渲染模式 */
-  mode?: string;
-
-  /** Canvas 对象（小程序） */
-  canvas?: any;
-
-  /** Canvas 上下文（小程序） */
-  context?: any;
-
-  /** 设备像素比（小程序） */
-  pixelRatio?: number;
+/** 系列样式 */
+export interface SeriesStyle {
+  /** 线条样式 */
+  line?: LineStyle
+  /** 填充样式 */
+  fill?: FillStyle
+  /** 数据点样式 */
+  point?: PointStyle
 }
 
-// ============ 解析后的数据格式 ============
+/** 数据点样式 */
+export interface PointStyle {
+  /** 是否显示 */
+  show?: boolean
+  /** 形状 */
+  shape?: 'circle' | 'rect' | 'triangle' | 'diamond'
+  /** 大小 */
+  size?: number
+  /** 填充颜色 */
+  fill?: Color
+  /** 边框颜色 */
+  stroke?: Color
+  /** 边框宽度 */
+  strokeWidth?: number
+}
 
-/**
- * 解析后的图表数据
- */
-export interface ParsedChartData {
-  /** X 轴数据 */
-  xData?: any[];
-  /** Y 轴数据（多系列） */
-  series: any[][];
+// ==================== 组件配置 ====================
+
+/** 标题配置 */
+export interface TitleOptions {
+  /** 是否显示 */
+  show?: boolean
+  /** 标题文本 */
+  text?: string
+  /** 副标题 */
+  subtext?: string
+  /** 位置 */
+  position?: 'top' | 'bottom' | 'left' | 'right'
+  /** 对齐方式 */
+  align?: 'left' | 'center' | 'right'
+  /** 文本样式 */
+  textStyle?: TextStyle
+  /** 副标题样式 */
+  subtextStyle?: TextStyle
+  /** 内边距 */
+  padding?: number | number[]
+}
+
+/** 图例配置 */
+export interface LegendOptions {
+  /** 是否显示 */
+  show?: boolean
+  /** 位置 */
+  position?: 'top' | 'bottom' | 'left' | 'right'
+  /** 对齐方式 */
+  align?: 'left' | 'center' | 'right'
+  /** 方向 */
+  orient?: 'horizontal' | 'vertical'
+  /** 图例数据 */
+  data?: string[]
+  /** 图标形状 */
+  icon?: 'circle' | 'rect' | 'line'
+  /** 图标大小 */
+  itemWidth?: number
+  itemHeight?: number
+  /** 间距 */
+  itemGap?: number
+  /** 文本样式 */
+  textStyle?: TextStyle
+  /** 内边距 */
+  padding?: number | number[]
+}
+
+/** 坐标轴配置 */
+export interface AxisOptions {
+  /** 是否显示 */
+  show?: boolean
+  /** 轴类型 */
+  type?: 'value' | 'category' | 'time' | 'log'
+  /** 轴名称 */
+  name?: string
+  /** 名称位置 */
+  nameLocation?: 'start' | 'middle' | 'end'
+  /** 名称样式 */
+  nameTextStyle?: TextStyle
+  /** 最小值 */
+  min?: number | 'auto'
+  /** 最大值 */
+  max?: number | 'auto'
+  /** 分割段数 */
+  splitNumber?: number
+  /** 轴线配置 */
+  axisLine?: {
+    show?: boolean
+    style?: LineStyle
+  }
+  /** 刻度配置 */
+  axisTick?: {
+    show?: boolean
+    length?: number
+    style?: LineStyle
+  }
+  /** 标签配置 */
+  axisLabel?: {
+    show?: boolean
+    rotate?: number
+    formatter?: string | ((value: unknown, index: number) => string)
+    style?: TextStyle
+  }
+  /** 分割线配置 */
+  splitLine?: {
+    show?: boolean
+    style?: LineStyle
+  }
+  /** 分类数据 */
+  data?: (string | number)[]
+}
+
+/** 网格配置 */
+export interface GridOptions {
+  /** 是否显示 */
+  show?: boolean
+  /** 位置 */
+  left?: number | string
+  right?: number | string
+  top?: number | string
+  bottom?: number | string
+  /** 宽度 */
+  width?: number | string
+  /** 高度 */
+  height?: number | string
+  /** 是否包含标签 */
+  containLabel?: boolean
+  /** 背景色 */
+  backgroundColor?: Color
+  /** 边框颜色 */
+  borderColor?: Color
+  /** 边框宽度 */
+  borderWidth?: number
+}
+
+/** 提示框配置 */
+export interface TooltipOptions {
+  /** 是否显示 */
+  show?: boolean
+  /** 触发方式 */
+  trigger?: 'item' | 'axis' | 'none'
+  /** 触发条件 */
+  triggerOn?: 'mousemove' | 'click' | 'none'
+  /** 格式化函数 */
+  formatter?: string | ((params: TooltipParams) => string)
+  /** 背景色 */
+  backgroundColor?: Color
+  /** 边框颜色 */
+  borderColor?: Color
+  /** 边框宽度 */
+  borderWidth?: number
+  /** 内边距 */
+  padding?: number | number[]
+  /** 文本样式 */
+  textStyle?: TextStyle
+  /** 是否跟随鼠标 */
+  followPointer?: boolean
+}
+
+/** 提示框参数 */
+export interface TooltipParams {
   /** 系列名称 */
-  seriesNames: string[];
-  /** 原始数据类型 */
-  dataType: 'simple' | 'object' | 'standard';
-  /** 是否是时间序列 */
-  isTimeSeries: boolean;
-  /** 数据点总数 */
-  totalPoints: number;
+  seriesName?: string
+  /** 数据名称 */
+  name?: string
+  /** 数据值 */
+  value?: number | number[]
+  /** 数据索引 */
+  dataIndex?: number
+  /** 系列索引 */
+  seriesIndex?: number
+  /** 颜色 */
+  color?: Color
+  /** 原始数据 */
+  data?: DataPoint
 }
 
-// ============ 图表实例接口 ============
+// ==================== 系列配置 ====================
 
-/**
- * 图表实例接口
- */
-export interface ChartInstance {
-  /** 更新数据 */
-  updateData(data: ChartData): Promise<void>;
-  /** 设置主题 */
-  setTheme(theme: string | ThemeConfig): void;
-  /** 设置暗黑模式 */
-  setDarkMode(enabled: boolean): void;
-  /** 设置字体大小 */
-  setFontSize(size: number): void;
-  /** 刷新图表 */
-  refresh(): Promise<void>;
-  /** 调整大小 */
-  resize(): void;
-  /** 获取 DataURL */
-  getDataURL(options?: any): string;
-  /** 事件监听 */
-  on(eventName: string, handler: Function): void;
-  /** 取消事件监听 */
-  off(eventName: string, handler?: Function): void;
-  /** 销毁实例 */
-  dispose(): void;
-  /** 获取 ECharts 实例 */
-  getInstance(): EChartsInstance | undefined;
+/** 基础系列配置 */
+export interface BaseSeriesOptions {
+  /** 系列类型 */
+  type: string
+  /** 系列名称 */
+  name?: string
+  /** 数据 */
+  data?: DataPoint[] | number[]
+  /** 样式 */
+  style?: SeriesStyle
+  /** 动画配置 */
+  animation?: AnimationOptions
+  /** 是否显示 */
+  show?: boolean
 }
 
-// ============ 导出所有类型 ============
+/** 折线图系列配置 */
+export interface LineSeriesOptions extends BaseSeriesOptions {
+  type: 'line'
+  /** 是否平滑曲线 */
+  smooth?: boolean | number
+  /** 是否填充区域 */
+  areaStyle?: FillStyle
+  /** 是否显示数据点 */
+  showSymbol?: boolean
+  /** 数据点样式 */
+  symbol?: 'circle' | 'rect' | 'triangle' | 'diamond' | 'none'
+  /** 数据点大小 */
+  symbolSize?: number
+  /** 是否阶梯线 */
+  step?: 'start' | 'middle' | 'end' | false
+  /** 连接空值 */
+  connectNulls?: boolean
+}
 
-export * from './chart-types';
-export * from './config';
-export * from './events';
+/** 柱状图系列配置 */
+export interface BarSeriesOptions extends BaseSeriesOptions {
+  type: 'bar'
+  /** 柱宽度 */
+  barWidth?: number | string
+  /** 柱最大宽度 */
+  barMaxWidth?: number | string
+  /** 柱最小宽度 */
+  barMinWidth?: number | string
+  /** 柱间距 */
+  barGap?: string
+  /** 类目间距 */
+  barCategoryGap?: string
+  /** 堆叠组 */
+  stack?: string
+  /** 圆角 */
+  borderRadius?: number | number[]
+}
 
+/** 饼图系列配置 */
+export interface PieSeriesOptions extends BaseSeriesOptions {
+  type: 'pie'
+  /** 圆心位置 */
+  center?: [string | number, string | number]
+  /** 半径 */
+  radius?: number | string | [number | string, number | string]
+  /** 起始角度 */
+  startAngle?: number
+  /** 结束角度 */
+  endAngle?: number
+  /** 是否顺时针 */
+  clockwise?: boolean
+  /** 是否玫瑰图 */
+  roseType?: 'radius' | 'area' | false
+  /** 标签配置 */
+  label?: {
+    show?: boolean
+    position?: 'inside' | 'outside' | 'center'
+    formatter?: string | ((params: TooltipParams) => string)
+    style?: TextStyle
+  }
+  /** 标签引导线 */
+  labelLine?: {
+    show?: boolean
+    length?: number
+    length2?: number
+    style?: LineStyle
+  }
+}
+
+/** 散点图系列配置 */
+export interface ScatterSeriesOptions extends BaseSeriesOptions {
+  type: 'scatter'
+  /** 数据点形状 */
+  symbol?: 'circle' | 'rect' | 'triangle' | 'diamond'
+  /** 数据点大小 */
+  symbolSize?: number | ((data: DataPoint) => number)
+  /** 透明度 */
+  opacity?: number
+}
+
+/** 面积图系列配置 */
+export interface AreaSeriesOptions extends Omit<LineSeriesOptions, 'type'> {
+  type: 'area'
+}
+
+/** 系列配置联合类型 */
+export type SeriesOptions =
+  | LineSeriesOptions
+  | BarSeriesOptions
+  | PieSeriesOptions
+  | ScatterSeriesOptions
+  | AreaSeriesOptions
+
+// ==================== 动画配置 ====================
+
+/** 动画配置 */
+export interface AnimationOptions {
+  /** 是否开启动画 */
+  enabled?: boolean
+  /** 动画时长 */
+  duration?: number
+  /** 缓动函数 */
+  easing?: EasingType
+  /** 延迟 */
+  delay?: number | ((index: number) => number)
+  /** 更新动画时长 */
+  updateDuration?: number
+  /** 更新动画缓动 */
+  updateEasing?: EasingType
+}
+
+/** 缓动函数类型 */
+export type EasingType =
+  | 'linear'
+  | 'easeIn'
+  | 'easeOut'
+  | 'easeInOut'
+  | 'easeInQuad'
+  | 'easeOutQuad'
+  | 'easeInOutQuad'
+  | 'easeInCubic'
+  | 'easeOutCubic'
+  | 'easeInOutCubic'
+  | 'easeInElastic'
+  | 'easeOutElastic'
+  | 'easeInOutElastic'
+  | 'easeInBounce'
+  | 'easeOutBounce'
+  | 'easeInOutBounce'
+
+// ==================== 主题配置 ====================
+
+/** 主题配置 */
+export interface ThemeOptions {
+  /** 主题名称 */
+  name?: string
+  /** 调色板 */
+  colors?: string[]
+  /** 背景色 */
+  backgroundColor?: Color
+  /** 文本颜色 */
+  textColor?: string
+  /** 坐标轴颜色 */
+  axisColor?: string
+  /** 分割线颜色 */
+  splitLineColor?: string
+  /** 提示框样式 */
+  tooltip?: Partial<TooltipOptions>
+  /** 标题样式 */
+  title?: Partial<TitleOptions>
+  /** 图例样式 */
+  legend?: Partial<LegendOptions>
+}
+
+// ==================== 图表配置 ====================
+
+/** 图表配置项 */
+export interface ChartOptions {
+  /** 图表类型（简化配置用） */
+  type?: 'line' | 'bar' | 'pie' | 'scatter' | 'area'
+  /** 简化数据格式 */
+  data?: SimpleData
+  /** 标题 */
+  title?: TitleOptions | string
+  /** 图例 */
+  legend?: LegendOptions
+  /** 提示框 */
+  tooltip?: TooltipOptions
+  /** X 轴 */
+  xAxis?: AxisOptions | AxisOptions[]
+  /** Y 轴 */
+  yAxis?: AxisOptions | AxisOptions[]
+  /** 网格 */
+  grid?: GridOptions | GridOptions[]
+  /** 系列 */
+  series?: SeriesOptions[]
+  /** 主题 */
+  theme?: string | ThemeOptions
+  /** 动画 */
+  animation?: AnimationOptions
+  /** 响应式配置 */
+  responsive?: boolean
+  /** 设备像素比 */
+  devicePixelRatio?: number
+  /** 渲染器类型 */
+  renderer?: 'canvas' | 'svg'
+  /** 宽度 */
+  width?: number | string
+  /** 高度 */
+  height?: number | string
+  /** 背景色 */
+  backgroundColor?: Color
+}
+
+// ==================== 事件类型 ====================
+
+/** 鼠标事件参数 */
+export interface MouseEventParams {
+  /** 事件类型 */
+  type: string
+  /** 组件类型 */
+  componentType?: string
+  /** 系列类型 */
+  seriesType?: string
+  /** 系列索引 */
+  seriesIndex?: number
+  /** 系列名称 */
+  seriesName?: string
+  /** 数据名称 */
+  name?: string
+  /** 数据索引 */
+  dataIndex?: number
+  /** 数据值 */
+  value?: number | number[]
+  /** 颜色 */
+  color?: Color
+  /** 原始事件 */
+  event?: MouseEvent
+  /** 数据点坐标 */
+  point?: Point
+}
+
+/** 图表事件映射 */
+export interface ChartEventMap {
+  /** 点击事件 */
+  click: MouseEventParams
+  /** 双击事件 */
+  dblclick: MouseEventParams
+  /** 鼠标按下 */
+  mousedown: MouseEventParams
+  /** 鼠标抬起 */
+  mouseup: MouseEventParams
+  /** 鼠标移动 */
+  mousemove: MouseEventParams
+  /** 鼠标移入 */
+  mouseover: MouseEventParams
+  /** 鼠标移出 */
+  mouseout: MouseEventParams
+  /** 图例选中改变 */
+  legendselectchanged: { name: string; selected: Record<string, boolean> }
+  /** 数据区域缩放 */
+  datazoom: { start: number; end: number }
+  /** 渲染完成 */
+  rendered: { elapsedTime: number }
+  /** 销毁前 */
+  beforeDestroy: void
+}
+
+/** 事件处理函数类型 */
+export type EventHandler<T> = (params: T) => void
+
+// ==================== 渲染器类型 ====================
+
+/** 渲染器接口 */
+export interface IRenderer {
+  /** 获取渲染上下文 */
+  getContext(): CanvasRenderingContext2D | SVGSVGElement | null
+  /** 设置尺寸 */
+  setSize(width: number, height: number): void
+  /** 清空画布 */
+  clear(): void
+  /** 渲染 */
+  render(): void
+  /** 销毁 */
+  dispose(): void
+
+  // 基础绑制方法
+  drawLine(points: Point[], style?: LineStyle): void
+  drawRect(rect: Rect, style?: FillStyle, borderStyle?: LineStyle): void
+  drawCircle(center: Point, radius: number, style?: FillStyle, borderStyle?: LineStyle): void
+  drawArc(center: Point, radius: number, startAngle: number, endAngle: number, style?: FillStyle, borderStyle?: LineStyle): void
+  drawPath(path: string | Path2D, style?: FillStyle, borderStyle?: LineStyle): void
+  drawText(text: string, position: Point, style?: TextStyle): void
+  drawPolygon(points: Point[], style?: FillStyle, borderStyle?: LineStyle): void
+
+  // 变换方法
+  save(): void
+  restore(): void
+  translate(x: number, y: number): void
+  rotate(angle: number): void
+  scale(x: number, y: number): void
+  setClip(rect: Rect): void
+}
+
+/** 渲染器配置 */
+export interface RendererOptions {
+  /** 设备像素比 */
+  devicePixelRatio?: number
+  /** 是否抗锯齿 */
+  antialias?: boolean
+  /** 背景色 */
+  backgroundColor?: Color
+}

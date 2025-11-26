@@ -1,61 +1,52 @@
 /**
- * Vue 适配器入口
+ * LChart Vue 3 适配器
+ * @module @aspect/lchart-vue
  */
 
 import type { App, Plugin } from 'vue'
-import ChartComponent from './components/Chart.vue'
 
-// 导出组件
-export { default as Chart } from './components/Chart.vue'
+// 组件
+export { LChart, LineChart, BarChart, PieChart, ScatterChart } from './components'
 
-// 导出组合式函数
-export * from './composables/useChart'
+// Composables
+export { useChart, useResize } from './composables'
+export type { UseChartOptions, UseChartReturn, UseResizeOptions, UseResizeReturn } from './composables'
 
-// 导出类型
+// 重新导出核心类型
 export type {
-  ChartConfig,
-  ChartData,
-  ChartType,
-  ChartInstance,
-  SimpleChartData,
-  Dataset,
+  ChartOptions,
+  ChartEventMap,
+  SeriesOptions,
+  LineSeriesOptions,
+  BarSeriesOptions,
+  PieSeriesOptions,
+  DataPoint,
+  DataSet,
+  SimpleData,
+  ThemeOptions,
 } from '@ldesign/chart-core'
 
-// 导出核心功能
-export { Chart as ChartCore, createChart } from '@ldesign/chart-core'
+// Vue 插件
+import { LChart, LineChart, BarChart, PieChart, ScatterChart } from './components'
 
-/**
- * Vue 插件配置
- */
-export interface ChartPluginOptions {
-  /** 默认配置 */
-  defaultConfig?: any
-  /** 组件名称 */
-  componentName?: string
+export interface LChartPluginOptions {
+  /** 组件前缀 */
+  prefix?: string
 }
 
 /**
- * Vue 插件
+ * LChart Vue 插件
  */
-export const ChartPlugin: Plugin = {
-  install(app: App, options: ChartPluginOptions = {}) {
-    const { defaultConfig = {}, componentName = 'Chart' } = options
+export const LChartPlugin: Plugin = {
+  install(app: App, options: LChartPluginOptions = {}) {
+    const prefix = options.prefix || 'L'
 
-    // 注册组件
-    app.component(componentName, ChartComponent)
-
-    // 提供默认配置
-    app.provide('chart-default-config', defaultConfig)
-
-    // 全局属性
-    app.config.globalProperties.$chart = {
-      defaultConfig,
-    }
+    app.component(`${prefix}Chart`, LChart)
+    app.component(`${prefix}LineChart`, LineChart)
+    app.component(`${prefix}BarChart`, BarChart)
+    app.component(`${prefix}PieChart`, PieChart)
+    app.component(`${prefix}ScatterChart`, ScatterChart)
   },
 }
 
-/**
- * 默认导出插件
- */
-export default ChartPlugin
-
+export default LChartPlugin

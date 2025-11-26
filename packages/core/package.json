@@ -1,18 +1,19 @@
 {
   "name": "@ldesign/chart-core",
-  "version": "2.0.0",
-  "description": "企业级图表核心库 - 框架无关",
+  "version": "1.0.0",
+  "description": "LChart 核心图表库 - 框架无关的高性能数据可视化引擎",
   "keywords": [
     "chart",
-    "echarts",
-    "vchart",
     "visualization",
+    "canvas",
+    "svg",
     "data-visualization",
-    "typescript"
+    "typescript",
+    "echarts-alternative",
+    "vchart-alternative"
   ],
   "author": "ldesign",
   "license": "MIT",
-  "homepage": "https://github.com/ldesign/chart#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/ldesign/chart",
@@ -23,24 +24,71 @@
   },
   "type": "module",
   "sideEffects": false,
-  "main": "./lib/index.cjs",
-  "module": "./es/index.js",
-  "types": "./es/index.d.ts",
   "exports": {
     ".": {
       "types": "./es/index.d.ts",
       "import": "./es/index.js",
       "require": "./lib/index.cjs"
     },
-    "./engines": {
-      "types": "./es/engines/index.d.ts",
-      "import": "./es/engines/index.js",
-      "require": "./lib/engines/index.cjs"
+    "./animation": {
+      "types": "./es/animation/index.d.ts",
+      "import": "./es/animation/index.js",
+      "require": "./lib/animation/index.cjs"
     },
-    "./engines/*": {
-      "types": "./es/engines/*.d.ts",
-      "import": "./es/engines/*.js",
-      "require": "./lib/engines/*.cjs"
+    "./animation/*": {
+      "types": "./es/animation/*.d.ts",
+      "import": "./es/animation/*.js",
+      "require": "./lib/animation/*.cjs"
+    },
+    "./components": {
+      "types": "./es/components/index.d.ts",
+      "import": "./es/components/index.js",
+      "require": "./lib/components/index.cjs"
+    },
+    "./components/*": {
+      "types": "./es/components/*.d.ts",
+      "import": "./es/components/*.js",
+      "require": "./lib/components/*.cjs"
+    },
+    "./core": {
+      "types": "./es/core/index.d.ts",
+      "import": "./es/core/index.js",
+      "require": "./lib/core/index.cjs"
+    },
+    "./core/*": {
+      "types": "./es/core/*.d.ts",
+      "import": "./es/core/*.js",
+      "require": "./lib/core/*.cjs"
+    },
+    "./renderers": {
+      "types": "./es/renderers/index.d.ts",
+      "import": "./es/renderers/index.js",
+      "require": "./lib/renderers/index.cjs"
+    },
+    "./renderers/*": {
+      "types": "./es/renderers/*.d.ts",
+      "import": "./es/renderers/*.js",
+      "require": "./lib/renderers/*.cjs"
+    },
+    "./series": {
+      "types": "./es/series/index.d.ts",
+      "import": "./es/series/index.js",
+      "require": "./lib/series/index.cjs"
+    },
+    "./series/*": {
+      "types": "./es/series/*.d.ts",
+      "import": "./es/series/*.js",
+      "require": "./lib/series/*.cjs"
+    },
+    "./theme": {
+      "types": "./es/theme/index.d.ts",
+      "import": "./es/theme/index.js",
+      "require": "./lib/theme/index.cjs"
+    },
+    "./theme/*": {
+      "types": "./es/theme/*.d.ts",
+      "import": "./es/theme/*.js",
+      "require": "./lib/theme/*.cjs"
     },
     "./types": {
       "types": "./es/types/index.d.ts",
@@ -52,62 +100,53 @@
       "import": "./es/types/*.js",
       "require": "./lib/types/*.cjs"
     },
+    "./utils": {
+      "types": "./es/utils/index.d.ts",
+      "import": "./es/utils/index.js",
+      "require": "./lib/utils/index.cjs"
+    },
     "./utils/*": {
       "types": "./es/utils/*.d.ts",
       "import": "./es/utils/*.js",
       "require": "./lib/utils/*.cjs"
-    },
-    "./themes": {
-      "types": "./es/themes/index.d.ts",
-      "import": "./es/themes/index.js",
-      "require": "./lib/themes/index.cjs"
-    },
-    "./memory/*": {
-      "types": "./es/memory/*.d.ts",
-      "import": "./es/memory/*.js",
-      "require": "./lib/memory/*.cjs"
-    },
-    "./performance/*": {
-      "types": "./es/performance/*.d.ts",
-      "import": "./es/performance/*.js",
-      "require": "./lib/performance/*.cjs"
-    },
-    "./loader/*": {
-      "types": "./es/loader/*.d.ts",
-      "import": "./es/loader/*.js",
-      "require": "./lib/loader/*.cjs"
     }
   },
+  "main": "./lib/index.cjs",
+  "module": "./es/index.js",
+  "types": "./es/index.d.ts",
+  "unpkg": "./dist/index.min.js",
+  "jsdelivr": "./dist/index.min.js",
   "files": [
     "README.md",
     "LICENSE",
     "package.json",
     "es",
-    "lib"
+    "lib",
+    "dist"
   ],
   "scripts": {
+    "dev": "vite --config demo/vite.config.ts",
+    "dev:watch": "ldesign-builder build --watch",
     "build": "ldesign-builder build",
-    "dev": "ldesign-builder build --watch",
-    "clean": "rimraf es lib",
     "test": "vitest",
-    "test:run": "vitest run"
-  },
-  "peerDependencies": {
-    "echarts": "^5.4.0",
-    "@visactor/vchart": "^1.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@visactor/vchart": {
-      "optional": true
-    }
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist"
   },
   "devDependencies": {
-    "@ldesign/builder": "workspace:*",
-    "@types/node": "^20.11.16",
-    "echarts": "^5.4.3",
+    "@ldesign/builder": "file:../../../../tools/builder",
+    "@types/node": "^20.10.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "@vitest/ui": "^1.0.0",
     "rimraf": "^5.0.5",
     "typescript": "^5.3.3",
-    "vitest": "^1.2.1"
+    "vite": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
-

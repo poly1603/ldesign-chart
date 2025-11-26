@@ -1,43 +1,30 @@
-/**
- * @ldesign/chart-core 构建配置
- * 框架无关的核心图表库
- */
-
 import { defineConfig } from '@ldesign/builder'
 
 export default defineConfig({
-  name: 'LDesignChartCore',
-  libraryType: 'typescript',
-  
-  input: 'src/index.ts',
-  
+  entry: 'src/index.ts',
+
   output: {
+    formats: ['esm', 'cjs', 'umd', 'dts'],
     esm: {
       dir: 'es',
-      preserveModules: true,
-      preserveModulesRoot: 'src'
+      minify: false,
     },
     cjs: {
       dir: 'lib',
-      preserveModules: true,
-      preserveModulesRoot: 'src'
+      minify: false,
     },
     umd: {
-      enabled: false
-    }
+      dir: 'dist',
+      name: 'LChart',
+      minify: true,
+    },
+    dts: {
+      dir: 'es',
+      only: false,
+    },
   },
-  
-  external: [
-    'echarts',
-    /^echarts\//,
-    '@visactor/vchart',
-    /^@visactor\//
-  ],
-  
-  typescript: {
-    declaration: true,
-    declarationDir: 'es',
-    sourceMap: true
-  }
-})
 
+  bundler: 'rollup',
+
+  sourcemap: true,
+})
