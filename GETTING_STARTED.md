@@ -1,284 +1,325 @@
-# @ldesign/chart 快速上手
+# 项目启动指南
 
-> 5 分钟快速了解双引擎架构 🚀
+## 快速开始
 
----
+本文档帮助您快速了解项目结构和开始开发。
 
-## 🎯 什么是双引擎？
+## 前置要求
 
-@ldesign/chart 现在支持两个强大的图表引擎：
+- Node.js 18+
+- pnpm 8+
+- Git
 
-- **ECharts** - 成熟稳定，丰富生态
-- **VChart** - 小程序优先，支持 3D
-
-**关键优势**：
-- ✅ 同一套 API
-- ✅ 自动选择最优引擎
-- ✅ 按需加载
-- ✅ 100% 向后兼容
-
----
-
-## 📦 安装
+## 初始化项目
 
 ```bash
-# 1. 安装核心库
-npm install @ldesign/chart
+# 安装 pnpm（如果还没有）
+npm install -g pnpm
 
-# 2. 选择引擎（或两个都装）
-npm install echarts              # ECharts 引擎
-npm install @visactor/vchart     # VChart 引擎
+# 克隆项目
+git clone <repository-url>
+cd chart
+
+# 安装依赖
+pnpm install
+
+# 构建所有包
+pnpm build
+
+# 启动开发模式
+pnpm dev
 ```
 
----
+## 项目结构说明
 
-## 🚀 5 分钟入门
-
-### 1. 基础用法（ECharts）
-
-```html
-<!DOCTYPE html>
-<html>
-<body>
-  <div id="chart" style="width: 600px; height: 400px;"></div>
-  
-  <script type="module">
-    import { Chart, EChartsEngine, engineManager } from '@ldesign/chart';
-    
-    // 注册引擎
-    engineManager.register('echarts', new EChartsEngine());
-    
-    // 创建图表
-    const chart = new Chart(document.getElementById('chart'), {
-      type: 'line',
-      data: [1, 2, 3, 4, 5],
-      title: '我的第一个图表',
-    });
-  </script>
-</body>
-</html>
+```
+chart/
+├── packages/
+│   ├── core/                 # 核心包（最重要）
+│   ├── vue/                  # Vue 适配器
+│   ├── renderer-canvas/      # Canvas 渲染器
+│   ├── renderer-svg/         # SVG 渲染器
+│   └── charts-basic/         # 基础图表类型
+├── docs/                     # 文档站点
+├── ARCHITECTURE.md           # 架构设计文档
+├── TECHNICAL_DETAILS.md      # 技术实现细节
+└── pnpm-workspace.yaml       # Workspace 配置
 ```
 
-### 2. 使用 VChart 引擎
+## 开发工作流
 
-```javascript
-import { Chart, VChartEngine, engineManager } from '@ldesign/chart';
+### 1. 创建新功能分支
 
-// 注册 VChart
-engineManager.register('vchart', new VChartEngine());
-
-// 指定使用 VChart
-const chart = new Chart(container, {
-  type: 'line',
-  data: [1, 2, 3, 4, 5],
-  engine: 'vchart', // 👈 关键
-});
+```bash
+git checkout -b feature/your-feature-name
 ```
 
-### 3. Vue 3 集成
+### 2. 开发和测试
 
-```vue
-<template>
-  <Chart type="bar" :data="salesData" title="月度销售" />
-</template>
+```bash
+# 在具体包目录下开发
+cd packages/core
 
-<script setup>
-import { Chart } from '@ldesign/chart/vue';
-import { EChartsEngine, engineManager } from '@ldesign/chart';
+# 运行测试
+pnpm test
 
-// 初始化引擎（通常在 main.ts 中做一次）
-engineManager.register('echarts', new EChartsEngine());
+# 运行类型检查
+pnpm type-check
 
-const salesData = [100, 200, 150, 300, 250];
-</script>
+# 运行 lint
+pnpm lint
 ```
 
-### 4. React 集成
+### 3. 提交代码
 
-```jsx
-import { Chart } from '@ldesign/chart/react';
-import { EChartsEngine, engineManager } from '@ldesign/chart';
+```bash
+# 使用约定式提交
+git commit -m "feat: add new feature"
+git commit -m "fix: fix bug"
+git commit -m "docs: update documentation"
+```
 
-// 初始化引擎
-engineManager.register('echarts', new EChartsEngine());
+### 4. 创建变更集（发布前）
 
-function App() {
-  return (
-    <Chart 
-      type="pie" 
-      data={[30, 25, 25, 20]}
-      title="市场份额"
-    />
-  );
+```bash
+pnpm changeset
+```
+
+## 开发优先级
+
+### 第一阶段：核心基础（2-3周）
+1. 搭建 monorepo 结构
+2. 配置 TypeScript 和构建工具
+3. 实现渲染器接口和 Canvas 实现
+4. 实现 Chart 核心类
+
+### 第二阶段：基础功能（3-4周）
+1. 坐标系统
+2. 比例尺系统
+3. 事件系统
+4. 基础组件（轴、图例）
+
+### 第三阶段：图表实现（4-6周）
+1. 折线图
+2. 柱状图
+3. 饼图
+4. 散点图
+
+### 第四阶段：框架集成（2-3周）
+1. Vue 适配器
+2. 组件封装
+3. 示例开发
+
+## 常用命令
+
+```bash
+# 安装依赖
+pnpm install
+
+# 构建所有包
+pnpm build
+
+# 开发模式（监听文件变化）
+pnpm dev
+
+# 运行测试
+pnpm test
+
+# 运行测试（监听模式）
+pnpm test:watch
+
+# 类型检查
+pnpm type-check
+
+# 代码检查
+pnpm lint
+
+# 代码格式化
+pnpm format
+
+# 清理构建产物
+pnpm clean
+
+# 启动文档站点
+pnpm docs:dev
+
+# 构建文档站点
+pnpm docs:build
+```
+
+## 包开发说明
+
+### 创建新包
+
+```bash
+# 在 packages 目录下创建新包
+mkdir -p packages/your-package/src
+cd packages/your-package
+
+# 创建 package.json
+pnpm init
+```
+
+### package.json 模板
+
+```json
+{
+  "name": "@ldesign/chart-your-package",
+  "version": "0.0.1",
+  "description": "",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "test": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {}
 }
 ```
 
----
+## 代码规范
 
-## 🎨 常用图表类型
+### TypeScript
 
-### 折线图
-```javascript
-const chart = new Chart(container, {
-  type: 'line',
-  data: {
-    labels: ['1月', '2月', '3月', '4月'],
-    datasets: [{
-      name: '销售额',
-      data: [100, 200, 150, 300]
-    }]
+- 使用严格模式
+- 明确的类型定义
+- 避免 any 类型
+- 使用接口定义公共 API
+
+### 命名规范
+
+- 类名：PascalCase（如 `Chart`, `LineSeries`）
+- 接口：I前缀 + PascalCase（如 `IRenderer`, `IScale`）
+- 函数/方法：camelCase（如 `render`, `setOption`）
+- 常量：UPPER_SNAKE_CASE（如 `DEFAULT_COLOR`）
+- 文件名：kebab-case（如 `line-series.ts`）
+
+### 注释规范
+
+```typescript
+/**
+ * 图表主类
+ * @example
+ * ```ts
+ * const chart = new Chart('#container')
+ * chart.setOption({ ... })
+ * ```
+ */
+export class Chart {
+  /**
+   * 设置图表配置
+   * @param option - 图表配置对象
+   * @param opts - 可选的设置选项
+   */
+  setOption(option: ChartOption, opts?: SetOptionOpts): void {
+    // ...
   }
-});
+}
 ```
 
-### 柱状图
-```javascript
-const chart = new Chart(container, {
-  type: 'bar',
-  data: {
-    labels: ['产品A', '产品B', '产品C'],
-    datasets: [{
-      name: '销量',
-      data: [120, 200, 150]
-    }]
-  }
-});
+## 测试规范
+
+### 单元测试示例
+
+```typescript
+import { describe, it, expect } from 'vitest'
+import { LinearScale } from '../scale/LinearScale'
+
+describe('LinearScale', () => {
+  it('should map value correctly', () => {
+    const scale = new LinearScale({
+      domain: [0, 100],
+      range: [0, 500]
+    })
+    
+    expect(scale.map(50)).toBe(250)
+    expect(scale.map(0)).toBe(0)
+    expect(scale.map(100)).toBe(500)
+  })
+  
+  it('should invert pixel correctly', () => {
+    const scale = new LinearScale({
+      domain: [0, 100],
+      range: [0, 500]
+    })
+    
+    expect(scale.invert(250)).toBe(50)
+  })
+})
 ```
 
-### 饼图
-```javascript
-const chart = new Chart(container, {
-  type: 'pie',
-  data: {
-    labels: ['苹果', '香蕉', '橙子', '葡萄'],
-    datasets: [{
-      data: [30, 25, 25, 20]
-    }]
-  }
-});
+## 调试技巧
+
+### 1. 使用 Source Maps
+
+开发模式下会生成 source maps，可以直接在浏览器中调试 TypeScript 代码。
+
+### 2. 渲染调试
+
+```typescript
+// 开启渲染调试模式
+const chart = new Chart('#container', {
+  debug: true  // 显示边界框、坐标等调试信息
+})
 ```
 
-### 3D 柱状图（VChart 专属）
-```javascript
-import { VChartEngine, engineManager } from '@ldesign/chart';
+### 3. 性能分析
 
-engineManager.register('vchart', new VChartEngine());
-
-const chart3D = new Chart(container, {
-  type: '3d-bar',
-  data: myData,
-  engine: 'vchart',
-});
+```typescript
+// 使用浏览器性能分析工具
+performance.mark('render-start')
+chart.render()
+performance.mark('render-end')
+performance.measure('render', 'render-start', 'render-end')
 ```
 
----
+## 常见问题
 
-## 🔧 常用配置
+### Q: 如何添加新的图表类型？
 
-### 主题和样式
-```javascript
-const chart = new Chart(container, {
-  type: 'line',
-  data: myData,
-  // 暗黑模式
-  darkMode: true,
-  // 自定义颜色
-  colors: ['#5470c6', '#91cc75', '#fac858'],
-  // 字体大小
-  fontSize: 14,
-});
-```
+1. 在 `packages/charts-*` 创建新的 Series 类
+2. 继承 `Series` 基类
+3. 实现 `render` 方法
+4. 注册到图表系统
 
-### 性能优化
-```javascript
-const chart = new Chart(container, {
-  type: 'scatter',
-  data: largeDataset, // 10万+ 数据点
-  // 启用性能优化
-  performance: {
-    virtual: true,  // 虚拟渲染
-    worker: true,   // Web Worker
-    cache: true,    // 配置缓存
-  },
-});
-```
+### Q: 如何添加新的渲染器？
 
-### 响应式
-```javascript
-const chart = new Chart(container, {
-  type: 'bar',
-  data: myData,
-  // 自动响应容器大小变化
-  responsive: true,
-});
-```
+1. 在 `packages/renderer-*` 创建新包
+2. 实现 `IRenderer` 接口
+3. 在核心包中注册渲染器
 
----
+### Q: 如何贡献代码？
 
-## 🎯 引擎选择建议
+1. Fork 项目
+2. 创建功能分支
+3. 提交 PR
+4. 等待代码审查
 
-| 场景 | 推荐引擎 | 原因 |
-|------|---------|------|
-| Web 应用 | ECharts | 成熟稳定，生态丰富 |
-| 小程序 | VChart | 更好的小程序支持 |
-| 3D 图表 | VChart | 独家支持 3D |
-| 复杂交互 | ECharts | 丰富的事件系统 |
-| 数据故事 | VChart | 内置故事模式 |
+## 相关资源
 
----
+- [TypeScript 官方文档](https://www.typescriptlang.org/)
+- [Vite 文档](https://vitejs.dev/)
+- [pnpm 文档](https://pnpm.io/)
+- [Vitest 文档](https://vitest.dev/)
+- [ECharts 源码](https://github.com/apache/echarts)
+- [VChart 文档](https://visactor.io/vchart)
 
-## 📚 下一步
+## 获取帮助
 
-### 深入学习
-- 📖 [完整使用指南](./docs/dual-engine-guide.md)
-- 📖 [API 参考文档](./docs/api-reference.md)
-- 📖 [性能优化指南](./docs/performance-guide.md)
-
-### 查看示例
-- 🔍 [Vue 3 示例](./examples/vue-example/)
-- 🔍 [React 示例](./examples/react-example/)
-- 🔍 [双引擎演示](./examples/dual-engine-demo.html)
-
-### 了解更多
-- 🌐 [ECharts 官网](https://echarts.apache.org/)
-- 🌐 [VChart 官网](https://www.visactor.io/vchart)
-
----
-
-## 💡 常见问题
-
-### Q: 必须安装两个引擎吗？
-**A**: 不需要！只安装你要用的引擎即可。
-
-### Q: 如何在项目中切换引擎？
-**A**: 只需修改配置中的 `engine` 参数：
-```javascript
-// 使用 ECharts
-{ engine: 'echarts' }
-
-// 使用 VChart  
-{ engine: 'vchart' }
-
-// 自动选择（默认）
-{ engine: 'auto' }
-```
-
-### Q: 现有 ECharts 代码需要改动吗？
-**A**: 不需要！100% 向后兼容，现有代码继续工作。
-
-### Q: 打包体积会变大吗？
-**A**: 不会！按需加载，只打包使用的引擎。
-
----
-
-## 🆘 获取帮助
-
-- 💬 [GitHub Issues](https://github.com/ldesign/chart/issues)
-- 📧 Email: support@ldesign.io
-- 📖 [完整文档](./docs/)
-
----
-
-**开始你的数据可视化之旅！** 🎉
-
-
+- 提交 Issue
+- 查看文档
+- 加入讨论组

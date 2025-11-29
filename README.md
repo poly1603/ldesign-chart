@@ -1,185 +1,115 @@
-# @ldesign/chart
+# @ldesign/chart - 现代化图表库
 
-企业级智能图表插件 - Monorepo
+> 一个高性能、可扩展的 TypeScript 图表库，支持多渲染引擎、丰富的图表类型和插件化架构
 
-## 📦 包结构 (v2.0)
+## 项目概述
 
-从 v2.0 开始，@ldesign/chart 已拆分为多个独立的包，按需安装：
+这是一个对标并超越 ECharts 和 VChart 的现代化图表库项目，从零开始构建。
 
-| 包名 | 描述 | 使用场景 |
-|------|------|----------|
-| [@ldesign/chart-core](./packages/core) | 核心图表库（框架无关） | 任何 JavaScript 项目 |
-| [@ldesign/chart-vue](./packages/vue) | Vue 3 适配器 | Vue 3 项目 |
-| [@ldesign/chart-react](./packages/react) | React 适配器 | React 项目 |
-| [@ldesign/chart-lit](./packages/lit) | Lit/Web Components 适配器 | Web Components 项目 |
-| [@ldesign/chart-angular](./packages/angular) | Angular 适配器 | Angular 14+ 项目 |
-| [@ldesign/chart-svelte](./packages/svelte) | Svelte 适配器 | Svelte 4/5 项目 |
-| [@ldesign/chart-solid](./packages/solid) | Solid.js 适配器 | Solid.js 项目 |
-| [@ldesign/chart-qwik](./packages/qwik) | Qwik 适配器 | Qwik 项目 |
+### 核心特性
 
-## 🚀 快速开始
+- 🚀 **高性能** - 支持百万级数据渲染
+- 🎨 **多渲染引擎** - Canvas / SVG / WebGL 可切换
+- 📊 **丰富图表** - 支持 20+ 种图表类型
+- 🎭 **主题系统** - 内置多套主题，支持自定义
+- 🔌 **插件化** - 灵活的插件系统，易于扩展
+- 🎯 **类型安全** - 完整的 TypeScript 支持
+- 🌈 **框架无关** - 核心库不依赖任何框架
+- ⚡ **Vue 集成** - 提供官方 Vue 适配器
 
-### Vue 3 项目
+### 技术栈
 
-```bash
-pnpm add @ldesign/chart-vue echarts
+- TypeScript 5.x
+- Vite
+- pnpm workspace
+- Vitest
+- VitePress
+
+## 项目文档
+
+本仓库包含完整的架构设计文档：
+
+### 📚 核心文档
+
+1. **[ARCHITECTURE.md](./ARCHITECTURE.md)** - 架构设计方案
+   - 项目结构说明
+   - 核心模块设计
+   - 包设计详情
+   - 性能优化策略
+   - 扩展性设计
+
+2. **[TECHNICAL_DETAILS.md](./TECHNICAL_DETAILS.md)** - 技术实现细节
+   - 核心接口设计
+   - 关键设计模式
+   - 性能优化实现
+   - 技术难点解决方案
+
+3. **[GETTING_STARTED.md](./GETTING_STARTED.md)** - 快速开始指南
+   - 开发环境搭建
+   - 项目结构说明
+   - 开发工作流
+   - 代码规范
+
+## 项目结构
+
+```
+chart/
+├── packages/
+│   ├── core/                 # 核心库（框架无关）
+│   ├── vue/                  # Vue 适配器
+│   ├── react/                # React 适配器
+│   ├── renderer-canvas/      # Canvas 渲染器
+│   ├── renderer-svg/         # SVG 渲染器
+│   ├── renderer-webgl/       # WebGL 渲染器
+│   ├── charts-basic/         # 基础图表包
+│   ├── charts-statistical/   # 统计图表包
+│   ├── charts-relationship/  # 关系图表包
+│   └── charts-geo/           # 地理图表包
+├── docs/                     # 文档站点
+├── ARCHITECTURE.md           # 架构设计文档
+├── TECHNICAL_DETAILS.md      # 技术细节文档
+├── GETTING_STARTED.md        # 开发指南
+└── README.md                 # 本文件
 ```
 
-```vue
-<template>
-  <Chart
-    type="line"
-    :data="chartData"
-    title="销售趋势"
-  />
-</template>
+## 开发路线图
 
-<script setup>
-import { Chart } from '@ldesign/chart-vue'
+### ✅ Phase 1: 基础架构（当前阶段）
+- [x] 架构设计
+- [ ] Monorepo 项目搭建
+- [ ] 渲染器抽象层
+- [ ] 核心类设计
 
-const chartData = {
-  labels: ['一月', '二月', '三月'],
-  datasets: [{ data: [10, 20, 30] }]
-}
-</script>
-```
+### 🔄 Phase 2: 核心功能
+- [ ] 坐标系统
+- [ ] 比例尺系统
+- [ ] 事件系统
+- [ ] 动画系统
 
-### React 项目
+### 📅 Phase 3: 基础图表
+- [ ] 折线图
+- [ ] 柱状图
+- [ ] 饼图
+- [ ] 散点图
 
-```bash
-pnpm add @ldesign/chart-react echarts
-```
+### 📅 Phase 4: 框架集成
+- [ ] Vue 适配器
+- [ ] React 适配器
+- [ ] 组件封装
 
-```tsx
-import { Chart } from '@ldesign/chart-react'
+### 📅 Phase 5: 高级功能
+- [ ] 主题系统
+- [ ] 插件系统
+- [ ] 更多图表类型
+- [ ] 性能优化
 
-function App() {
-  const chartData = {
-    labels: ['一月', '二月', '三月'],
-    datasets: [{ data: [10, 20, 30] }]
-  }
-  
-  return (
-    <Chart
-      type="line"
-      data={chartData}
-      title="销售趋势"
-    />
-  )
-}
-```
+### 📅 Phase 6: 生态建设
+- [ ] 文档站点
+- [ ] 示例 Playground
+- [ ] 测试覆盖
+- [ ] CI/CD
 
-### Lit/Web Components 项目
-
-```bash
-pnpm add @ldesign/chart-lit echarts
-```
-
-```typescript
-import { ChartElement } from '@ldesign/chart-lit'
-
-// 自动注册 <ldesign-chart> 自定义元素
-```
-
-```html
-<ldesign-chart
-  type="line"
-  title="销售趋势"
-></ldesign-chart>
-```
-
-### 框架无关（纯 JS/TS）
-
-```bash
-pnpm add @ldesign/chart-core echarts
-```
-
-```typescript
-import { createChart } from '@ldesign/chart-core'
-
-const chart = createChart('#chart-container', {
-  type: 'line',
-  data: {
-    labels: ['一月', '二月', '三月'],
-    datasets: [{ data: [10, 20, 30] }]
-  }
-})
-```
-
-## ✨ 主要特性
-
-- 🎨 **双引擎支持** - ECharts 和 VChart
-- 🚀 **高性能** - 虚拟渲染、Web Worker、智能缓存
-- 📊 **丰富图表类型** - 折线图、柱状图、饼图、瀑布图等 15+ 种图表
-- 🎯 **智能配置** - 自动优化配置，开箱即用
-- 💾 **内存优化** - 自动缓存管理、对象池
-- 📈 **数据处理** - CSV 解析、实时数据流、数据验证
-- 🔄 **图表联动** - 多图表同步交互
-- 📱 **响应式** - 自动适配不同屏幕尺寸
-- 🎭 **主题系统** - 内置多种主题，支持自定义
-
-## 📚 文档
-
-- [核心库文档](./packages/core/README.md)
-- [Vue 适配器文档](./packages/vue/README.md)
-- [React 适配器文档](./packages/react/README.md)
-- [Lit 适配器文档](./packages/lit/README.md)
-
-## 🔄 从 v1.x 迁移到 v2.0
-
-### 安装变更
-
-**v1.x (旧版)**:
-```bash
-pnpm add @ldesign/chart
-```
-
-**v2.0 (新版)**:
-```bash
-# Vue 3 项目
-pnpm add @ldesign/chart-vue echarts
-
-# React 项目
-pnpm add @ldesign/chart-react echarts
-
-# Lit 项目
-pnpm add @ldesign/chart-lit echarts
-```
-
-### 导入变更
-
-**v1.x (旧版)**:
-```typescript
-// Vue
-import { Chart } from '@ldesign/chart/vue'
-
-// React
-import { Chart } from '@ldesign/chart/react'
-
-// Lit
-import { ChartElement } from '@ldesign/chart/lit'
-```
-
-**v2.0 (新版)**:
-```typescript
-// Vue
-import { Chart } from '@ldesign/chart-vue'
-
-// React
-import { Chart } from '@ldesign/chart-react'
-
-// Lit
-import { ChartElement } from '@ldesign/chart-lit'
-```
-
-### 优势
-
-1. **包体积更小** - 只安装需要的框架适配器，减少 ~60% 包大小
-2. **类型更精确** - 无框架污染，TypeScript 类型提示更准确
-3. **版本独立** - 可以独立升级某个适配器，无需升级全部
-4. **按需安装** - 用什么框架就装什么包
-
-## 🛠️ 开发
+## 快速开始
 
 ```bash
 # 安装依赖
@@ -188,23 +118,129 @@ pnpm install
 # 构建所有包
 pnpm build
 
-# 构建单个包
-pnpm build:core
-pnpm build:vue
-pnpm build:react
-pnpm build:lit
-
-# 开发模式（监听）
+# 启动开发模式
 pnpm dev
 
-# 测试
+# 运行测试
 pnpm test
 ```
 
-## 📄 License
+详细说明请查看 [GETTING_STARTED.md](./GETTING_STARTED.md)
 
-MIT
+## 使用示例
 
-## 🤝 贡献
+### 基础用法
 
-欢迎贡献代码！请查看 [CONTRIBUTING.md](./CONTRIBUTING.md)
+```typescript
+import { Chart } from '@ldesign/chart-core'
+
+const chart = new Chart('#container')
+
+chart.setOption({
+  xAxis: {
+    type: 'category',
+    data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+  },
+  yAxis: {
+    type: 'value'
+  },
+  series: [{
+    type: 'line',
+    data: [120, 200, 150, 80, 70]
+  }]
+})
+```
+
+### Vue 组件
+
+```vue
+<template>
+  <Chart :option="chartOption" theme="dark" />
+</template>
+
+<script setup>
+import { Chart } from '@ldesign/chart-vue'
+
+const chartOption = {
+  // 配置项
+}
+</script>
+```
+
+## 架构亮点
+
+### 1. 多渲染引擎架构
+
+通过抽象渲染器接口，支持 Canvas、SVG、WebGL 三种渲染方式无缝切换。
+
+### 2. 分层设计
+
+- 应用层（用户代码）
+- 框架适配层（Vue/React）
+- 核心层（图表逻辑）
+- 渲染层（Canvas/SVG/WebGL）
+
+### 3. 插件化扩展
+
+所有功能都可以通过插件方式扩展，包括：
+- 自定义图表类型
+- 自定义组件
+- 数据转换器
+- 交互行为
+
+### 4. 性能优化
+
+- 脏检查机制
+- 分层渲染
+- 数据抽样（LTTB 算法）
+- 虚拟滚动
+- WebGL 加速
+
+## 对比优势
+
+### vs ECharts
+- ✅ 更现代的架构设计
+- ✅ TypeScript 原生支持
+- ✅ 更灵活的插件系统
+- ✅ 更好的 Tree-shaking
+- ✅ 更小的包体积
+
+### vs VChart
+- ✅ 更丰富的图表类型
+- ✅ 多渲染引擎支持
+- ✅ 更强的扩展性
+- ✅ 更完善的框架集成
+
+## 贡献指南
+
+我们欢迎所有形式的贡献！
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'feat: add some feature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+详细的开发指南请查看 [GETTING_STARTED.md](./GETTING_STARTED.md)
+
+## 许可证
+
+MIT License
+
+## 联系方式
+
+- Issue: 提交问题和建议
+- Discussions: 参与讨论
+- Email: [待添加]
+
+## 致谢
+
+本项目受以下优秀开源项目启发：
+- [Apache ECharts](https://echarts.apache.org/)
+- [VChart](https://visactor.io/vchart)
+- [Chart.js](https://www.chartjs.org/)
+- [D3.js](https://d3js.org/)
+
+---
+
+**注意**: 本项目目前处于架构设计阶段，欢迎参与讨论和贡献！
