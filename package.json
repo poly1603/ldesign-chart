@@ -1,0 +1,40 @@
+{
+  "name": "@ldesign/chart",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "A modern, high-performance charting library",
+  "scripts": {
+    "build": "pnpm -r --filter='./packages/**' run build",
+    "dev": "pnpm -r --parallel --filter='./packages/**' run dev",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "type-check": "pnpm -r --filter='./packages/**' run type-check",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "clean": "pnpm -r --filter='./packages/**' run clean && rm -rf node_modules",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.1",
+    "@types/node": "^20.11.19",
+    "@typescript-eslint/eslint-plugin": "^7.0.2",
+    "@typescript-eslint/parser": "^7.0.2",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.3",
+    "vitepress": "^1.0.0-rc.44",
+    "vitest": "^1.3.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.4"
+}
