@@ -3,6 +3,8 @@
  */
 
 export { CartesianCoordinate } from './CartesianCoordinate'
+export { PolarCoordinate } from './PolarCoordinate'
+export { CalendarCoordinate } from './CalendarCoordinate'
 
 export type {
   ICoordinate,
@@ -10,3 +12,5 @@ export type {
   CartesianCoordinateOptions,
   PolarCoordinateOptions,
 } from './interface'
+
+export type { CalendarCoordinateOptions } from './CalendarCoordinate'

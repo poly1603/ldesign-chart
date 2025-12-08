@@ -33,48 +33,148 @@ export interface PieSeriesOption {
   radius?: number | string | [number | string, number | string]
   center?: [number | string, number | string]
   startAngle?: number
+  endAngle?: number  // 结束角度，用于半饼图等
   clockwise?: boolean
+
+  // 南丁格尔图（玫瑰图）
   roseType?: boolean | 'radius' | 'area'
+
+  // 最小角度，小于该角度的扇区会被调整
+  minAngle?: number
+  // 最小显示的数据百分比
+  minShowLabelAngle?: number
+
+  // 选中模式
   selectedMode?: boolean | 'single' | 'multiple'
   selectedOffset?: number
+
+  // 扇区间距角度
   padAngle?: number
+
+  // 避免标签重叠
+  avoidLabelOverlap?: boolean
+
+  // 标签布局策略
+  labelLayout?: {
+    hideOverlap?: boolean
+    moveOverlap?: 'shiftX' | 'shiftY'
+    draggable?: boolean
+  }
+
+  // 是否静默（不响应事件）
+  silent?: boolean
+
+  // 动画类型
+  animationType?: 'expansion' | 'scale'
+  animationTypeUpdate?: 'expansion' | 'transition'
+
   itemStyle?: {
     color?: string | ((params: { dataIndex: number; data: PieDataItem }) => string)
     borderColor?: string
     borderWidth?: number
-    borderRadius?: number
+    borderRadius?: number | [number, number, number, number]
     opacity?: number
+    shadowBlur?: number
+    shadowColor?: string
+    shadowOffsetX?: number
+    shadowOffsetY?: number
   }
+
   label?: {
     show?: boolean
     position?: 'outside' | 'inside' | 'center'
-    formatter?: string | ((params: PieDataItem) => string)
+    formatter?: string | ((params: PieDataItem & { percent: number }) => string)
     fontSize?: number
+    fontWeight?: string | number
     color?: string
-    labelLine?: {
-      show?: boolean
-      length?: number
-      length2?: number
-    }
+    backgroundColor?: string
+    padding?: number | [number, number, number, number]
+    borderRadius?: number
+    rotate?: number
+    alignTo?: 'none' | 'labelLine' | 'edge'
+    edgeDistance?: number | string
+    bleedMargin?: number
+    distanceToLabelLine?: number
+    // 标签内富文本
+    rich?: Record<string, {
+      color?: string
+      fontSize?: number
+      fontWeight?: string | number
+      lineHeight?: number
+    }>
   }
+
   labelLine?: {
     show?: boolean
+    showAbove?: boolean
     length?: number
     length2?: number
+    smooth?: boolean | number
+    minTurnAngle?: number
+    maxSurfaceAngle?: number
     lineStyle?: {
       color?: string
       width?: number
+      type?: 'solid' | 'dashed' | 'dotted'
     }
   }
+
   emphasis?: {
+    disabled?: boolean
     scale?: boolean
     scaleSize?: number
+    focus?: 'none' | 'self' | 'series'
+    blurScope?: 'coordinateSystem' | 'series' | 'global'
     itemStyle?: {
       color?: string
+      borderColor?: string
+      borderWidth?: number
       shadowBlur?: number
       shadowColor?: string
+      opacity?: number
+    }
+    label?: {
+      show?: boolean
+      fontSize?: number
+      fontWeight?: string | number
+      color?: string
+    }
+    labelLine?: {
+      show?: boolean
+      lineStyle?: {
+        width?: number
+        color?: string
+      }
     }
   }
+
+  // 选中状态
+  select?: {
+    disabled?: boolean
+    itemStyle?: {
+      color?: string
+      borderColor?: string
+      borderWidth?: number
+    }
+    label?: {
+      show?: boolean
+    }
+  }
+
+  // 淡出状态
+  blur?: {
+    itemStyle?: {
+      color?: string
+      opacity?: number
+    }
+    label?: {
+      show?: boolean
+    }
+  }
+
+  // z-index
+  z?: number
+  zlevel?: number
 }
 
 // 默认颜色调色板
@@ -132,16 +232,263 @@ export class PieSeries extends EventEmitter {
     // 渲染每个扇形
     sectors.forEach((sector, index) => {
       this.renderSector(renderer, sector, cx, cy, index)
+    })
+
+    // 渲染标签（需要在所有扇形之后渲染，以便进行避让计算）
+    if (this.option.label?.show !== false) {
+      const labelPositions = this.calculateLabelPositions(sectors, cx, cy)
+
+      // 如果启用标签避让，调整位置
+      if (this.option.avoidLabelOverlap !== false) {
+        this.avoidLabelOverlap(labelPositions, cx, cy)
+      }
 
       // 渲染标签
-      if (this.option.label?.show !== false) {
-        this.renderLabel(renderer, sector, cx, cy, index)
+      sectors.forEach((sector, index) => {
+        const labelPos = labelPositions[index]
+        if (labelPos) {
+          this.renderLabelWithPosition(renderer, sector, cx, cy, labelPos, index)
+        }
+      })
+    }
+  }
+
+  /**
+   * 计算所有标签的初始位置
+   */
+  private calculateLabelPositions(
+    sectors: Array<{
+      startAngle: number
+      endAngle: number
+      outerRadius: number
+      data: PieDataItem
+      percentage: number
+    }>,
+    cx: number,
+    cy: number
+  ): Array<{ x: number; y: number; textAlign: 'left' | 'right' | 'center'; midAngle: number }> {
+    const labelOption = this.option.label
+    const labelLineConfig = this.option.labelLine
+    const position = labelOption?.position || 'outside'
+    const length1 = labelLineConfig?.length ?? 15
+    const length2 = labelLineConfig?.length2 ?? 20
+
+    return sectors.map((sector) => {
+      const midAngle = (sector.startAngle + sector.endAngle) / 2
+
+      if (position === 'inside' || position === 'center') {
+        const labelRadius = sector.outerRadius * 0.6
+        return {
+          x: cx + Math.cos(midAngle) * labelRadius,
+          y: cy - Math.sin(midAngle) * labelRadius,
+          textAlign: 'center' as const,
+          midAngle,
+        }
+      } else {
+        const midX = cx + Math.cos(midAngle) * (sector.outerRadius + length1)
+        const midY = cy - Math.sin(midAngle) * (sector.outerRadius + length1)
+        const direction = Math.cos(midAngle) > 0 ? 1 : -1
+
+        return {
+          x: midX + direction * length2,
+          y: midY,
+          textAlign: (direction > 0 ? 'left' : 'right') as 'left' | 'right',
+          midAngle,
+        }
       }
     })
   }
 
   /**
+   * 标签避让算法
+   */
+  private avoidLabelOverlap(
+    labelPositions: Array<{ x: number; y: number; textAlign: 'left' | 'right' | 'center'; midAngle: number }>,
+    cx: number,
+    _cy: number
+  ): void {
+    const labelHeight = (this.option.label?.fontSize ?? 12) + 4
+    const minGap = 2
+
+    // 分离左右两侧的标签
+    const leftLabels: Array<{ index: number; pos: typeof labelPositions[0] }> = []
+    const rightLabels: Array<{ index: number; pos: typeof labelPositions[0] }> = []
+
+    labelPositions.forEach((pos, index) => {
+      if (pos.x < cx) {
+        leftLabels.push({ index, pos })
+      } else {
+        rightLabels.push({ index, pos })
+      }
+    })
+
+    // 按 Y 坐标排序
+    leftLabels.sort((a, b) => a.pos.y - b.pos.y)
+    rightLabels.sort((a, b) => a.pos.y - b.pos.y)
+
+    // 处理左侧标签避让
+    this.adjustLabelPositions(leftLabels, labelHeight, minGap)
+
+    // 处理右侧标签避让
+    this.adjustLabelPositions(rightLabels, labelHeight, minGap)
+
+    // 更新原始位置
+    leftLabels.forEach(({ index, pos }) => {
+      labelPositions[index] = pos
+    })
+    rightLabels.forEach(({ index, pos }) => {
+      labelPositions[index] = pos
+    })
+  }
+
+  /**
+   * 调整一组标签的位置以避免重叠
+   */
+  private adjustLabelPositions(
+    labels: Array<{ index: number; pos: { x: number; y: number; textAlign: 'left' | 'right' | 'center'; midAngle: number } }>,
+    labelHeight: number,
+    minGap: number
+  ): void {
+    for (let i = 1; i < labels.length; i++) {
+      const prev = labels[i - 1]!
+      const curr = labels[i]!
+      const overlap = prev.pos.y + labelHeight + minGap - curr.pos.y
+
+      if (overlap > 0) {
+        // 向下移动当前标签
+        curr.pos.y += overlap
+      }
+    }
+
+    // 如果超出容器底部，向上调整
+    const maxY = this.containerHeight - 20
+    for (let i = labels.length - 1; i >= 0; i--) {
+      const label = labels[i]!
+      if (label.pos.y > maxY) {
+        label.pos.y = maxY
+
+        // 向上推动前面的标签
+        for (let j = i - 1; j >= 0; j--) {
+          const prev = labels[j]!
+          const next = labels[j + 1]!
+          const requiredY = next.pos.y - labelHeight - minGap
+          if (prev.pos.y > requiredY) {
+            prev.pos.y = Math.max(20, requiredY)
+          } else {
+            break
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * 使用计算好的位置渲染标签
+   */
+  private renderLabelWithPosition(
+    renderer: IRenderer,
+    sector: {
+      startAngle: number
+      endAngle: number
+      outerRadius: number
+      data: PieDataItem
+      percentage: number
+    },
+    cx: number,
+    cy: number,
+    labelPos: { x: number; y: number; textAlign: 'left' | 'right' | 'center'; midAngle: number },
+    _index: number
+  ): void {
+    const labelOption = this.option.label
+    if (sector.data.label?.show === false) return
+
+    // 检查最小显示角度
+    const angleDiff = Math.abs(sector.startAngle - sector.endAngle)
+    const minShowAngle = ((this.option.minShowLabelAngle ?? 0) * Math.PI) / 180
+    if (angleDiff < minShowAngle) return
+
+    // 格式化标签文本
+    let text: string
+    const formatter = sector.data.label?.formatter || labelOption?.formatter
+
+    if (typeof formatter === 'function') {
+      text = formatter({ ...sector.data, percent: sector.percentage * 100 })
+    } else if (typeof formatter === 'string') {
+      text = formatter
+        .replace('{name}', sector.data.name)
+        .replace('{value}', String(sector.data.value))
+        .replace('{percent}', (sector.percentage * 100).toFixed(1) + '%')
+    } else {
+      text = `${sector.data.name}: ${(sector.percentage * 100).toFixed(1)}%`
+    }
+
+    const position = labelOption?.position || 'outside'
+
+    // 渲染引导线（仅外部标签）
+    if (position === 'outside' && this.option.labelLine?.show !== false) {
+      this.renderLabelLineToPosition(renderer, sector.outerRadius, cx, cy, labelPos)
+    }
+
+    renderer.drawText(
+      { text, x: labelPos.x, y: labelPos.y },
+      {
+        fill: labelOption?.color || '#333',
+        fontSize: labelOption?.fontSize || 12,
+        textAlign: labelPos.textAlign,
+        textBaseline: 'middle',
+      }
+    )
+  }
+
+  /**
+   * 渲染到指定位置的引导线
+   */
+  private renderLabelLineToPosition(
+    renderer: IRenderer,
+    outerRadius: number,
+    cx: number,
+    cy: number,
+    labelPos: { x: number; y: number; midAngle: number }
+  ): void {
+    const labelLine = this.option.labelLine
+    const length1 = labelLine?.length ?? 15
+
+    // 起点（扇形边缘）
+    const startX = cx + Math.cos(labelPos.midAngle) * outerRadius
+    const startY = cy - Math.sin(labelPos.midAngle) * outerRadius
+
+    // 中点
+    const midX = cx + Math.cos(labelPos.midAngle) * (outerRadius + length1)
+    const midY = cy - Math.sin(labelPos.midAngle) * (outerRadius + length1)
+
+    // 处理虚线样式
+    let lineDash: number[] | undefined
+    if (labelLine?.lineStyle?.type === 'dashed') {
+      lineDash = [4, 4]
+    } else if (labelLine?.lineStyle?.type === 'dotted') {
+      lineDash = [2, 2]
+    }
+
+    renderer.drawPath(
+      {
+        commands: [
+          { type: 'M', x: startX, y: startY },
+          { type: 'L', x: midX, y: midY },
+          { type: 'L', x: labelPos.x, y: labelPos.y },
+        ],
+      },
+      {
+        stroke: labelLine?.lineStyle?.color || '#999',
+        lineWidth: labelLine?.lineStyle?.width || 1,
+        fill: undefined,
+        lineDash,
+      }
+    )
+  }
+
+  /**
    * 计算几何参数
+   * 确保使用正方形区域来保证圆形不会变成椭圆
    */
   private calculateGeometry(): {
     cx: number
@@ -150,16 +497,16 @@ export class PieSeries extends EventEmitter {
     outerRadius: number
   } {
     const center = this.option.center || ['50%', '50%']
-    const radius = this.option.radius || '75%'
+    const radius = this.option.radius || '70%'
 
     // 解析圆心
     const cx = this.parsePosition(center[0], this.containerWidth)
     const cy = this.parsePosition(center[1], this.containerHeight)
 
-    // 解析半径
+    // 使用最小尺寸确保圆形不变形
     const minSize = Math.min(this.containerWidth, this.containerHeight)
     let innerRadius = 0
-    let outerRadius = minSize * 0.375  // 默认75%的一半
+    let outerRadius = minSize * 0.35  // 默认70%的一半
 
     if (Array.isArray(radius)) {
       innerRadius = this.parseRadius(radius[0], minSize)
@@ -295,11 +642,14 @@ export class PieSeries extends EventEmitter {
     }
 
     // 构建扇形路径
+    const borderRadius = typeof itemStyle.borderRadius === 'number'
+      ? itemStyle.borderRadius
+      : (Array.isArray(itemStyle.borderRadius) ? itemStyle.borderRadius[0] : 0)
     const path = this.createSectorPath(
       cx, cy,
       innerRadius, outerRadius,
       startAngle, endAngle,
-      itemStyle.borderRadius || 0
+      borderRadius || 0
     )
 
     renderer.drawPath(path, {
@@ -388,85 +738,7 @@ export class PieSeries extends EventEmitter {
   }
 
   /**
-   * 渲染标签
-   */
-  private renderLabel(
-    renderer: IRenderer,
-    sector: {
-      startAngle: number
-      endAngle: number
-      outerRadius: number
-      data: PieDataItem
-      percentage: number
-    },
-    cx: number,
-    cy: number,
-    _index: number
-  ): void {
-    const labelOption = this.option.label
-    if (labelOption?.show === false) return
-    if (sector.data.label?.show === false) return
-
-    const position = labelOption?.position || 'outside'
-    const midAngle = (sector.startAngle + sector.endAngle) / 2
-
-    // 格式化标签文本
-    let text: string
-    const formatter = sector.data.label?.formatter || labelOption?.formatter
-
-    if (typeof formatter === 'function') {
-      text = formatter(sector.data)
-    } else if (typeof formatter === 'string') {
-      text = formatter
-        .replace('{name}', sector.data.name)
-        .replace('{value}', String(sector.data.value))
-        .replace('{percent}', (sector.percentage * 100).toFixed(1) + '%')
-    } else {
-      text = sector.data.name
-    }
-
-    let labelX: number
-    let labelY: number
-    let textAlign: 'left' | 'center' | 'right' = 'center'
-
-    if (position === 'inside' || position === 'center') {
-      // 标签在扇形内部
-      const labelRadius = sector.outerRadius * 0.6
-      labelX = cx + Math.cos(midAngle) * labelRadius
-      labelY = cy - Math.sin(midAngle) * labelRadius
-    } else {
-      // 标签在扇形外部
-      const labelLineConfig = this.option.labelLine
-      const labelLineShow = labelLineConfig?.show !== false
-      const labelLineLength = labelLineShow
-        ? (labelLineConfig?.length ?? 20) + (labelLineConfig?.length2 ?? 10)
-        : 10
-      const labelRadius = sector.outerRadius + labelLineLength
-      labelX = cx + Math.cos(midAngle) * labelRadius
-      labelY = cy - Math.sin(midAngle) * labelRadius
-
-      // 根据位置调整对齐
-      textAlign = Math.cos(midAngle) > 0 ? 'left' : 'right'
-
-      // 渲染引导线
-      if (labelLineShow) {
-        this.renderLabelLine(renderer, sector, cx, cy, midAngle)
-      }
-    }
-
-    renderer.drawText(
-      { text, x: labelX, y: labelY },
-      {
-        fill: labelOption?.color || '#333',
-        fontSize: labelOption?.fontSize || 12,
-        textAlign,
-        textBaseline: 'middle',
-      }
-    )
-  }
-
-  /**
-   * 渲染标签引导线
+   * 渲染标签引导线（旧版，保留兼容）
    */
   private renderLabelLine(
     renderer: IRenderer,

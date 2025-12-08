@@ -68,8 +68,10 @@ export interface CartesianCoordinateOptions {
 export interface PolarCoordinateOptions {
   /** 中心点位置 */
   center: Point
-  /** 半径 */
+  /** 外半径 */
   radius: number
+  /** 内半径（用于环形） */
+  innerRadius?: number
   /** 起始角度（弧度） */
   startAngle?: number
   /** 结束角度（弧度） */

@@ -171,7 +171,7 @@ export class FunnelSeries extends EventEmitter {
   }
 
   /**
-   * 计算漏斗段
+   * 计算漏斗段 - 改进的梯形计算逻辑
    */
   private calculateSegments(
     data: FunnelDataItem[],
@@ -193,8 +193,8 @@ export class FunnelSeries extends EventEmitter {
       data: FunnelDataItem
     }> = []
 
-    const { min = 0, max = 100, gap = 2, funnelAlign = 'center' } = this.option
-    const minSize = this.parsePosition(this.option.minSize ?? '0%', rect.width)
+    const { gap = 4, funnelAlign = 'center' } = this.option
+    const minSize = this.parsePosition(this.option.minSize ?? '10%', rect.width)
     const maxSize = this.parsePosition(this.option.maxSize ?? '100%', rect.width)
 
     const totalHeight = rect.height
@@ -202,18 +202,23 @@ export class FunnelSeries extends EventEmitter {
     const totalGap = gap * (segmentCount - 1)
     const segmentHeight = (totalHeight - totalGap) / segmentCount
 
+    // 计算最大值用于比例
+    const maxValue = Math.max(...data.map(d => d.value))
+
     for (let i = 0; i < segmentCount; i++) {
       const item = data[i]!
       const nextItem = data[i + 1]
 
-      // 计算当前段的宽度比例
-      const currentRatio = (item.value - min) / (max - min)
-      const nextRatio = nextItem ? (nextItem.value - min) / (max - min) : currentRatio * 0.7
+      // 计算当前段的宽度比例 - 使用数据中的最大值作为参考
+      const currentRatio = item.value / maxValue
+      const nextRatio = nextItem ? nextItem.value / maxValue : currentRatio * 0.5
 
-      const topWidth = minSize + (maxSize - minSize) * Math.max(0, Math.min(1, currentRatio))
-      const bottomWidth = minSize + (maxSize - minSize) * Math.max(0, Math.min(1, nextRatio))
+      const topWidth = minSize + (maxSize - minSize) * Math.max(0.1, Math.min(1, currentRatio))
+      const bottomWidth = nextItem
+        ? minSize + (maxSize - minSize) * Math.max(0.1, Math.min(1, nextRatio))
+        : topWidth * 0.6  // 最后一段底部收窄
 
-      // 计算 X 位置
+      // 计算 X 位置 - 始终居中对齐
       let x = rect.x
       if (funnelAlign === 'center') {
         x = rect.x + (rect.width - topWidth) / 2
@@ -229,7 +234,7 @@ export class FunnelSeries extends EventEmitter {
         x,
         y,
         height: segmentHeight,
-        data: item!,
+        data: item,
       })
     }
 

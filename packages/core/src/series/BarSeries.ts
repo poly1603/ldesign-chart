@@ -15,9 +15,32 @@ export interface BarSeriesOption extends SeriesOption {
   type: 'bar'
   data: number[]
   barWidth?: number | string  // 柱子宽度，可以是像素值或百分比
+  barMaxWidth?: number | string  // 最大宽度
+  barMinWidth?: number | string  // 最小宽度
+  barMinHeight?: number  // 最小高度
   barGap?: number | string    // 柱子间距
   barCategoryGap?: number | string  // 类目间距
   barBorderRadius?: number | number[]  // 圆角半径
+
+  // 堆叠
+  stack?: string
+  stackStrategy?: 'samesign' | 'all' | 'positive' | 'negative'
+
+  // 横向柱状图
+  horizontal?: boolean
+
+  // 背景柱
+  showBackground?: boolean
+  backgroundStyle?: {
+    color?: string
+    borderColor?: string
+    borderWidth?: number
+    opacity?: number
+  }
+
+  // 系列索引
+  seriesIndex?: number
+  seriesCount?: number
 }
 
 /**
@@ -53,10 +76,10 @@ export class BarSeries extends Series {
     }
 
     const bars = this.calculateBars()
-    
+
     for (const bar of bars) {
       this.renderBar(renderer, bar)
-      
+
       // 渲染标签
       if (this.option.label?.show) {
         this.renderLabel(renderer, bar)
@@ -175,7 +198,7 @@ export class BarSeries extends Series {
       const y = bar.y
       const width = bar.width
       const height = bar.height
-      
+
       renderer.drawPath(
         {
           commands: [
@@ -271,7 +294,7 @@ export class BarSeries extends Series {
     let y = bar.y
 
     const position = (labelOption as any).position || 'top'
-    
+
     switch (position) {
       case 'top':
         y = bar.y - 5

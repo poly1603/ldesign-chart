@@ -163,7 +163,7 @@ export class RingProgressSeries extends EventEmitter {
   }
 
   /**
-   * 渲染单个进度条
+   * 渲染单个进度条 - 完整圆环进度
    */
   private renderSingleProgress(
     renderer: IRenderer,
@@ -173,18 +173,19 @@ export class RingProgressSeries extends EventEmitter {
     innerRadius: number,
     outerRadius: number
   ): void {
+    // 从顶部开始，顺时针方向
     const startAngle = this.degToRad(this.option.startAngle ?? 90)
     const endAngle = this.degToRad(this.option.endAngle ?? -270)
     const clockwise = this.option.clockwise !== false
     const lineWidth = outerRadius - innerRadius
     const radius = (innerRadius + outerRadius) / 2
 
-    // 渲染背景轨道
+    // 渲染完整的背景轨道圆环
     const trackStyle = this.option.trackStyle
-    this.drawArc(renderer, cx, cy, radius, startAngle, endAngle, clockwise, {
+    this.drawFullCircle(renderer, cx, cy, radius, {
       stroke: trackStyle?.color || '#e6ebf8',
       lineWidth,
-      opacity: trackStyle?.opacity ?? 1,
+      opacity: trackStyle?.opacity ?? 0.3,
     })
 
     // 计算进度角度
@@ -225,6 +226,27 @@ export class RingProgressSeries extends EventEmitter {
         )
       }
     }
+  }
+
+  /**
+   * 绘制完整圆环
+   */
+  private drawFullCircle(
+    renderer: IRenderer,
+    cx: number,
+    cy: number,
+    radius: number,
+    style: { stroke?: string; lineWidth?: number; opacity?: number }
+  ): void {
+    renderer.drawCircle(
+      { x: cx, y: cy, radius },
+      {
+        stroke: style.stroke,
+        lineWidth: style.lineWidth,
+        fill: undefined,
+        opacity: style.opacity,
+      }
+    )
   }
 
   /**

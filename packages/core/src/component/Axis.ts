@@ -6,7 +6,6 @@ import type { IComponent } from './interface'
 import type { IRenderer } from '../renderer/interface'
 import type { IScale } from '../scale/interface'
 import type { Rect, Point } from '../types'
-import type { AxisOption } from '../types'
 
 /**
  * 坐标轴方向
@@ -14,13 +13,58 @@ import type { AxisOption } from '../types'
 export type AxisOrientation = 'top' | 'right' | 'bottom' | 'left'
 
 /**
- * 坐标轴配置
+ * 扩展的坐标轴配置
  */
-export interface AxisComponentOptions extends AxisOption {
+export interface AxisComponentOptions {
   /** 坐标轴方向 */
   orientation: AxisOrientation
   /** 比例尺 */
   scale: IScale<any, number>
+  /** 是否显示 */
+  show?: boolean
+  /** 是否是类目轴 */
+  isCategory?: boolean
+  /** 类目数据 */
+  categories?: string[]
+  /** 轴线样式 */
+  axisLine?: {
+    show?: boolean
+    lineStyle?: {
+      color?: string
+      width?: number
+      type?: 'solid' | 'dashed' | 'dotted'
+    }
+  }
+  /** 刻度配置 */
+  axisTick?: {
+    show?: boolean
+    length?: number
+    lineStyle?: {
+      color?: string
+      width?: number
+    }
+  }
+  /** 标签配置 */
+  axisLabel?: {
+    show?: boolean
+    formatter?: string | ((value: any, index: number) => string)
+    textStyle?: {
+      color?: string
+      fontSize?: number
+      fontFamily?: string
+    }
+    rotate?: number
+    margin?: number
+  }
+  /** 分割线 */
+  splitLine?: {
+    show?: boolean
+    lineStyle?: {
+      color?: string
+      width?: number
+      type?: 'solid' | 'dashed' | 'dotted'
+    }
+  }
 }
 
 /**
@@ -109,8 +153,8 @@ export class Axis implements IComponent {
 
       if (isHorizontal) {
         const x = this.rect.x + ((pos - range[0]!) / (range[1]! - range[0]!)) * this.rect.width
-        const y = this.orientation === 'bottom' 
-          ? this.rect.y 
+        const y = this.orientation === 'bottom'
+          ? this.rect.y
           : this.rect.y + this.rect.height
 
         renderer.drawPath(
@@ -161,7 +205,7 @@ export class Axis implements IComponent {
       let label = String(tick)
 
       if (typeof formatter === 'function') {
-        label = formatter(tick)
+        label = formatter(tick, ticks.indexOf(tick))
       } else if (typeof formatter === 'string') {
         label = formatter.replace('{value}', String(tick))
       }
@@ -212,7 +256,7 @@ export class Axis implements IComponent {
    */
   update(rect: Rect): void {
     this.rect = { ...rect }
-    
+
     // 更新比例尺范围
     if (this.orientation === 'top' || this.orientation === 'bottom') {
       this.scale.setRange([0, rect.width])

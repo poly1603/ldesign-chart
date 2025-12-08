@@ -1,11 +1,28 @@
 /**
- * 图表核心类
+ * 图表核心类 - 支持动画、响应式和导出功能
  */
 
 import type { ChartOption, ChartInitOptions } from '../types'
 import type { IRenderer } from '../renderer/interface'
 import { EventEmitter } from '../event/EventEmitter'
 import { generateId, getElementSize, isString } from '../util'
+import { ChartAnimator } from '../animation/ChartAnimator'
+
+/**
+ * 导出图片配置
+ */
+export interface ExportImageOptions {
+  /** 图片类型 */
+  type?: 'png' | 'jpeg' | 'webp'
+  /** 图片质量 (0-1，仅jpeg/webp) */
+  quality?: number
+  /** 背景颜色 */
+  backgroundColor?: string
+  /** 像素比例 */
+  pixelRatio?: number
+  /** 是否排除组件（如tooltip） */
+  excludeComponents?: string[]
+}
 
 /**
  * 图表类
@@ -18,6 +35,10 @@ export class Chart extends EventEmitter {
   private width = 0
   private height = 0
   private disposed = false
+  private animator: ChartAnimator = new ChartAnimator()
+  private resizeObserver: ResizeObserver | null = null
+  private resizeDebounceTimer: ReturnType<typeof setTimeout> | null = null
+  private autoResize: boolean = true
 
   /**
    * 构造函数
@@ -205,21 +226,171 @@ export class Chart extends EventEmitter {
    * 设置监听容器大小变化
    */
   private setupResizeObserver(): void {
+    if (!this.autoResize) return
+
     if (typeof ResizeObserver === 'undefined') {
       // 浏览器不支持 ResizeObserver，使用 window resize 事件
-      window.addEventListener('resize', () => this.resize())
+      window.addEventListener('resize', () => this.handleResize())
       return
     }
 
-    const observer = new ResizeObserver(() => {
-      this.resize()
+    this.resizeObserver = new ResizeObserver(() => {
+      this.handleResize()
     })
 
-    observer.observe(this.container)
+    this.resizeObserver.observe(this.container)
 
     // 在销毁时清理观察器
     this.once('disposed', () => {
-      observer.disconnect()
+      if (this.resizeObserver) {
+        this.resizeObserver.disconnect()
+        this.resizeObserver = null
+      }
     })
+  }
+
+  /**
+   * 防抖处理resize
+   */
+  private handleResize(): void {
+    if (this.resizeDebounceTimer) {
+      clearTimeout(this.resizeDebounceTimer)
+    }
+    this.resizeDebounceTimer = setTimeout(() => {
+      this.resize()
+      this.resizeDebounceTimer = null
+    }, 100)
+  }
+
+  /**
+   * 获取动画器
+   */
+  getAnimator(): ChartAnimator {
+    return this.animator
+  }
+
+  /**
+   * 导出为 DataURL
+   */
+  getDataURL(options: ExportImageOptions = {}): string {
+    const canvas = this.getCanvasElement()
+    if (!canvas) {
+      console.warn('Cannot export: canvas not available')
+      return ''
+    }
+
+    const {
+      type = 'png',
+      quality = 0.92,
+      backgroundColor,
+      pixelRatio = window.devicePixelRatio || 1,
+    } = options
+
+    // 创建临时canvas用于导出
+    const exportCanvas = document.createElement('canvas')
+    const exportCtx = exportCanvas.getContext('2d')
+    if (!exportCtx) return ''
+
+    exportCanvas.width = this.width * pixelRatio
+    exportCanvas.height = this.height * pixelRatio
+
+    // 绘制背景
+    if (backgroundColor) {
+      exportCtx.fillStyle = backgroundColor
+      exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height)
+    }
+
+    // 缩放并绘制原始内容
+    exportCtx.scale(pixelRatio, pixelRatio)
+    exportCtx.drawImage(canvas, 0, 0)
+
+    const mimeType = `image/${type}`
+    return exportCanvas.toDataURL(mimeType, quality)
+  }
+
+  /**
+   * 导出为 Blob
+   */
+  getBlob(options: ExportImageOptions = {}): Promise<Blob | null> {
+    return new Promise((resolve) => {
+      const canvas = this.getCanvasElement()
+      if (!canvas) {
+        resolve(null)
+        return
+      }
+
+      const {
+        type = 'png',
+        quality = 0.92,
+        backgroundColor,
+        pixelRatio = window.devicePixelRatio || 1,
+      } = options
+
+      const exportCanvas = document.createElement('canvas')
+      const exportCtx = exportCanvas.getContext('2d')
+      if (!exportCtx) {
+        resolve(null)
+        return
+      }
+
+      exportCanvas.width = this.width * pixelRatio
+      exportCanvas.height = this.height * pixelRatio
+
+      if (backgroundColor) {
+        exportCtx.fillStyle = backgroundColor
+        exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height)
+      }
+
+      exportCtx.scale(pixelRatio, pixelRatio)
+      exportCtx.drawImage(canvas, 0, 0)
+
+      const mimeType = `image/${type}`
+      exportCanvas.toBlob(
+        (blob) => resolve(blob),
+        mimeType,
+        quality
+      )
+    })
+  }
+
+  /**
+   * 下载为图片
+   */
+  downloadImage(filename: string = 'chart', options: ExportImageOptions = {}): void {
+    const dataURL = this.getDataURL(options)
+    if (!dataURL) return
+
+    const type = options.type || 'png'
+    const link = document.createElement('a')
+    link.download = `${filename}.${type}`
+    link.href = dataURL
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  /**
+   * 获取 canvas 元素
+   */
+  private getCanvasElement(): HTMLCanvasElement | null {
+    // 尝试从渲染器获取canvas
+    if (this.renderer && 'getCanvas' in this.renderer) {
+      return (this.renderer as { getCanvas: () => HTMLCanvasElement | null }).getCanvas()
+    }
+    // 或者从容器中查找
+    return this.container.querySelector('canvas')
+  }
+
+  /**
+   * 设置自动调整大小
+   */
+  setAutoResize(enabled: boolean): void {
+    this.autoResize = enabled
+    if (enabled && !this.resizeObserver) {
+      this.setupResizeObserver()
+    } else if (!enabled && this.resizeObserver) {
+      this.resizeObserver.disconnect()
+      this.resizeObserver = null
+    }
   }
 }

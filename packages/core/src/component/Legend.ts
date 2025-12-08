@@ -1,5 +1,5 @@
 /**
- * 图例组件
+ * 图例组件 - 支持多系列和图例选择
  */
 
 import type { IRenderer } from '../renderer/interface'
@@ -13,6 +13,8 @@ export interface LegendItem {
   name: string
   icon?: 'circle' | 'rect' | 'line' | 'triangle' | 'diamond'
   color?: string
+  seriesType?: 'line' | 'bar' | 'pie' | 'scatter' | string
+  seriesIndex?: number
   visible?: boolean
 }
 
@@ -71,7 +73,7 @@ export class Legend extends EventEmitter implements IComponent {
   constructor(option: LegendComponentOptions) {
     super()
     this.option = option
-    
+
     // 初始化图例项状态
     if (option.data) {
       option.data.forEach(item => {
@@ -89,7 +91,7 @@ export class Legend extends EventEmitter implements IComponent {
     }
 
     const { x, y, width, height } = this.calculatePosition(renderer)
-    
+
     // 更新边界矩形
     this.boundingRect = { x, y, width, height }
 
@@ -139,8 +141,8 @@ export class Legend extends EventEmitter implements IComponent {
         ...this.option.data!.map(item => this.estimateTextWidth(item.name, fontSize))
       )
       totalWidth += itemWidth + 5 + maxTextWidth
-      totalHeight += this.option.data!.length * Math.max(itemHeight, fontSize) + 
-                     (this.option.data!.length - 1) * itemGap
+      totalHeight += this.option.data!.length * Math.max(itemHeight, fontSize) +
+        (this.option.data!.length - 1) * itemGap
     }
 
     // 根据配置的位置计算坐标
@@ -232,7 +234,7 @@ export class Legend extends EventEmitter implements IComponent {
       // 渲染文本
       const formatter = this.option.formatter || ((name: string) => name)
       const text = formatter(item.name)
-      
+
       renderer.drawText(
         {
           text,
@@ -378,10 +380,10 @@ export class Legend extends EventEmitter implements IComponent {
     const currentState = this.itemStates.get(name)
     const newState = !currentState
     this.itemStates.set(name, newState)
-    
+
     // 触发事件
     this.emit('legendselectchanged', { name, selected: newState })
-    
+
     return newState
   }
 
@@ -397,7 +399,7 @@ export class Legend extends EventEmitter implements IComponent {
    */
   updateOption(option: Partial<LegendComponentOptions>): void {
     this.option = { ...this.option, ...option }
-    
+
     // 更新图例项状态
     if (option.data) {
       option.data.forEach(item => {

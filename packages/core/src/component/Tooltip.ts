@@ -1,5 +1,5 @@
 /**
- * 提示框组件
+ * 提示框组件 - 支持类似 ECharts 的轴触发模式
  */
 
 import type { IRenderer } from '../renderer/interface'
@@ -21,10 +21,12 @@ export type TooltipPosition = 'auto' | 'fixed' | [number, number] | ((point: [nu
  */
 export interface TooltipDataItem {
   seriesName?: string
+  seriesType?: 'line' | 'bar' | 'scatter' | 'pie' | string
   name?: string
   value: number | string
   color?: string
   marker?: string
+  dataIndex?: number
 }
 
 /**
@@ -64,10 +66,29 @@ export interface TooltipComponentOptions extends ComponentOptions {
  * 提示框组件类
  */
 export class Tooltip extends EventEmitter implements IComponent {
+  /**
+   * 类型标识
+   */
   readonly type: 'tooltip' = 'tooltip'
+
+  /**
+   * 是否可见
+   */
   visible: boolean = true
+
+  /**
+   * 组件配置
+   */
   private option: TooltipComponentOptions
+
+  /**
+   * 当前数据
+   */
   private currentData: TooltipDataItem | TooltipDataItem[] | null = null
+
+  /**
+   * 当前位置
+   */
   private currentPosition: [number, number] = [0, 0]
   private isShowing: boolean = false
   private boundingRect: { x: number; y: number; width: number; height: number } = {
@@ -76,6 +97,8 @@ export class Tooltip extends EventEmitter implements IComponent {
     width: 0,
     height: 0,
   }
+  private containerWidth: number = 800
+  private containerHeight: number = 600
 
   constructor(option: TooltipComponentOptions) {
     super()
@@ -109,7 +132,7 @@ export class Tooltip extends EventEmitter implements IComponent {
 
     const content = this.formatContent(this.currentData)
     const { x, y, width, height } = this.calculatePosition(renderer, content)
-    
+
     // 更新边界矩形
     this.boundingRect = { x, y, width, height }
 
@@ -172,7 +195,30 @@ export class Tooltip extends EventEmitter implements IComponent {
    * 创建颜色标记
    */
   private createColorMarker(_color: string): string {
-    return `●` // 使用 Unicode 圆点作为标记
+    // 返回带颜色信息的标记，实际渲染时会根据颜色绘制
+    return `●`
+  }
+
+  /**
+   * 检查提示框是否正在显示
+   */
+  isVisible(): boolean {
+    return this.isShowing
+  }
+
+  /**
+   * 获取当前数据
+   */
+  getCurrentData(): TooltipDataItem | TooltipDataItem[] | null {
+    return this.currentData
+  }
+
+  /**
+   * 设置容器尺寸用于边界检测
+   */
+  setContainerSize(width: number, height: number): void {
+    this.containerWidth = width
+    this.containerHeight = height
   }
 
   /**
@@ -205,14 +251,11 @@ export class Tooltip extends EventEmitter implements IComponent {
       x += 10
       y += 10
 
-      // 简单的边界检测（假设容器是 800x600）
-      const containerWidth = 800
-      const containerHeight = 600
-
-      if (x + width > containerWidth) {
+      // 使用容器尺寸进行边界检测
+      if (x + width > this.containerWidth) {
         x = this.currentPosition[0] - width - 10
       }
-      if (y + height > containerHeight) {
+      if (y + height > this.containerHeight) {
         y = this.currentPosition[1] - height - 10
       }
 

@@ -9,9 +9,12 @@ import type { ICoordinate } from '../coordinate/interface'
 import type { SeriesOption } from '../types'
 
 /**
- * 散点数据项
+ * 散点数据项 - 支持多种格式
  */
-export type ScatterDataItem = [number, number] | { x: number; y: number; value?: number }
+export type ScatterDataItem =
+  | [number, number]
+  | [number, number, number]  // 气泡图：[x, y, size]
+  | { x: number; y: number; value?: number; name?: string; symbolSize?: number }
 
 /**
  * 散点图配置选项
@@ -19,19 +22,59 @@ export type ScatterDataItem = [number, number] | { x: number; y: number; value?:
 export interface ScatterSeriesOption extends SeriesOption {
   type: 'scatter'
   data: ScatterDataItem[]
-  symbolSize?: number | ((value: number) => number)  // 散点大小
-  symbol?: 'circle' | 'rect' | 'triangle' | 'diamond'  // 散点形状
+
+  // 散点大小 - 支持数字或函数
+  symbolSize?: number | ((value: number, params: { dataIndex: number }) => number)
+  // 散点形状
+  symbol?: 'circle' | 'rect' | 'roundRect' | 'triangle' | 'diamond' | 'pin' | 'arrow' | 'none'
+  // 符号旋转角度
+  symbolRotate?: number
+
+  // 大规模散点图优化
+  large?: boolean
+  largeThreshold?: number
+
+  // 裁剪
+  clip?: boolean
+
   itemStyle?: {
     color?: string
     borderColor?: string
     borderWidth?: number
     opacity?: number
+    shadowBlur?: number
+    shadowColor?: string
   }
+
+  // 颜色函数（单独定义以避免类型冲突）
+  colorBy?: 'data' | 'series'
+  colorFunction?: (params: { dataIndex: number; value: number[] }) => string
+
   label?: {
     show?: boolean
     position?: 'top' | 'right' | 'bottom' | 'left' | 'inside'
     formatter?: string | ((params: unknown) => string)
+    color?: string
+    fontSize?: number
   }
+
+  emphasis?: {
+    scale?: boolean | number
+    itemStyle?: {
+      color?: string
+      borderColor?: string
+      borderWidth?: number
+      shadowBlur?: number
+      shadowColor?: string
+    }
+  }
+
+  // 标注
+  markPoint?: unknown
+  markLine?: unknown
+
+  // 系列索引
+  seriesIndex?: number
 }
 
 /**
@@ -67,10 +110,10 @@ export class ScatterSeries extends Series {
     }
 
     const points = this.calculatePoints()
-    
+
     for (const point of points) {
       this.renderPoint(renderer, point)
-      
+
       // 渲染标签
       if (this.option.label?.show) {
         this.renderLabel(renderer, point)
@@ -145,7 +188,7 @@ export class ScatterSeries extends Series {
     const symbolSize = this.option.symbolSize
 
     if (typeof symbolSize === 'function') {
-      return symbolSize(value)
+      return symbolSize(value, { dataIndex: 0 })
     } else if (typeof symbolSize === 'number') {
       return symbolSize
     }
@@ -214,7 +257,7 @@ export class ScatterSeries extends Series {
     itemStyle: NonNullable<ScatterSeriesOption['itemStyle']>
   ): void {
     const halfSize = point.size / 2
-    
+
     renderer.drawPath(
       {
         commands: [
@@ -244,7 +287,7 @@ export class ScatterSeries extends Series {
   ): void {
     const halfSize = point.size / 2
     const height = halfSize * Math.sqrt(3)
-    
+
     renderer.drawPath(
       {
         commands: [
@@ -272,7 +315,7 @@ export class ScatterSeries extends Series {
     itemStyle: NonNullable<ScatterSeriesOption['itemStyle']>
   ): void {
     const halfSize = point.size / 2
-    
+
     renderer.drawPath(
       {
         commands: [

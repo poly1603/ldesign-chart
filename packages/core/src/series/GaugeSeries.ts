@@ -123,14 +123,15 @@ export class GaugeSeries extends EventEmitter {
 
   /**
    * 合并默认配置
+   * 默认为上半圆仪表盘 (180° 到 0°)
    */
   private mergeDefaultOption(option: GaugeSeriesOption): GaugeSeriesOption {
     return {
       ...option,
       min: option.min ?? 0,
       max: option.max ?? 100,
-      startAngle: option.startAngle ?? 225,
-      endAngle: option.endAngle ?? -45,
+      startAngle: option.startAngle ?? 180,  // 从左侧开始
+      endAngle: option.endAngle ?? 0,        // 到右侧结束
       splitNumber: option.splitNumber ?? 10,
       axisLine: {
         show: true,

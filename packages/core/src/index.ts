@@ -10,15 +10,15 @@ export { Chart } from './chart/Chart'
 export { EventEmitter } from './event/EventEmitter'
 
 // 导出比例尺系统
-export { LinearScale, BandScale } from './scale'
-export type { IScale, ContinuousScaleOptions, BandScaleOptions, TimeScaleOptions } from './scale'
+export { LinearScale, BandScale, TimeScale, LogScale } from './scale'
+export type { IScale, ContinuousScaleOptions, BandScaleOptions, TimeScaleOptions, LogScaleOptions } from './scale'
 
 // 导出坐标系统
-export { CartesianCoordinate } from './coordinate'
-export type { ICoordinate, CoordinateType, CartesianCoordinateOptions, PolarCoordinateOptions } from './coordinate'
+export { CartesianCoordinate, PolarCoordinate, CalendarCoordinate } from './coordinate'
+export type { ICoordinate, CoordinateType, CartesianCoordinateOptions, PolarCoordinateOptions, CalendarCoordinateOptions } from './coordinate'
 
 // 导出组件系统
-export { Axis, Legend, Title, Tooltip } from './component'
+export { Axis, Legend, Title, Tooltip, DataZoom } from './component'
 export type {
   IComponent,
   ComponentType,
@@ -34,7 +34,10 @@ export type {
   TooltipComponentOptions,
   TooltipDataItem,
   TooltipTrigger,
-  TooltipPosition
+  TooltipPosition,
+  DataZoomComponentOptions,
+  DataZoomEvent,
+  DataZoomType,
 } from './component'
 
 // 导出系列系统
@@ -49,6 +52,13 @@ export {
   GaugeSeries,
   FunnelSeries,
   RingProgressSeries,
+  MixedSeries,
+  CandlestickSeries,
+  HeatmapSeries,
+  GraphSeries,
+  TreeSeries,
+  SankeySeries,
+  PictorialBarSeries,
 } from './series'
 export type {
   BarSeriesOption,
@@ -66,6 +76,23 @@ export type {
   FunnelDataItem,
   RingProgressSeriesOption,
   RingProgressDataItem,
+  MixedSeriesOption,
+  MixedSeriesDataItem,
+  CandlestickSeriesOption,
+  CandlestickDataItem,
+  HeatmapSeriesOption,
+  HeatmapDataItem,
+  GraphSeriesOption,
+  GraphNode,
+  GraphLink,
+  GraphCategory,
+  TreeSeriesOption,
+  TreeNode,
+  SankeySeriesOption,
+  SankeyNode,
+  SankeyLink,
+  PictorialBarSeriesOption,
+  PictorialBarDataItem,
 } from './series'
 
 // 导出渲染器
@@ -133,6 +160,7 @@ export {
   easeInOutBounce,
   easingFunctions,
   getEasingFunction,
+  ChartAnimator,
 } from './animation'
 export type {
   IAnimation,
@@ -145,6 +173,9 @@ export type {
   MultiKeyframe,
   EasingFunction,
   AnimationState,
+  SeriesAnimationOptions,
+  AnimationProgress,
+  ChartAnimationType,
 } from './animation'
 
 // 导出类型定义
@@ -169,6 +200,17 @@ export type {
   Point,
   Size,
 } from './types'
+
+// 导出交互系统
+export { InteractionManager } from './interaction'
+export type {
+  InteractionEventType,
+  DataItemPosition,
+  InteractionEvent,
+  HighlightOptions,
+  AxisPointerType,
+  AxisPointerConfig,
+} from './interaction'
 
 // 导出工具函数
 export {

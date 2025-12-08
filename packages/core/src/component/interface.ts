@@ -8,7 +8,7 @@ import type { Rect } from '../types'
 /**
  * 组件类型
  */
-export type ComponentType = 'axis' | 'legend' | 'tooltip' | 'grid' | 'title'
+export type ComponentType = 'axis' | 'legend' | 'tooltip' | 'grid' | 'title' | 'dataZoom'
 
 /**
  * 组件基础接口
