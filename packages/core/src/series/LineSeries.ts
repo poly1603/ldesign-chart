@@ -5,11 +5,45 @@
 import { Series } from './Series'
 import type { IRenderer } from '../renderer/interface'
 import type { PathCommand } from '../renderer/interface'
+import type { IScale } from '../scale/interface'
+import type { ICoordinate } from '../coordinate/interface'
+import type { SeriesOption } from '../types'
+
+/**
+ * 折线图配置选项
+ */
+export interface LineSeriesOption extends SeriesOption {
+  type: 'line'
+  data: number[]
+  smooth?: boolean
+  showSymbol?: boolean
+  symbolSize?: number
+  lineStyle?: {
+    color?: string
+    width?: number
+  }
+}
 
 /**
  * 折线图系列类
  */
 export class LineSeries extends Series {
+  protected declare option: LineSeriesOption
+  private xScale: IScale | null = null
+  private yScale: IScale | null = null
+
+  constructor(
+    option: LineSeriesOption,
+    xScale: IScale,
+    yScale: IScale,
+    coordinate: ICoordinate
+  ) {
+    super(option)
+    this.xScale = xScale
+    this.yScale = yScale
+    this.coordinate = coordinate
+  }
+
   get type(): string {
     return 'line'
   }
@@ -18,7 +52,7 @@ export class LineSeries extends Series {
    * 渲染折线图
    */
   render(renderer: IRenderer): void {
-    if (!this.coordinate || this.data.length === 0) {
+    if (!this.coordinate || !this.xScale || !this.yScale || this.data.length === 0) {
       return
     }
 
@@ -29,7 +63,7 @@ export class LineSeries extends Series {
     this.renderLine(renderer, points)
 
     // 绘制数据点
-    if (this.option.itemStyle) {
+    if (this.option.showSymbol !== false) {
       this.renderPoints(renderer, points)
     }
   }
@@ -39,17 +73,22 @@ export class LineSeries extends Series {
    */
   private calculatePoints(): Array<{ x: number; y: number }> {
     const points: Array<{ x: number; y: number }> = []
+
+    if (!this.coordinate || !this.xScale || !this.yScale) {
+      return points
+    }
+
     const dataLength = this.data.length
 
     for (let i = 0; i < dataLength; i++) {
       const value = this.data[i]
       if (typeof value !== 'number') continue
 
-      // 将数据转换为 [0, 1] 范围
-      const dataX = i / Math.max(1, dataLength - 1)
-      const dataY = value // 假设数据已经归一化，实际应用中需要使用比例尺
+      // 使用比例尺映射数据
+      const dataX = this.xScale.map(i)
+      const dataY = this.yScale.map(value)
 
-      const screenPoint = this.coordinate!.dataToPoint([dataX, dataY])
+      const screenPoint = this.coordinate.dataToPoint([dataX, dataY])
       points.push(screenPoint)
     }
 

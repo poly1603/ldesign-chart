@@ -291,7 +291,7 @@ export class PieSeries extends EventEmitter {
     } else if (typeof itemStyle.color === 'string') {
       color = itemStyle.color
     } else {
-      color = DEFAULT_COLORS[index % DEFAULT_COLORS.length]
+      color = DEFAULT_COLORS[index % DEFAULT_COLORS.length] ?? '#5470c6'
     }
 
     // 构建扇形路径
@@ -513,7 +513,7 @@ export class PieSeries extends EventEmitter {
   getLegendData(): Array<{ name: string; color: string }> {
     return this.data.map((item, index) => ({
       name: item.name,
-      color: (item.itemStyle?.color as string | undefined) ?? DEFAULT_COLORS[index % DEFAULT_COLORS.length],
+      color: (item.itemStyle?.color as string | undefined) ?? DEFAULT_COLORS[index % DEFAULT_COLORS.length] ?? '#5470c6',
     }))
   }
 

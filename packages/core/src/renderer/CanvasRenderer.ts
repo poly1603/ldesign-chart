@@ -114,9 +114,13 @@ export class CanvasRenderer implements IRenderer {
       switch (command.type) {
         case 'M':
           this.ctx.moveTo(command.x, command.y)
+          this.lastX = command.x
+          this.lastY = command.y
           break
         case 'L':
           this.ctx.lineTo(command.x, command.y)
+          this.lastX = command.x
+          this.lastY = command.y
           break
         case 'C':
           this.ctx.bezierCurveTo(
@@ -132,9 +136,9 @@ export class CanvasRenderer implements IRenderer {
           this.ctx.quadraticCurveTo(command.x1, command.y1, command.x, command.y)
           break
         case 'A':
-          // Canvas 的 arc 方法与 SVG 的弧线命令参数不同，需要转换
-          // 这里简化实现，实际使用时需要完整的椭圆弧转换算法
-          this.ctx.arc(command.x, command.y, command.rx, 0, Math.PI * 2)
+          // SVG 弧线命令转换为 Canvas 弧线
+          // command: { rx, ry, rotation, large, sweep, x, y }
+          this.drawArcCommand(command)
           break
         case 'Z':
           this.ctx.closePath()
@@ -364,5 +368,88 @@ export class CanvasRenderer implements IRenderer {
    */
   getContext(): CanvasRenderingContext2D | null {
     return this.ctx
+  }
+
+  // 存储当前路径的最后一个点
+  private lastX = 0
+  private lastY = 0
+
+  /**
+   * 绘制SVG弧线命令
+   * SVG Arc: A rx ry x-axis-rotation large-arc-flag sweep-flag x y
+   * 转换为 Canvas arc
+   */
+  private drawArcCommand(command: any): void {
+    if (!this.ctx) return
+
+    const { rx, ry, large, sweep, x: endX, y: endY } = command
+    const startX = this.lastX
+    const startY = this.lastY
+
+    // 更新最后一个点
+    this.lastX = endX
+    this.lastY = endY
+
+    // 如果起点和终点相同，不绘制
+    if (startX === endX && startY === endY) return
+
+    // 如果半径为0，画直线
+    if (rx === 0 || ry === 0) {
+      this.ctx.lineTo(endX, endY)
+      return
+    }
+
+    // SVG arc endpoint 转 Canvas arc center 参数
+    // 参考: https://www.w3.org/TR/SVG/implnote.html#ArcConversionEndpointToCenter
+    const dx = (startX - endX) / 2
+    const dy = (startY - endY) / 2
+
+    // 计算中点
+    const midX = (startX + endX) / 2
+    const midY = (startY + endY) / 2
+
+    // 简化计算（假设rx = ry，即圆弧）
+    const radius = Math.abs(rx)
+
+    // 计算弦长的一半
+    const d = Math.sqrt(dx * dx + dy * dy)
+
+    // 如果弦长大于直径，调整半径
+    const r = Math.max(radius, d / 2)
+
+    // 计算圆心到弦的距离
+    const h = Math.sqrt(Math.max(0, r * r - d * d))
+
+    // 计算圆心位置（有两个可能的位置）
+    const perpX = -dy / d
+    const perpY = dx / d
+
+    // 根据large和sweep标志选择圆心
+    const sign = (large !== sweep) ? 1 : -1
+    const cx = midX + sign * h * perpX
+    const cy = midY + sign * h * perpY
+
+    // 计算起始角度和终止角度
+    let startAngle = Math.atan2(startY - cy, startX - cx)
+    let endAngle = Math.atan2(endY - cy, endX - cx)
+
+    // 绘制圆弧
+    this.ctx.arc(cx, cy, r, startAngle, endAngle, !sweep)
+  }
+
+  /**
+   * 绘制圆弧（直接使用Canvas arc API）
+   * 用于饼图、仪表盘等需要精确弧线的图表
+   */
+  drawArc(
+    cx: number,
+    cy: number,
+    radius: number,
+    startAngle: number,
+    endAngle: number,
+    counterclockwise: boolean = false
+  ): void {
+    if (!this.ctx) return
+    this.ctx.arc(cx, cy, radius, startAngle, endAngle, counterclockwise)
   }
 }

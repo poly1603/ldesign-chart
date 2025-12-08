@@ -38,8 +38,35 @@ export type {
 } from './component'
 
 // 导出系列系统
-export { Series, LineSeries, BarSeries, ScatterSeries, AreaSeries, PieSeries } from './series'
-export type { BarSeriesOption, ScatterSeriesOption, ScatterDataItem, AreaSeriesOption, PieSeriesOption, PieDataItem } from './series'
+export {
+  Series,
+  LineSeries,
+  BarSeries,
+  ScatterSeries,
+  AreaSeries,
+  PieSeries,
+  RadarSeries,
+  GaugeSeries,
+  FunnelSeries,
+  RingProgressSeries,
+} from './series'
+export type {
+  BarSeriesOption,
+  ScatterSeriesOption,
+  ScatterDataItem,
+  AreaSeriesOption,
+  PieSeriesOption,
+  PieDataItem,
+  RadarSeriesOption,
+  RadarDataItem,
+  RadarIndicator,
+  GaugeSeriesOption,
+  GaugeDataItem,
+  FunnelSeriesOption,
+  FunnelDataItem,
+  RingProgressSeriesOption,
+  RingProgressDataItem,
+} from './series'
 
 // 导出渲染器
 export { CanvasRenderer } from './renderer/CanvasRenderer'
