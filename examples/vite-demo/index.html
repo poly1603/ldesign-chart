@@ -249,53 +249,62 @@
     }
 
     .chart-header {
-      padding: 16px 20px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
-    .chart-title {
+    .chart-header-left {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
-    .chart-title-icon {
-      width: 36px;
-      height: 36px;
+    .chart-header-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .chart-icon {
+      width: 32px;
+      height: 32px;
       border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
       background: rgba(99, 102, 241, 0.1);
       color: var(--primary);
+      flex-shrink: 0;
     }
 
-    .chart-title-icon svg {
-      width: 20px;
-      height: 20px;
+    .chart-icon svg {
+      width: 18px;
+      height: 18px;
     }
 
-    .chart-title h3 {
-      font-size: 15px;
+    .chart-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .chart-title {
+      font-size: 14px;
       font-weight: 600;
+      color: var(--text-primary);
     }
 
-    .chart-title p {
-      font-size: 12px;
+    .chart-subtitle {
+      font-size: 11px;
       color: var(--text-secondary);
     }
 
-    .chart-actions {
-      display: flex;
-      gap: 6px;
-    }
-
     .chart-action-btn {
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       border: 1px solid var(--border);
       border-radius: 6px;
       background: transparent;
@@ -305,6 +314,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 0;
     }
 
     .chart-action-btn:hover {
@@ -313,21 +323,26 @@
       color: white;
     }
 
+    .chart-action-btn .action-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     .chart-action-btn svg {
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
     }
 
     .chart-container {
-      padding: 20px;
-      height: 320px;
+      height: 280px;
       position: relative;
+      /* 不设置 padding，让图表内部处理边距 */
     }
 
-    .chart-container canvas {
+    .chart-container canvas,
+    .chart-container svg {
       display: block;
-      max-width: 100%;
-      max-height: 100%;
     }
 
     /* Tooltip */
@@ -463,12 +478,101 @@
     ::-webkit-scrollbar-thumb:hover {
       background: var(--text-secondary);
     }
+
+    /* Code Modal */
+    .code-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .code-modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+    }
+
+    .code-modal-content {
+      position: relative;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow: hidden;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+    }
+
+    .code-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .code-modal-header h3 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .code-modal-close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .code-modal-close:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .code-modal-body {
+      padding: 20px;
+      overflow: auto;
+      max-height: 60vh;
+    }
+
+    .code-modal-body pre {
+      background: var(--bg-dark);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+    }
+
+    .code-modal-body code {
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-primary);
+    }
   </style>
 </head>
 
 <body>
   <!-- Renderer Toggle Button -->
-  <button class="renderer-toggle" id="renderer-toggle" title="切换渲染模式" style="position:fixed;top:20px;right:80px;width:44px;height:44px;border-radius:12px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:100;font-size:11px;font-weight:600;">
+  <button class="renderer-toggle" id="renderer-toggle" title="切换渲染模式"
+    style="position:fixed;top:20px;right:80px;width:44px;height:44px;border-radius:12px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:100;font-size:11px;font-weight:600;">
     Canvas
   </button>
 

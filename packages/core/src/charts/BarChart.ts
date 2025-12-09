@@ -1,6 +1,10 @@
 /**
- * BarChart 类 - 简洁的柱状图 API
+ * BarChart 类 - 继承 BaseChart，使用 IRenderer 接口
+ * 支持 Canvas 和 SVG 双模式渲染
  */
+
+import { BaseChart } from './BaseChart'
+import type { BaseChartOptions } from './BaseChart'
 
 export interface BarSeriesData {
   name?: string
@@ -11,11 +15,7 @@ export interface BarSeriesData {
   borderRadius?: number
 }
 
-export interface BarChartOptions {
-  width?: number
-  height?: number
-  theme?: 'light' | 'dark'
-  padding?: { top?: number; right?: number; bottom?: number; left?: number }
+export interface BarChartOptions extends BaseChartOptions {
   xAxis?: { data?: string[] }
   yAxis?: { min?: number | 'auto'; max?: number | 'auto' }
   series?: BarSeriesData[]
@@ -23,71 +23,23 @@ export interface BarChartOptions {
   tooltip?: { show?: boolean }
   grid?: { show?: boolean }
   horizontal?: boolean
-  /** 动画配置 */
-  animation?: boolean | {
-    enabled?: boolean
-    duration?: number
-    easing?: string
-  }
-}
-
-const SERIES_COLORS = [
-  '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-  '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#3b82f6',
-]
-
-function getThemeColors(theme: 'light' | 'dark') {
-  const isDark = theme === 'dark'
-  return {
-    text: isDark ? '#e2e8f0' : '#1e293b',
-    textSecondary: isDark ? '#94a3b8' : '#334155',  // 浅色模式使用更深的颜色
-    grid: isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(0, 0, 0, 0.06)',
-    tooltipBg: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)',
-  }
 }
 
 function getCurrentTheme(): 'light' | 'dark' {
   return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'
 }
 
-export class BarChart {
-  private container: HTMLElement
-  private canvas: HTMLCanvasElement
-  private ctx: CanvasRenderingContext2D
-  private options: BarChartOptions & { width: number; height: number; theme: 'light' | 'dark' }
-  private chartRect: { x: number; y: number; width: number; height: number }
-  private dpr: number
+export class BarChart extends BaseChart<BarChartOptions> {
   private hoverIndex = -1
   private enabledSeries: Set<string> = new Set()
   private tooltipEl: HTMLDivElement | null = null
-  private disposed = false
-
-  // 动画相关
-  private animationProgress = 1
-  private animationRafId: number | null = null
-  private animationStartTime = 0
+  private barOptions: BarChartOptions
 
   constructor(container: string | HTMLElement, options: BarChartOptions = {}) {
-    const el = typeof container === 'string' ? document.querySelector(container) : container
-    if (!el || !(el instanceof HTMLElement)) throw new Error('Container not found')
-    this.container = el
-
-    const padding = {
-      top: options.padding?.top ?? 40,
-      right: options.padding?.right ?? 20,
-      bottom: options.padding?.bottom ?? 40,
-      left: options.padding?.left ?? 50,
-    }
-
-    const width = options.width || this.container.clientWidth || 400
-    const height = options.height || this.container.clientHeight || 280
-
-    this.options = {
+    // 设置默认值
+    const defaultOptions: BarChartOptions = {
       ...options,
-      width,
-      height,
       theme: options.theme || getCurrentTheme(),
-      padding,
       xAxis: options.xAxis || { data: [] },
       series: options.series || [],
       legend: options.legend ?? { show: true },
@@ -96,115 +48,143 @@ export class BarChart {
       horizontal: options.horizontal ?? false,
     }
 
-    this.enabledSeries = new Set(this.options.series?.map(s => s.name || '') || [])
-
-    this.chartRect = {
-      x: padding.left,
-      y: padding.top,
-      width: width - padding.left - padding.right,
-      height: height - padding.top - padding.bottom,
-    }
-
-    this.dpr = window.devicePixelRatio || 1
-    this.canvas = document.createElement('canvas')
-    this.canvas.width = width * this.dpr
-    this.canvas.height = height * this.dpr
-    this.canvas.style.width = `${width}px`
-    this.canvas.style.height = `${height}px`
-    this.canvas.style.display = 'block'
-    this.container.innerHTML = ''
-    this.container.appendChild(this.canvas)
-
-    this.ctx = this.canvas.getContext('2d')!
-    this.ctx.scale(this.dpr, this.dpr)
+    super(container, defaultOptions)
+    this.barOptions = defaultOptions
+    this.enabledSeries = new Set(this.barOptions.series?.map(s => s.name || '') || [])
 
     this.bindEvents()
 
     // 启动入场动画或直接渲染
-    if (this.getAnimationEnabled()) {
-      this.startEntryAnimation()
+    const config = this.getAnimationConfig()
+    if (config.enabled) {
+      this.startAnimation()
     } else {
       this.render()
     }
   }
 
-  private getAnimationEnabled(): boolean {
-    const anim = this.options.animation
-    if (typeof anim === 'boolean') return anim
-    if (typeof anim === 'object') return anim.enabled !== false
-    return true
+  protected getPadding() {
+    // 使用 this.options 而不是 this.barOptions，因为 getPadding() 在 super() 中被调用时 barOptions 还未设置
+    const padding = (this.options as BarChartOptions)?.padding
+    return {
+      top: padding?.top ?? 40,
+      right: padding?.right ?? 20,
+      bottom: padding?.bottom ?? 40,
+      left: padding?.left ?? 50,
+    }
   }
 
-  private getAnimationDuration(): number {
-    const anim = this.options.animation
-    if (typeof anim === 'object' && anim.duration) return anim.duration
-    return 800
-  }
+  protected paint(): void {
+    const { renderer, chartRect, barOptions: options } = this
+    const colors = this.colors
 
-  private easeOutQuart(t: number): number {
-    return 1 - Math.pow(1 - t, 4)
-  }
+    if (!options.series?.length) return
 
-  private startEntryAnimation(): void {
-    this.animationProgress = 0
-    this.animationStartTime = performance.now()
+    const { min, max } = this.getYRange()
+    const labels = options.xAxis?.data || []
+    const enabledSeries = (options.series || []).filter(s => this.enabledSeries.has(s.name || ''))
+    const barGroupWidth = chartRect.width / Math.max(labels.length, 1)
+    const barWidth = enabledSeries.length > 0 ? (barGroupWidth * 0.6) / enabledSeries.length : barGroupWidth * 0.6
+    const gap = barGroupWidth * 0.2
 
-    const animate = (currentTime: number) => {
-      if (this.disposed) return
+    // 绘制背景
+    this.drawBackground()
 
-      const elapsed = currentTime - this.animationStartTime
-      const duration = this.getAnimationDuration()
-      const rawProgress = Math.min(elapsed / duration, 1)
-      this.animationProgress = this.easeOutQuart(rawProgress)
-
-      this.render()
-
-      if (rawProgress < 1) {
-        this.animationRafId = requestAnimationFrame(animate)
-      } else {
-        this.animationProgress = 1
-        this.animationRafId = null
-      }
+    // 绘制网格
+    if (options.grid?.show !== false) {
+      this.drawGrid(5)
     }
 
-    this.animationRafId = requestAnimationFrame(animate)
-  }
+    // 绘制 X 轴标签
+    labels.forEach((label, i) => {
+      const x = chartRect.x + barGroupWidth * i + barGroupWidth / 2
+      renderer.drawText(
+        { x, y: chartRect.y + chartRect.height + 20, text: label },
+        { fill: colors.textSecondary, fontSize: 11, textAlign: 'center' }
+      )
+    })
 
-  setData(series: BarSeriesData[]): void {
-    this.options.series = series
-    this.enabledSeries = new Set(series.map(s => s.name || ''))
-    this.render()
-  }
+    // 绘制 Y 轴标签
+    this.drawYAxisLabels(min, max, 5)
 
-  setTheme(theme: 'light' | 'dark'): void {
-    this.options.theme = theme
-    this.render()
-  }
-
-  refresh(): void {
-    this.options.theme = getCurrentTheme()
-    this.render()
-  }
-
-  dispose(): void {
-    this.disposed = true
-    if (this.animationRafId !== null) {
-      cancelAnimationFrame(this.animationRafId)
+    // 绘制图例
+    if (options.legend?.show !== false) {
+      this.drawLegend()
     }
-    if (this.tooltipEl) this.tooltipEl.remove()
-    this.canvas.remove()
+
+    // 绘制柱子
+    enabledSeries.forEach((s, si) => {
+      const color = this.getSeriesColor((options.series || []).indexOf(s), s.color)
+      const radius = s.borderRadius ?? 4
+
+      s.data.forEach((v, i) => {
+        if (v === null) return
+        const x = chartRect.x + gap / 2 + barGroupWidth * i + barWidth * si
+        const fullBarHeight = ((v - min) / (max - min)) * chartRect.height
+        const barHeight = fullBarHeight * this.animationProgress
+        const y = chartRect.y + chartRect.height - barHeight
+        const isHover = i === this.hoverIndex
+
+        renderer.drawRect(
+          { x, y, width: barWidth, height: barHeight },
+          {
+            fill: isHover ? this.lightenColor(color) : color,
+            radius
+          }
+        )
+
+        // 悬停时显示数值
+        if (isHover) {
+          renderer.drawText(
+            { x: x + barWidth / 2, y: y - 8, text: String(v) },
+            { fill: colors.text, fontSize: 11, fontWeight: 'bold', textAlign: 'center' }
+          )
+        }
+      })
+    })
   }
 
-  private get colors() {
-    return getThemeColors(this.options.theme)
-  }
+  private drawLegend(): void {
+    const { renderer, barOptions: options } = this
+    const colors = this.colors
+    const series = options.series || []
+    const dotSize = 8
 
-  private getSeriesColor(index: number, series: BarSeriesData): string {
-    return series.color ?? SERIES_COLORS[index % SERIES_COLORS.length]!
+    // 计算图例总宽度
+    let totalWidth = 0
+    series.forEach((s, i) => {
+      const name = s.name || `S${i}`
+      const textWidth = renderer.measureText(name, 12)
+      totalWidth += textWidth + dotSize + 8 + (i < series.length - 1 ? 16 : 0)
+    })
+
+    let legendX = (this.width - totalWidth) / 2
+    const legendY = 15
+
+    series.forEach((s, i) => {
+      const color = this.getSeriesColor(i, s.color)
+      const enabled = this.enabledSeries.has(s.name || '')
+      const name = s.name || `S${i}`
+
+      // 绘制图例方块
+      renderer.drawRect(
+        { x: legendX, y: legendY - dotSize / 2, width: dotSize, height: dotSize },
+        { fill: enabled ? color : '#64748b', opacity: enabled ? 1 : 0.4 }
+      )
+
+      // 绘制图例文本
+      renderer.drawText(
+        { x: legendX + dotSize + 6, y: legendY, text: name },
+        { fill: enabled ? colors.text : colors.textSecondary, fontSize: 12, textBaseline: 'middle', textAlign: 'left' }
+      )
+
+      const textWidth = renderer.measureText(name, 12)
+      legendX += textWidth + dotSize + 8 + 16
+    })
   }
 
   private getYRange(): { min: number; max: number } {
-    const series = this.options.series || []
+    const series = this.barOptions.series || []
     const data = series
       .filter(s => this.enabledSeries.has(s.name || ''))
       .flatMap(s => s.data.filter((v): v is number => v !== null))
@@ -218,44 +198,67 @@ export class BarChart {
   }
 
   private bindEvents(): void {
-    this.canvas.addEventListener('mousemove', (e) => {
-      const rect = this.canvas.getBoundingClientRect()
-      const x = (e.clientX - rect.left) * (this.options.width / rect.width)
-      const labels = this.options.xAxis?.data || []
-      const barGroupWidth = this.chartRect.width / labels.length
-      const idx = Math.floor((x - this.chartRect.x) / barGroupWidth)
+    const el = this.renderer.getElement()
+    el.addEventListener('mousemove', this.onMouseMove.bind(this) as EventListener)
+    el.addEventListener('mouseleave', this.onMouseLeave.bind(this) as EventListener)
+    el.addEventListener('click', this.onClick.bind(this) as EventListener)
+  }
 
-      if (idx >= 0 && idx < labels.length && x >= this.chartRect.x && x <= this.chartRect.x + this.chartRect.width) {
-        if (idx !== this.hoverIndex) { this.hoverIndex = idx; this.render() }
+  private onMouseMove(e: MouseEvent): void {
+    const el = this.renderer.getElement()
+    const rect = el.getBoundingClientRect()
+    const x = (e.clientX - rect.left) * (this.width / rect.width)
+    const labels = this.barOptions.xAxis?.data || []
+    const barGroupWidth = this.chartRect.width / Math.max(labels.length, 1)
+    const idx = Math.floor((x - this.chartRect.x) / barGroupWidth)
+
+    if (idx >= 0 && idx < labels.length && x >= this.chartRect.x && x <= this.chartRect.x + this.chartRect.width) {
+      if (idx !== this.hoverIndex) {
+        this.hoverIndex = idx
+        this.render()
+      }
+      if (this.barOptions.tooltip?.show !== false) {
         this.showTooltip(e.clientX, e.clientY, idx, labels[idx] || '')
-      } else {
-        if (this.hoverIndex !== -1) { this.hoverIndex = -1; this.render() }
-        this.hideTooltip()
       }
-    })
-    this.canvas.addEventListener('mouseleave', () => { this.hoverIndex = -1; this.render(); this.hideTooltip() })
-    this.canvas.addEventListener('click', (e) => {
-      const rect = this.canvas.getBoundingClientRect()
-      const y = (e.clientY - rect.top) * (this.options.height / rect.height)
-      if (y < 30 && this.options.legend?.show !== false) {
-        const x = (e.clientX - rect.left) * (this.options.width / rect.width)
-        const series = this.options.series || []
-        this.ctx.font = '12px Inter, sans-serif'
-        let totalW = series.reduce((w, s, i) => w + this.ctx.measureText(s.name || `S${i}`).width + 24 + 16, -16)
-        let sx = (this.options.width - totalW) / 2
-        for (let i = 0; i < series.length; i++) {
-          const name = series[i]!.name || `S${i}`
-          const itemW = this.ctx.measureText(name).width + 24
-          if (x >= sx && x <= sx + itemW) {
-            if (this.enabledSeries.has(name)) this.enabledSeries.delete(name)
-            else this.enabledSeries.add(name)
-            this.render()
-            return
-          }
-          sx += itemW + 16
+    } else {
+      if (this.hoverIndex !== -1) {
+        this.hoverIndex = -1
+        this.render()
+      }
+      this.hideTooltip()
+    }
+  }
+
+  private onMouseLeave(): void {
+    this.hoverIndex = -1
+    this.render()
+    this.hideTooltip()
+  }
+
+  private onClick(e: MouseEvent): void {
+    const el = this.renderer.getElement()
+    const rect = el.getBoundingClientRect()
+    const y = (e.clientY - rect.top) * (this.height / rect.height)
+
+    if (y < 30 && this.barOptions.legend?.show !== false) {
+      const x = (e.clientX - rect.left) * (this.width / rect.width)
+      const series = this.barOptions.series || []
+
+      let totalW = series.reduce((w, s, i) => w + this.renderer.measureText(s.name || `S${i}`, 12) + 24 + 16, -16)
+      let sx = (this.width - totalW) / 2
+
+      for (let i = 0; i < series.length; i++) {
+        const name = series[i]!.name || `S${i}`
+        const itemW = this.renderer.measureText(name, 12) + 24
+        if (x >= sx && x <= sx + itemW) {
+          if (this.enabledSeries.has(name)) this.enabledSeries.delete(name)
+          else this.enabledSeries.add(name)
+          this.render()
+          return
         }
+        sx += itemW + 16
       }
-    })
+    }
   }
 
   private showTooltip(x: number, y: number, idx: number, label: string): void {
@@ -267,9 +270,9 @@ export class BarChart {
     const colors = this.colors
     this.tooltipEl.style.cssText = `position:fixed;z-index:9999;padding:12px 16px;border-radius:8px;font-size:13px;box-shadow:0 4px 20px rgba(0,0,0,0.2);pointer-events:none;font-family:Inter,sans-serif;background:${colors.tooltipBg};color:${colors.text};border:1px solid ${colors.grid};`
 
-    const items = (this.options.series || [])
+    const items = (this.barOptions.series || [])
       .filter(s => this.enabledSeries.has(s.name || ''))
-      .map((s, i) => `<div style="display:flex;gap:8px;margin-top:4px"><span style="width:8px;height:8px;border-radius:2px;background:${this.getSeriesColor(i, s)}"></span>${s.name || ''}<span style="margin-left:auto;font-weight:600">${s.data[idx] ?? '-'}</span></div>`)
+      .map((s, i) => `<div style="display:flex;gap:8px;margin-top:4px"><span style="width:8px;height:8px;border-radius:2px;background:${this.getSeriesColor(i, s.color)}"></span>${s.name || ''}<span style="margin-left:auto;font-weight:600">${s.data[idx] ?? '-'}</span></div>`)
       .join('')
     this.tooltipEl.innerHTML = `<div style="font-weight:600;margin-bottom:4px">${label}</div>${items}`
     this.tooltipEl.classList.add('visible')
@@ -281,101 +284,36 @@ export class BarChart {
     if (this.tooltipEl) this.tooltipEl.classList.remove('visible')
   }
 
-  render(): void {
-    const { ctx, chartRect, options } = this
-    const { width, height } = options
-    const colors = this.colors
-
-    ctx.clearRect(0, 0, width, height)
-    if (!options.series?.length) return
-
-    const { min, max } = this.getYRange()
-    const labels = options.xAxis?.data || []
-    const enabledSeries = (options.series || []).filter(s => this.enabledSeries.has(s.name || ''))
-    const barGroupWidth = chartRect.width / labels.length
-    const barWidth = enabledSeries.length > 0 ? (barGroupWidth * 0.6) / enabledSeries.length : barGroupWidth * 0.6
-    const gap = barGroupWidth * 0.2
-
-    // 图例
-    if (options.legend?.show !== false) {
-      ctx.font = '12px Inter, sans-serif'
-      const allSeries = options.series || []
-      let totalWidth = allSeries.reduce((w, s, i) => w + ctx.measureText(s.name || `S${i}`).width + 24 + 16, -16)
-      let x = (width - totalWidth) / 2
-      allSeries.forEach((s, i) => {
-        const name = s.name || `S${i}`
-        const enabled = this.enabledSeries.has(name)
-        ctx.fillStyle = enabled ? this.getSeriesColor(i, s) : '#64748b'
-        ctx.globalAlpha = enabled ? 1 : 0.4
-        ctx.fillRect(x, 11, 8, 8)
-        ctx.fillStyle = colors.text
-        ctx.textAlign = 'left'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(name, x + 14, 15)
-        ctx.globalAlpha = 1
-        x += ctx.measureText(name).width + 24 + 16
-      })
-    }
-
-    // 网格
-    if (options.grid?.show !== false) {
-      ctx.strokeStyle = colors.grid
-      ctx.lineWidth = 1
-      for (let i = 0; i <= 5; i++) {
-        const y = chartRect.y + (chartRect.height / 5) * i
-        ctx.beginPath(); ctx.moveTo(chartRect.x, y); ctx.lineTo(chartRect.x + chartRect.width, y)
-        ctx.globalAlpha = 0.5; ctx.stroke()
-      }
-      ctx.globalAlpha = 1
-    }
-
-    // 坐标轴
-    ctx.fillStyle = colors.textSecondary
-    ctx.font = '11px Inter, sans-serif'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'top'
-    labels.forEach((l, i) => ctx.fillText(l, chartRect.x + barGroupWidth * i + barGroupWidth / 2, chartRect.y + chartRect.height + 8))
-    ctx.textAlign = 'right'
-    ctx.textBaseline = 'middle'
-    for (let i = 0; i <= 5; i++) {
-      const v = min + (max - min) * (i / 5)
-      const y = chartRect.y + chartRect.height - (chartRect.height / 5) * i
-      ctx.fillText(v >= 1000 ? (v / 1000).toFixed(1) + 'K' : Math.round(v).toString(), chartRect.x - 8, y)
-    }
-
-    // 绑制柱子
-    enabledSeries.forEach((s, si) => {
-      const color = this.getSeriesColor((options.series || []).indexOf(s), s)
-      const radius = s.borderRadius ?? 4
-
-      s.data.forEach((v, i) => {
-        if (v === null) return
-        const x = chartRect.x + gap / 2 + barGroupWidth * i + barWidth * si
-        const fullBarHeight = ((v - min) / (max - min)) * chartRect.height
-        const barHeight = fullBarHeight * this.animationProgress
-        const y = chartRect.y + chartRect.height - barHeight
-        const isHover = i === this.hoverIndex
-
-        ctx.beginPath()
-        ctx.roundRect(x, y, barWidth, barHeight, [radius, radius, 0, 0])
-        ctx.fillStyle = isHover ? this.lightenColor(color) : color
-        ctx.fill()
-
-        if (isHover) {
-          ctx.fillStyle = colors.text
-          ctx.font = 'bold 11px Inter, sans-serif'
-          ctx.textAlign = 'center'
-          ctx.fillText(String(v), x + barWidth / 2, y - 8)
-        }
-      })
-    })
-  }
-
   private lightenColor(hex: string): string {
     const num = parseInt(hex.slice(1), 16)
     const r = Math.min(255, (num >> 16) + 40)
     const g = Math.min(255, ((num >> 8) & 0xff) + 40)
     const b = Math.min(255, (num & 0xff) + 40)
     return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
+  }
+
+  // ============== 公共方法 ==============
+
+  setData(series: BarSeriesData[]): void {
+    this.barOptions.series = series
+    this.enabledSeries = new Set(series.map(s => s.name || ''))
+    this.render()
+  }
+
+  setTheme(theme: 'light' | 'dark'): void {
+    this.barOptions.theme = theme
+      ; (this.options as any).theme = theme
+    this.render()
+  }
+
+  refresh(): void {
+    this.barOptions.theme = getCurrentTheme()
+      ; (this.options as any).theme = this.barOptions.theme
+    this.render()
+  }
+
+  dispose(): void {
+    super.dispose()
+    if (this.tooltipEl) this.tooltipEl.remove()
   }
 }

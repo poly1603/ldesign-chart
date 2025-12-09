@@ -1,251 +1,314 @@
 /**
- * PieChart 类 - 简洁的饼图 API
+ * PieChart 类 - 继承 BaseChart，使用 IRenderer 接口
+ * 支持 Canvas 和 SVG 双模式渲染
  */
+
+import { BaseChart } from './BaseChart'
+import type { BaseChartOptions } from './BaseChart'
 
 export interface PieDataItem {
   name: string
   value: number
   color?: string
+  /** 是否选中（外移显示）*/
+  selected?: boolean
 }
 
-export interface PieChartOptions {
+/** 标签引导线配置 */
+export interface PieLabelLineOptions {
+  show?: boolean
+  /** 第一段长度 */
+  length1?: number
+  /** 第二段长度 */
+  length2?: number
+  color?: string
   width?: number
-  height?: number
-  theme?: 'light' | 'dark'
+  type?: 'solid' | 'dashed' | 'dotted'
+}
+
+export interface PieChartOptions extends BaseChartOptions {
   data?: PieDataItem[]
   radius?: number | [number, number] // 外半径 或 [内半径, 外半径]
   legend?: { show?: boolean; position?: 'top' | 'right' | 'bottom' | 'left' }
   tooltip?: { show?: boolean }
-  label?: { show?: boolean; position?: 'inside' | 'outside' }
+  label?: { show?: boolean; position?: 'inside' | 'outside'; fontSize?: number; color?: string }
+  /** 标签引导线配置 */
+  labelLine?: PieLabelLineOptions
   roseType?: boolean | 'radius' | 'area' // 南丁格尔玫瑰图
-  /** 动画配置 */
-  animation?: boolean | {
-    enabled?: boolean
-    duration?: number
-  }
-}
-
-const SERIES_COLORS = [
-  '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-  '#06b6d4', '#ec4899', '#14b8a6', '#f97316', '#3b82f6',
-]
-
-function getThemeColors(theme: 'light' | 'dark') {
-  const isDark = theme === 'dark'
-  return {
-    text: isDark ? '#e2e8f0' : '#1e293b',
-    textSecondary: isDark ? '#94a3b8' : '#334155',  // 浅色模式使用更深的颜色
-    background: isDark ? '#1e293b' : '#ffffff',
-    tooltipBg: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)',
-    grid: isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(0, 0, 0, 0.06)',
-  }
+  /** 选中扇形外移距离 */
+  selectedOffset?: number
 }
 
 function getCurrentTheme(): 'light' | 'dark' {
   return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'
 }
 
-export class PieChart {
-  private container: HTMLElement
-  private canvas: HTMLCanvasElement
-  private ctx: CanvasRenderingContext2D
-  private options: PieChartOptions & { width: number; height: number; theme: 'light' | 'dark' }
-  private dpr: number
+export class PieChart extends BaseChart<PieChartOptions> {
   private hoverIndex = -1
   private tooltipEl: HTMLDivElement | null = null
-  private centerX: number
-  private centerY: number
-  private outerRadius: number
-  private innerRadius: number
-  private disposed = false
-
-  // 动画相关
-  private animationProgress = 1
-  private animationRafId: number | null = null
-  private animationStartTime = 0
+  private centerX: number = 0
+  private centerY: number = 0
+  private outerRadius: number = 0
+  private innerRadius: number = 0
+  private pieOptions: PieChartOptions
 
   constructor(container: string | HTMLElement, options: PieChartOptions = {}) {
-    const el = typeof container === 'string' ? document.querySelector(container) : container
-    if (!el || !(el instanceof HTMLElement)) throw new Error('Container not found')
-    this.container = el
-
-    const width = options.width || this.container.clientWidth || 400
-    const height = options.height || this.container.clientHeight || 280
-
-    this.options = {
+    const defaultOptions: PieChartOptions = {
       ...options,
-      width,
-      height,
       theme: options.theme || getCurrentTheme(),
       data: options.data || [],
       legend: options.legend ?? { show: true, position: 'right' },
       tooltip: options.tooltip ?? { show: true },
-      label: options.label ?? { show: true, position: 'outside' },
+      label: options.label ?? { show: true, position: 'outside', fontSize: 11 },
+      labelLine: options.labelLine ?? { show: true, length1: 15, length2: 25, width: 1, type: 'solid' },
+      selectedOffset: options.selectedOffset ?? 10,
     }
 
-    // 计算圆心和半径
-    const legendSpace = this.options.legend?.show !== false ? 100 : 0
-    const availableWidth = width - legendSpace
-    const size = Math.min(availableWidth, height) * 0.8
+    super(container, defaultOptions)
+    this.pieOptions = defaultOptions
 
-    this.centerX = availableWidth / 2
-    this.centerY = height / 2
-
-    if (Array.isArray(options.radius)) {
-      this.innerRadius = options.radius[0] * size / 2
-      this.outerRadius = options.radius[1] * size / 2
-    } else {
-      this.outerRadius = (options.radius ?? 0.8) * size / 2
-      this.innerRadius = 0
-    }
-
-    this.dpr = window.devicePixelRatio || 1
-    this.canvas = document.createElement('canvas')
-    this.canvas.width = width * this.dpr
-    this.canvas.height = height * this.dpr
-    this.canvas.style.width = `${width}px`
-    this.canvas.style.height = `${height}px`
-    this.canvas.style.display = 'block'
-    this.container.innerHTML = ''
-    this.container.appendChild(this.canvas)
-
-    this.ctx = this.canvas.getContext('2d')!
-    this.ctx.scale(this.dpr, this.dpr)
-
+    this.calculateDimensions()
     this.bindEvents()
 
     // 启动入场动画或直接渲染
-    if (this.getAnimationEnabled()) {
-      this.startEntryAnimation()
+    const config = this.getAnimationConfig()
+    if (config.enabled) {
+      this.startAnimation()
     } else {
       this.render()
     }
   }
 
-  private getAnimationEnabled(): boolean {
-    const anim = this.options.animation
-    if (typeof anim === 'boolean') return anim
-    if (typeof anim === 'object') return anim.enabled !== false
-    return true
+  private calculateDimensions(): void {
+    const legendSpace = this.pieOptions.legend?.show !== false ? 100 : 0
+    const availableWidth = this.width - legendSpace
+    const size = Math.min(availableWidth, this.height) * 0.8
+
+    this.centerX = availableWidth / 2
+    this.centerY = this.height / 2
+
+    const radius = this.pieOptions.radius
+    if (Array.isArray(radius)) {
+      this.innerRadius = radius[0] * size / 2
+      this.outerRadius = radius[1] * size / 2
+    } else {
+      this.outerRadius = (radius ?? 0.8) * size / 2
+      this.innerRadius = 0
+    }
   }
 
-  private getAnimationDuration(): number {
-    const anim = this.options.animation
-    if (typeof anim === 'object' && anim.duration) return anim.duration
-    return 1000
+  protected getPadding() {
+    return { top: 20, right: 20, bottom: 20, left: 20 }
   }
 
-  private easeOutQuart(t: number): number {
-    return 1 - Math.pow(1 - t, 4)
-  }
+  protected paint(): void {
+    const { renderer, pieOptions: options } = this
+    const colors = this.colors
+    const data = options.data || []
+    const total = this.getTotal()
 
-  private startEntryAnimation(): void {
-    this.animationProgress = 0
-    this.animationStartTime = performance.now()
+    if (!data.length || total === 0) return
 
-    const animate = (currentTime: number) => {
-      if (this.disposed) return
+    // 绘制背景
+    this.drawBackground()
 
-      const elapsed = currentTime - this.animationStartTime
-      const duration = this.getAnimationDuration()
-      const rawProgress = Math.min(elapsed / duration, 1)
-      this.animationProgress = this.easeOutQuart(rawProgress)
+    // 绘制扇形（应用动画进度）
+    let startAngle = -Math.PI / 2
+    data.forEach((item, i) => {
+      const fullSliceAngle = (item.value / total) * Math.PI * 2
+      const sliceAngle = fullSliceAngle * this.animationProgress
+      const endAngle = startAngle + sliceAngle
+      const isHover = i === this.hoverIndex
+      const color = this.getSeriesColor(i, item.color)
 
-      this.render()
-
-      if (rawProgress < 1) {
-        this.animationRafId = requestAnimationFrame(animate)
-      } else {
-        this.animationProgress = 1
-        this.animationRafId = null
+      // 悬停时扇形外移
+      let cx = this.centerX, cy = this.centerY
+      if (isHover) {
+        const midAngle = startAngle + sliceAngle / 2
+        cx += Math.cos(midAngle) * 8
+        cy += Math.sin(midAngle) * 8
       }
-    }
 
-    this.animationRafId = requestAnimationFrame(animate)
-  }
+      // 南丁格尔玫瑰图
+      let radius = this.outerRadius
+      if (options.roseType) {
+        const maxVal = Math.max(...data.map(d => d.value))
+        radius = this.innerRadius + (this.outerRadius - this.innerRadius) * (item.value / maxVal)
+      }
 
-  setData(data: PieDataItem[]): void {
-    this.options.data = data
-    this.render()
-  }
+      // 使用 drawSector 方法绘制扇形
+      renderer.drawSector(
+        cx, cy,
+        this.innerRadius,
+        radius,
+        startAngle,
+        endAngle,
+        { fill: isHover ? this.lightenColor(color) : color }
+      )
 
-  setTheme(theme: 'light' | 'dark'): void {
-    this.options.theme = theme
-    this.render()
-  }
+      // 标签和引导线
+      if (options.label?.show !== false && this.animationProgress > 0.5) {
+        const midAngle = startAngle + sliceAngle / 2
+        const percent = ((item.value / total) * 100).toFixed(1)
+        const labelText = `${item.name}: ${percent}%`
 
-  refresh(): void {
-    this.options.theme = getCurrentTheme()
-    this.render()
-  }
+        if (options.label?.position === 'inside') {
+          // 内部标签
+          const labelRadius = radius * 0.6
+          const lx = this.centerX + Math.cos(midAngle) * labelRadius
+          const ly = this.centerY + Math.sin(midAngle) * labelRadius
 
-  dispose(): void {
-    this.disposed = true
-    if (this.animationRafId !== null) {
-      cancelAnimationFrame(this.animationRafId)
-    }
-    if (this.tooltipEl) this.tooltipEl.remove()
-    this.canvas.remove()
-  }
+          renderer.drawText(
+            { x: lx, y: ly, text: item.name },
+            {
+              fill: options.label?.color ?? '#fff',
+              fontSize: options.label?.fontSize ?? 11,
+              textAlign: 'center',
+              textBaseline: 'middle'
+            }
+          )
+        } else {
+          // 外部标签 + 引导线
+          const labelLine = options.labelLine
+          const length1 = labelLine?.length1 ?? 15
+          const length2 = labelLine?.length2 ?? 25
+          const direction = Math.cos(midAngle) >= 0 ? 1 : -1
 
-  private get colors() {
-    return getThemeColors(this.options.theme)
-  }
+          // 引导线起点（扇形边缘）
+          const startX = this.centerX + Math.cos(midAngle) * radius
+          const startY = this.centerY + Math.sin(midAngle) * radius
 
-  private getItemColor(index: number, item: PieDataItem): string {
-    return item.color ?? SERIES_COLORS[index % SERIES_COLORS.length]!
-  }
+          // 引导线中点
+          const midX = this.centerX + Math.cos(midAngle) * (radius + length1)
+          const midY = this.centerY + Math.sin(midAngle) * (radius + length1)
 
-  private getTotal(): number {
-    return (this.options.data || []).reduce((sum, d) => sum + d.value, 0)
-  }
+          // 引导线终点（水平延伸）
+          const endX = midX + direction * length2
+          const endY = midY
 
-  private bindEvents(): void {
-    this.canvas.addEventListener('mousemove', (e) => {
-      const rect = this.canvas.getBoundingClientRect()
-      const x = (e.clientX - rect.left) * (this.options.width / rect.width) - this.centerX
-      const y = (e.clientY - rect.top) * (this.options.height / rect.height) - this.centerY
-
-      const dist = Math.sqrt(x * x + y * y)
-      let angle = Math.atan2(y, x)
-      if (angle < -Math.PI / 2) angle += Math.PI * 2
-
-      const data = this.options.data || []
-      const total = this.getTotal()
-      let startAngle = -Math.PI / 2
-      let found = -1
-
-      if (dist >= this.innerRadius && dist <= this.outerRadius) {
-        for (let i = 0; i < data.length; i++) {
-          const sliceAngle = (data[i]!.value / total) * Math.PI * 2
-          const endAngle = startAngle + sliceAngle
-          if (angle >= startAngle && angle < endAngle) {
-            found = i
-            break
+          // 绘制引导线
+          if (labelLine?.show !== false) {
+            const lineDash = labelLine?.type === 'dashed' ? [4, 4] : labelLine?.type === 'dotted' ? [2, 2] : undefined
+            renderer.drawPath(
+              {
+                commands: [
+                  { type: 'M', x: startX, y: startY },
+                  { type: 'L', x: midX, y: midY },
+                  { type: 'L', x: endX, y: endY },
+                ],
+              },
+              {
+                stroke: labelLine?.color ?? colors.textSecondary,
+                lineWidth: labelLine?.width ?? 1,
+                lineDash,
+              }
+            )
           }
-          startAngle = endAngle
+
+          // 绘制标签文本
+          renderer.drawText(
+            { x: endX + direction * 4, y: endY, text: labelText },
+            {
+              fill: options.label?.color ?? colors.text,
+              fontSize: options.label?.fontSize ?? 11,
+              textAlign: direction > 0 ? 'left' : 'right',
+              textBaseline: 'middle'
+            }
+          )
         }
       }
 
-      if (found !== this.hoverIndex) {
-        this.hoverIndex = found
-        this.render()
-      }
-
-      if (found >= 0 && this.options.tooltip?.show !== false) {
-        const item = data[found]!
-        const percent = ((item.value / total) * 100).toFixed(1)
-        this.showTooltip(e.clientX, e.clientY, item.name, item.value, percent)
-      } else {
-        this.hideTooltip()
-      }
+      startAngle = endAngle
     })
 
-    this.canvas.addEventListener('mouseleave', () => {
-      this.hoverIndex = -1
+    // 绘制图例
+    if (options.legend?.show !== false) {
+      this.drawLegend()
+    }
+  }
+
+  private drawLegend(): void {
+    const { renderer, pieOptions: options } = this
+    const colors = this.colors
+    const data = options.data || []
+
+    const legendX = this.width - 90
+    let legendY = 40
+
+    data.forEach((item, i) => {
+      const color = this.getSeriesColor(i, item.color)
+
+      // 绘制图例圆点
+      renderer.drawCircle(
+        { x: legendX, y: legendY, radius: 5 },
+        { fill: color }
+      )
+
+      // 绘制图例文本
+      renderer.drawText(
+        { x: legendX + 12, y: legendY, text: item.name },
+        { fill: colors.text, fontSize: 12, textAlign: 'left', textBaseline: 'middle' }
+      )
+
+      legendY += 24
+    })
+  }
+
+  private getTotal(): number {
+    return (this.pieOptions.data || []).reduce((sum, d) => sum + d.value, 0)
+  }
+
+  private bindEvents(): void {
+    const el = this.renderer.getElement()
+    el.addEventListener('mousemove', this.onMouseMove.bind(this) as EventListener)
+    el.addEventListener('mouseleave', this.onMouseLeave.bind(this) as EventListener)
+  }
+
+  private onMouseMove(e: MouseEvent): void {
+    const el = this.renderer.getElement()
+    const rect = el.getBoundingClientRect()
+    const x = (e.clientX - rect.left) * (this.width / rect.width) - this.centerX
+    const y = (e.clientY - rect.top) * (this.height / rect.height) - this.centerY
+
+    const dist = Math.sqrt(x * x + y * y)
+    let angle = Math.atan2(y, x)
+    if (angle < -Math.PI / 2) angle += Math.PI * 2
+
+    const data = this.pieOptions.data || []
+    const total = this.getTotal()
+    let startAngle = -Math.PI / 2
+    let found = -1
+
+    if (dist >= this.innerRadius && dist <= this.outerRadius) {
+      for (let i = 0; i < data.length; i++) {
+        const sliceAngle = (data[i]!.value / total) * Math.PI * 2
+        const endAngle = startAngle + sliceAngle
+        if (angle >= startAngle && angle < endAngle) {
+          found = i
+          break
+        }
+        startAngle = endAngle
+      }
+    }
+
+    if (found !== this.hoverIndex) {
+      this.hoverIndex = found
       this.render()
+    }
+
+    if (found >= 0 && this.pieOptions.tooltip?.show !== false) {
+      const item = data[found]!
+      const percent = ((item.value / total) * 100).toFixed(1)
+      this.showTooltip(e.clientX, e.clientY, item.name, item.value, percent)
+    } else {
       this.hideTooltip()
-    })
+    }
+  }
+
+  private onMouseLeave(): void {
+    this.hoverIndex = -1
+    this.render()
+    this.hideTooltip()
   }
 
   private showTooltip(x: number, y: number, name: string, value: number, percent: string): void {
@@ -266,94 +329,35 @@ export class PieChart {
     if (this.tooltipEl) this.tooltipEl.classList.remove('visible')
   }
 
-  render(): void {
-    const { ctx, options } = this
-    const { width, height } = options
-    const colors = this.colors
-    const data = options.data || []
-    const total = this.getTotal()
-
-    ctx.clearRect(0, 0, width, height)
-    if (!data.length || total === 0) return
-
-    // 绘制扇形（应用动画进度）
-    let startAngle = -Math.PI / 2
-    data.forEach((item, i) => {
-      const fullSliceAngle = (item.value / total) * Math.PI * 2
-      const sliceAngle = fullSliceAngle * this.animationProgress
-      const endAngle = startAngle + sliceAngle
-      const isHover = i === this.hoverIndex
-      const color = this.getItemColor(i, item)
-
-      // 悬停时扇形外移
-      let cx = this.centerX, cy = this.centerY
-      if (isHover) {
-        const midAngle = startAngle + sliceAngle / 2
-        cx += Math.cos(midAngle) * 8
-        cy += Math.sin(midAngle) * 8
-      }
-
-      // 南丁格尔玫瑰图
-      let radius = this.outerRadius
-      if (options.roseType) {
-        const maxVal = Math.max(...data.map(d => d.value))
-        radius = this.innerRadius + (this.outerRadius - this.innerRadius) * (item.value / maxVal)
-      }
-
-      ctx.beginPath()
-      ctx.moveTo(cx, cy)
-      ctx.arc(cx, cy, radius, startAngle, endAngle)
-      if (this.innerRadius > 0) {
-        ctx.arc(cx, cy, this.innerRadius, endAngle, startAngle, true)
-      }
-      ctx.closePath()
-      ctx.fillStyle = isHover ? this.lightenColor(color) : color
-      ctx.fill()
-
-      // 标签
-      if (options.label?.show !== false && options.label?.position !== 'inside') {
-        const midAngle = startAngle + sliceAngle / 2
-        const labelRadius = radius + 20
-        const lx = this.centerX + Math.cos(midAngle) * labelRadius
-        const ly = this.centerY + Math.sin(midAngle) * labelRadius
-
-        ctx.fillStyle = colors.text
-        ctx.font = '11px Inter, sans-serif'
-        ctx.textAlign = midAngle > Math.PI / 2 && midAngle < Math.PI * 1.5 ? 'right' : 'left'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(`${item.name}`, lx, ly)
-      }
-
-      startAngle = endAngle
-    })
-
-    // 图例
-    if (options.legend?.show !== false) {
-      const legendX = width - 90
-      let legendY = 40
-      ctx.font = '12px Inter, sans-serif'
-      ctx.textAlign = 'left'
-      ctx.textBaseline = 'middle'
-
-      data.forEach((item, i) => {
-        const color = this.getItemColor(i, item)
-        ctx.fillStyle = color
-        ctx.beginPath()
-        ctx.arc(legendX, legendY, 5, 0, Math.PI * 2)
-        ctx.fill()
-
-        ctx.fillStyle = colors.text
-        ctx.fillText(item.name, legendX + 12, legendY)
-        legendY += 24
-      })
-    }
-  }
-
   private lightenColor(hex: string): string {
     const num = parseInt(hex.slice(1), 16)
     const r = Math.min(255, (num >> 16) + 40)
     const g = Math.min(255, ((num >> 8) & 0xff) + 40)
     const b = Math.min(255, (num & 0xff) + 40)
     return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
+  }
+
+  // ============== 公共方法 ==============
+
+  setData(data: PieDataItem[]): void {
+    this.pieOptions.data = data
+    this.render()
+  }
+
+  setTheme(theme: 'light' | 'dark'): void {
+    this.pieOptions.theme = theme
+      ; (this.options as any).theme = theme
+    this.render()
+  }
+
+  refresh(): void {
+    this.pieOptions.theme = getCurrentTheme()
+      ; (this.options as any).theme = this.pieOptions.theme
+    this.render()
+  }
+
+  dispose(): void {
+    super.dispose()
+    if (this.tooltipEl) this.tooltipEl.remove()
   }
 }

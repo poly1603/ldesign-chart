@@ -104,6 +104,36 @@ export interface LineStyle {
 }
 
 /**
+ * 圆弧样式
+ */
+export interface ArcStyle {
+  fill?: string
+  stroke?: string
+  lineWidth?: number
+  opacity?: number
+}
+
+/**
+ * 扇形样式
+ */
+export interface SectorStyle {
+  fill?: string
+  stroke?: string
+  lineWidth?: number
+  opacity?: number
+}
+
+/**
+ * 多边形样式
+ */
+export interface PolygonStyle {
+  fill?: string
+  stroke?: string
+  lineWidth?: number
+  opacity?: number
+}
+
+/**
  * 多段线点
  */
 export interface Point {
@@ -201,6 +231,53 @@ export interface IRenderer {
    * @param smooth - 是否平滑曲线
    */
   drawArea(points: Point[], baseY: number, fill: string | GradientDef, smooth?: boolean): void
+
+  /**
+   * 绘制圆弧
+   * @param cx - 圆心X坐标
+   * @param cy - 圆心Y坐标
+   * @param radius - 半径
+   * @param startAngle - 起始角度（弧度）
+   * @param endAngle - 结束角度（弧度）
+   * @param style - 样式
+   * @param counterclockwise - 是否逆时针
+   */
+  drawArc(
+    cx: number,
+    cy: number,
+    radius: number,
+    startAngle: number,
+    endAngle: number,
+    style: ArcStyle,
+    counterclockwise?: boolean
+  ): void
+
+  /**
+   * 绘制扇形（饼图用）
+   * @param cx - 圆心X坐标
+   * @param cy - 圆心Y坐标
+   * @param innerRadius - 内半径（0为实心）
+   * @param outerRadius - 外半径
+   * @param startAngle - 起始角度（弧度）
+   * @param endAngle - 结束角度（弧度）
+   * @param style - 样式
+   */
+  drawSector(
+    cx: number,
+    cy: number,
+    innerRadius: number,
+    outerRadius: number,
+    startAngle: number,
+    endAngle: number,
+    style: SectorStyle
+  ): void
+
+  /**
+   * 绘制多边形
+   * @param points - 顶点数组
+   * @param style - 样式
+   */
+  drawPolygon(points: Point[], style: PolygonStyle): void
 
   /**
    * 保存当前状态

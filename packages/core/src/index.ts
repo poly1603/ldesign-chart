@@ -7,12 +7,13 @@
 export { Chart } from './chart/Chart'
 
 // 导出便捷图表类
-export { LineChart, BarChart, PieChart, ScatterChart } from './charts'
+export { LineChart, BarChart, PieChart, ScatterChart, BaseChart } from './charts'
 export type {
   LineChartOptions, LineSeriesData,
   BarChartOptions, BarSeriesData,
-  PieChartOptions, PieDataItem as PieChartDataItem,
+  PieChartOptions, PieDataItem as PieChartDataItem, PieLabelLineOptions,
   ScatterChartOptions, ScatterSeriesData, ScatterDataPoint,
+  BaseChartOptions,
 } from './charts'
 
 // 导出事件系统
@@ -124,6 +125,9 @@ export type {
   Point as RendererPoint,
   LineStyle as RendererLineStyle,
   GradientDef,
+  ArcStyle,
+  SectorStyle,
+  PolygonStyle,
 } from './renderer/interface'
 
 // 导出主题系统

@@ -16,6 +16,9 @@ import type {
   Point,
   LineStyle,
   GradientDef,
+  ArcStyle,
+  SectorStyle,
+  PolygonStyle,
 } from './interface'
 
 /**
@@ -49,7 +52,9 @@ export class SVGRenderer implements IRenderer {
     this.svg.setAttribute('height', String(height))
     this.svg.setAttribute('viewBox', `0 0 ${width} ${height}`)
     this.svg.style.display = 'block'
-    this.svg.style.overflow = 'visible'
+    this.svg.style.overflow = 'hidden'
+    // 注意：不设置 max-width，因为宽度已经明确指定
+    // 如果需要响应式，应该在容器层面处理
 
     // 添加 defs 用于渐变和剪裁
     const defs = document.createElementNS(SVG_NS, 'defs')
@@ -74,13 +79,20 @@ export class SVGRenderer implements IRenderer {
   clear(): void {
     if (!this.svg) return
 
-    // 保留 defs，清除其他元素
+    // 清空 defs 中的渐变定义，避免累积
     const defs = this.svg.querySelector('defs')
+    if (defs) {
+      defs.innerHTML = ''
+    }
+
+    // 清除其他元素
     while (this.svg.lastChild && this.svg.lastChild !== defs) {
       this.svg.removeChild(this.svg.lastChild)
     }
+
     this.currentGroup = null
     this.transformStack = [{ x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1 }]
+    this.clipCounter = 0  // 重置计数器
   }
 
   /**
@@ -655,5 +667,153 @@ export class SVGRenderer implements IRenderer {
     if (!ctx) return text.length * fontSize * 0.6
     ctx.font = `${fontSize}px ${fontFamily}`
     return ctx.measureText(text).width
+  }
+
+  /**
+   * 绘制圆弧
+   */
+  drawArc(
+    cx: number,
+    cy: number,
+    radius: number,
+    startAngle: number,
+    endAngle: number,
+    style: ArcStyle,
+    counterclockwise: boolean = false
+  ): void {
+    if (!this.svg) return
+
+    // 计算起点和终点坐标
+    const startX = cx + radius * Math.cos(startAngle)
+    const startY = cy + radius * Math.sin(startAngle)
+    const endX = cx + radius * Math.cos(endAngle)
+    const endY = cy + radius * Math.sin(endAngle)
+
+    // 计算弧线角度
+    let angleDiff = endAngle - startAngle
+    if (counterclockwise) {
+      angleDiff = -angleDiff
+    }
+    const largeArc = Math.abs(angleDiff) > Math.PI ? 1 : 0
+    const sweep = counterclockwise ? 0 : 1
+
+    const path = document.createElementNS(SVG_NS, 'path')
+    const d = `M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} ${sweep} ${endX} ${endY}`
+    path.setAttribute('d', d)
+    path.setAttribute('fill', style.fill || 'none')
+    path.setAttribute('stroke', style.stroke || 'none')
+    if (style.lineWidth) {
+      path.setAttribute('stroke-width', String(style.lineWidth))
+    }
+    if (style.opacity !== undefined) {
+      path.setAttribute('opacity', String(style.opacity))
+    }
+
+    // CSS transition for smooth animation
+    path.style.transition = 'all 0.3s ease-out'
+
+    this.applyTransform(path)
+    this.appendElement(path)
+  }
+
+  /**
+   * 绘制扇形（饼图用）- 支持 CSS/SMIL 动画
+   */
+  drawSector(
+    cx: number,
+    cy: number,
+    innerRadius: number,
+    outerRadius: number,
+    startAngle: number,
+    endAngle: number,
+    style: SectorStyle
+  ): void {
+    if (!this.svg) return
+
+    const path = document.createElementNS(SVG_NS, 'path')
+    const d = this.createSectorPath(cx, cy, innerRadius, outerRadius, startAngle, endAngle)
+    path.setAttribute('d', d)
+    path.setAttribute('fill', style.fill || 'none')
+    path.setAttribute('stroke', style.stroke || 'none')
+    if (style.lineWidth) {
+      path.setAttribute('stroke-width', String(style.lineWidth))
+    }
+    if (style.opacity !== undefined) {
+      path.setAttribute('opacity', String(style.opacity))
+    }
+
+    // CSS transitions for smooth hover/animation effects
+    path.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out'
+    path.style.transformOrigin = `${cx}px ${cy}px`
+
+    this.applyTransform(path)
+    this.appendElement(path)
+  }
+
+  /**
+   * 创建扇形路径
+   */
+  private createSectorPath(
+    cx: number,
+    cy: number,
+    innerRadius: number,
+    outerRadius: number,
+    startAngle: number,
+    endAngle: number
+  ): string {
+    // 外弧起点和终点
+    const outerStartX = cx + outerRadius * Math.cos(startAngle)
+    const outerStartY = cy + outerRadius * Math.sin(startAngle)
+    const outerEndX = cx + outerRadius * Math.cos(endAngle)
+    const outerEndY = cy + outerRadius * Math.sin(endAngle)
+
+    // 判断是否为大弧
+    const angleDiff = endAngle - startAngle
+    const largeArc = Math.abs(angleDiff) > Math.PI ? 1 : 0
+
+    if (innerRadius > 0) {
+      // 环形扇形
+      const innerStartX = cx + innerRadius * Math.cos(startAngle)
+      const innerStartY = cy + innerRadius * Math.sin(startAngle)
+      const innerEndX = cx + innerRadius * Math.cos(endAngle)
+      const innerEndY = cy + innerRadius * Math.sin(endAngle)
+
+      return `M ${outerStartX} ${outerStartY}
+              A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${outerEndX} ${outerEndY}
+              L ${innerEndX} ${innerEndY}
+              A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${innerStartX} ${innerStartY}
+              Z`
+    } else {
+      // 实心扇形
+      return `M ${cx} ${cy}
+              L ${outerStartX} ${outerStartY}
+              A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${outerEndX} ${outerEndY}
+              Z`
+    }
+  }
+
+  /**
+   * 绘制多边形
+   */
+  drawPolygon(points: Point[], style: PolygonStyle): void {
+    if (!this.svg || points.length < 3) return
+
+    const polygon = document.createElementNS(SVG_NS, 'polygon')
+    const pointsStr = points.map(p => `${p.x},${p.y}`).join(' ')
+    polygon.setAttribute('points', pointsStr)
+    polygon.setAttribute('fill', style.fill || 'none')
+    polygon.setAttribute('stroke', style.stroke || 'none')
+    if (style.lineWidth) {
+      polygon.setAttribute('stroke-width', String(style.lineWidth))
+    }
+    if (style.opacity !== undefined) {
+      polygon.setAttribute('opacity', String(style.opacity))
+    }
+
+    // CSS transition for smooth animation
+    polygon.style.transition = 'all 0.3s ease-out'
+
+    this.applyTransform(polygon)
+    this.appendElement(polygon)
   }
 }

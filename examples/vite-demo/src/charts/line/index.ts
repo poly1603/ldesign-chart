@@ -94,6 +94,7 @@ export function initMultiStyleLineChart(): void {
   if (!container) return
 
   const chart = new LineChart(container, {
+    renderer: getRendererMode(),
     xAxis: { data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
     series: [
       { name: '实线', data: [120, 200, 150, 80, 70, 110, 130], lineStyle: { type: 'solid' } },
@@ -144,6 +145,7 @@ export function initStackedLineChart(): void {
   if (!container) return
 
   const chart = new LineChart(container, {
+    renderer: getRendererMode(),
     xAxis: { data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'] },
     series: [
       { name: '邮件营销', data: [120, 132, 101, 134, 90, 230, 210], stack: 'total' },
@@ -160,6 +162,7 @@ export function initStackedAreaChart(): void {
   if (!container) return
 
   const chart = new LineChart(container, {
+    renderer: getRendererMode(),
     xAxis: { data: ['Q1', 'Q2', 'Q3', 'Q4'] },
     series: [
       { name: '产品A', data: [140, 232, 101, 264], areaStyle: true, smooth: true },
@@ -176,6 +179,7 @@ export function initGradientAreaChart(): void {
   if (!container) return
 
   const chart = new LineChart(container, {
+    renderer: getRendererMode(),
     xAxis: { data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
     series: [
       { name: '数据', data: [820, 932, 901, 934, 1290, 1330, 1320], areaStyle: { opacity: 0.4 }, smooth: true },
@@ -190,6 +194,7 @@ export function initConfidenceBandChart(): void {
   if (!container) return
 
   const chart = new LineChart(container, {
+    renderer: getRendererMode(),
     xAxis: { data: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'] },
     series: [
       { name: '上界', data: [120, 150, 140, 160, 180, 200], areaStyle: { opacity: 0.2 }, lineStyle: { type: 'dashed' } },
@@ -206,6 +211,7 @@ export function initDualAxisChart(): void {
   if (!container) return
 
   const chart = new LineChart(container, {
+    renderer: getRendererMode(),
     xAxis: { data: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'] },
     series: [
       { name: '蒸发量', data: [2.0, 4.9, 7.0, 23.2, 25.6, 76.7] },
@@ -221,6 +227,7 @@ export function initLineWithMarklineChart(): void {
   if (!container) return
 
   const chart = new LineChart(container, {
+    renderer: getRendererMode(),
     xAxis: { data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
     series: [
       { name: '数据', data: [820, 932, 901, 934, 1290, 1330, 1320], smooth: true },
@@ -235,6 +242,7 @@ export function initBumpChart(): void {
   if (!container) return
 
   const chart = new LineChart(container, {
+    renderer: getRendererMode(),
     xAxis: { data: ['2019', '2020', '2021', '2022', '2023'] },
     series: [
       { name: 'Apple', data: [1, 1, 2, 1, 1], smooth: true, symbolSize: 8 },
@@ -252,6 +260,7 @@ export function initNegativeAreaChart(): void {
   if (!container) return
 
   const chart = new LineChart(container, {
+    renderer: getRendererMode(),
     xAxis: { data: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] },
     series: [
       { name: '利润', data: [10, 20, -15, 25, -10, 30, 15, -5, 20, 35, -20, 40], areaStyle: true },
@@ -274,6 +283,7 @@ export function initLargeScaleLineChart(): void {
   }
 
   const chart = new LineChart(container, {
+    renderer: getRendererMode(),
     xAxis: {
       data: labels,
       interval: 'auto',

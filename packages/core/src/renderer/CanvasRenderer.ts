@@ -15,6 +15,9 @@ import type {
   Point,
   LineStyle,
   GradientDef,
+  ArcStyle,
+  SectorStyle,
+  PolygonStyle,
 } from './interface'
 
 /**
@@ -158,9 +161,16 @@ export class CanvasRenderer implements IRenderer {
   drawRect(rect: Rect, style: RectStyle): void {
     if (!this.ctx) return
 
+    // 保存当前状态
+    this.ctx.save()
+
+    if (style.opacity !== undefined && style.opacity < 1) {
+      this.ctx.globalAlpha = style.opacity
+    }
+
     if (style.radius && style.radius > 0) {
       // 绘制圆角矩形
-      this.drawRoundedRect(rect, style.radius)
+      this.drawRoundedRect(rect, style.radius, style)
     } else {
       // 绘制普通矩形
       if (style.fill) {
@@ -175,30 +185,43 @@ export class CanvasRenderer implements IRenderer {
       }
     }
 
-    if (style.opacity !== undefined && style.opacity < 1) {
-      this.ctx.globalAlpha = style.opacity
-    }
+    // 恢复状态
+    this.ctx.restore()
   }
 
   /**
    * 绘制圆角矩形
    */
-  private drawRoundedRect(rect: Rect, radius: number): void {
+  private drawRoundedRect(rect: Rect, radius: number, style: RectStyle): void {
     if (!this.ctx) return
 
     const { x, y, width, height } = rect
+    // 确保半径不超过宽高的一半
+    const r = Math.min(radius, width / 2, height / 2)
 
     this.ctx.beginPath()
-    this.ctx.moveTo(x + radius, y)
-    this.ctx.lineTo(x + width - radius, y)
-    this.ctx.arcTo(x + width, y, x + width, y + radius, radius)
-    this.ctx.lineTo(x + width, y + height - radius)
-    this.ctx.arcTo(x + width, y + height, x + width - radius, y + height, radius)
-    this.ctx.lineTo(x + radius, y + height)
-    this.ctx.arcTo(x, y + height, x, y + height - radius, radius)
-    this.ctx.lineTo(x, y + radius)
-    this.ctx.arcTo(x, y, x + radius, y, radius)
+    this.ctx.moveTo(x + r, y)
+    this.ctx.lineTo(x + width - r, y)
+    this.ctx.arcTo(x + width, y, x + width, y + r, r)
+    this.ctx.lineTo(x + width, y + height - r)
+    this.ctx.arcTo(x + width, y + height, x + width - r, y + height, r)
+    this.ctx.lineTo(x + r, y + height)
+    this.ctx.arcTo(x, y + height, x, y + height - r, r)
+    this.ctx.lineTo(x, y + r)
+    this.ctx.arcTo(x, y, x + r, y, r)
     this.ctx.closePath()
+
+    // 填充和描边
+    if (style.fill) {
+      this.ctx.fillStyle = style.fill
+      this.ctx.fill()
+    }
+
+    if (style.stroke && style.lineWidth) {
+      this.ctx.strokeStyle = style.stroke
+      this.ctx.lineWidth = style.lineWidth
+      this.ctx.stroke()
+    }
   }
 
   /**
@@ -547,8 +570,7 @@ export class CanvasRenderer implements IRenderer {
   }
 
   /**
-   * 绘制圆弧（直接使用Canvas arc API）
-   * 用于饼图、仪表盘等需要精确弧线的图表
+   * 绘制圆弧
    */
   drawArc(
     cx: number,
@@ -556,10 +578,107 @@ export class CanvasRenderer implements IRenderer {
     radius: number,
     startAngle: number,
     endAngle: number,
+    style: ArcStyle,
     counterclockwise: boolean = false
   ): void {
     if (!this.ctx) return
+
+    this.ctx.beginPath()
     this.ctx.arc(cx, cy, radius, startAngle, endAngle, counterclockwise)
+
+    if (style.opacity !== undefined) {
+      this.ctx.globalAlpha = style.opacity
+    }
+
+    if (style.fill) {
+      this.ctx.fillStyle = style.fill
+      this.ctx.fill()
+    }
+
+    if (style.stroke) {
+      this.ctx.strokeStyle = style.stroke
+      this.ctx.lineWidth = style.lineWidth || 1
+      this.ctx.stroke()
+    }
+
+    this.ctx.globalAlpha = 1
+  }
+
+  /**
+   * 绘制扇形（饼图用）
+   */
+  drawSector(
+    cx: number,
+    cy: number,
+    innerRadius: number,
+    outerRadius: number,
+    startAngle: number,
+    endAngle: number,
+    style: SectorStyle
+  ): void {
+    if (!this.ctx) return
+
+    this.ctx.beginPath()
+
+    if (innerRadius > 0) {
+      // 环形扇形
+      this.ctx.arc(cx, cy, outerRadius, startAngle, endAngle)
+      this.ctx.arc(cx, cy, innerRadius, endAngle, startAngle, true)
+    } else {
+      // 实心扇形
+      this.ctx.moveTo(cx, cy)
+      this.ctx.arc(cx, cy, outerRadius, startAngle, endAngle)
+    }
+    this.ctx.closePath()
+
+    if (style.opacity !== undefined) {
+      this.ctx.globalAlpha = style.opacity
+    }
+
+    if (style.fill) {
+      this.ctx.fillStyle = style.fill
+      this.ctx.fill()
+    }
+
+    if (style.stroke) {
+      this.ctx.strokeStyle = style.stroke
+      this.ctx.lineWidth = style.lineWidth || 1
+      this.ctx.stroke()
+    }
+
+    this.ctx.globalAlpha = 1
+  }
+
+  /**
+   * 绘制多边形
+   */
+  drawPolygon(points: Point[], style: PolygonStyle): void {
+    if (!this.ctx || points.length < 3) return
+
+    this.ctx.beginPath()
+    this.ctx.moveTo(points[0]!.x, points[0]!.y)
+
+    for (let i = 1; i < points.length; i++) {
+      this.ctx.lineTo(points[i]!.x, points[i]!.y)
+    }
+    this.ctx.closePath()
+
+    if (style.opacity !== undefined) {
+      this.ctx.globalAlpha = style.opacity
+    }
+
+    if (style.fill) {
+      this.ctx.fillStyle = style.fill
+      this.ctx.fill()
+    }
+
+    if (style.stroke) {
+      this.ctx.strokeStyle = style.stroke
+      this.ctx.lineWidth = style.lineWidth || 1
+      this.ctx.stroke()
+    }
+
+    this.ctx.globalAlpha = 1
   }
 
   /**

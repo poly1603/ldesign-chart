@@ -23,6 +23,8 @@ import {
   Home,
   LayoutGrid,
   ScatterChart,
+  RefreshCw,
+  Code,
 } from 'lucide'
 import { createElement } from 'lucide'
 
@@ -258,20 +260,88 @@ function initUI(): void {
       const card = document.createElement('div')
       card.className = 'chart-card'
       card.setAttribute('data-type', config.type)
+      card.setAttribute('data-chart-id', config.id)
       card.innerHTML = `
         <div class="chart-header">
-          <div class="chart-icon"></div>
-          <div class="chart-info">
-            <div class="chart-title">${config.title}</div>
-            <div class="chart-subtitle">${config.subtitle}</div>
+          <div class="chart-header-left">
+            <div class="chart-icon"></div>
+            <div class="chart-info">
+              <div class="chart-title">${config.title}</div>
+              <div class="chart-subtitle">${config.subtitle}</div>
+            </div>
+          </div>
+          <div class="chart-header-right">
+            <button class="chart-action-btn" data-action="refresh" title="刷新图表">
+              <span class="action-icon refresh-icon"></span>
+            </button>
+            <button class="chart-action-btn" data-action="code" title="查看代码">
+              <span class="action-icon code-icon"></span>
+            </button>
           </div>
         </div>
         <div class="chart-container" id="${config.id}"></div>
       `
       card.querySelector('.chart-icon')?.appendChild(createElement(config.icon as Parameters<typeof createElement>[0]))
+      card.querySelector('.refresh-icon')?.appendChild(createElement(RefreshCw))
+      card.querySelector('.code-icon')?.appendChild(createElement(Code))
+
+      // 绑定按钮事件
+      const refreshBtn = card.querySelector('[data-action="refresh"]')
+      refreshBtn?.addEventListener('click', () => {
+        refreshSingleChart(config.id)
+      })
+
+      const codeBtn = card.querySelector('[data-action="code"]')
+      codeBtn?.addEventListener('click', () => {
+        showChartCode(config.id, config.title)
+      })
+
       chartsGrid.appendChild(card)
     })
   }
+}
+
+// 刷新单个图表
+function refreshSingleChart(chartId: string): void {
+  const config = chartConfigs.find(c => c.id === chartId)
+  if (config) {
+    // 获取对应的销毁和初始化函数
+    config.init()
+  }
+}
+
+// 显示图表代码
+function showChartCode(chartId: string, title: string): void {
+  // 创建代码弹窗
+  const modal = document.createElement('div')
+  modal.className = 'code-modal'
+  modal.innerHTML = `
+    <div class="code-modal-overlay"></div>
+    <div class="code-modal-content">
+      <div class="code-modal-header">
+        <h3>${title} - 示例代码</h3>
+        <button class="code-modal-close">&times;</button>
+      </div>
+      <div class="code-modal-body">
+        <pre><code>// 查看 src/charts 目录下的 ${chartId.replace(/-/g, '_')}.ts 文件
+// 或访问文档获取完整示例代码
+import { LineChart } from '@ldesign/chart-core'
+
+const chart = new LineChart('#${chartId}', {
+  renderer: 'canvas', // 或 'svg'
+  xAxis: { data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] },
+  series: [
+    { name: 'Data', data: [120, 200, 150, 80, 70] }
+  ]
+})</code></pre>
+      </div>
+    </div>
+  `
+  document.body.appendChild(modal)
+
+  // 关闭弹窗
+  modal.querySelector('.code-modal-overlay')?.addEventListener('click', () => modal.remove())
+  modal.querySelector('.code-modal-close')?.addEventListener('click', () => modal.remove())
 }
 
 // 筛选图表
@@ -411,6 +481,29 @@ function initRouter(): void {
   updateNavActive(initialType)
 }
 
+// 初始化 ResizeObserver 监听容器大小变化
+function initResizeObserver(): void {
+  // 使用防抖处理 resize 事件
+  let resizeTimeout: number | null = null
+
+  const resizeObserver = new ResizeObserver(() => {
+    // 防抖处理，避免频繁重绘
+    if (resizeTimeout) {
+      clearTimeout(resizeTimeout)
+    }
+    resizeTimeout = window.setTimeout(() => {
+      // 重新初始化所有图表
+      reinitCharts()
+    }, 200)
+  })
+
+  // 观察图表网格容器
+  const chartsGrid = document.getElementById('charts-grid')
+  if (chartsGrid) {
+    resizeObserver.observe(chartsGrid)
+  }
+}
+
 // 启动应用
 document.addEventListener('DOMContentLoaded', () => {
   initUI()
@@ -418,4 +511,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initRendererToggle()
   initCharts()
   initRouter()
+  initResizeObserver()
 })

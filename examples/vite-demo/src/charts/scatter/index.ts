@@ -3,11 +3,16 @@
  */
 
 import { ScatterChart } from '@ldesign/chart-core'
+import { getRendererMode } from '../../main'
 
 let chartInstances: ScatterChart[] = []
 
 function registerChart(chart: ScatterChart): void {
   chartInstances.push(chart)
+}
+
+function getCommonOptions() {
+  return { renderer: getRendererMode() }
 }
 
 export function refreshAllScatterCharts(theme: 'light' | 'dark'): void {
@@ -23,6 +28,7 @@ export function initScatterChart(): void {
   const container = document.getElementById('scatter-chart')
   if (!container) return
   const chart = new ScatterChart(container, {
+    ...getCommonOptions(),
     series: [{
       name: '数据1',
       data: [
@@ -38,6 +44,7 @@ export function initMultiScatterChart(): void {
   const container = document.getElementById('multi-scatter-chart')
   if (!container) return
   const chart = new ScatterChart(container, {
+    ...getCommonOptions(),
     series: [
       {
         name: '女性',
@@ -62,6 +69,7 @@ export function initBubbleChart(): void {
   const container = document.getElementById('bubble-chart')
   if (!container) return
   const chart = new ScatterChart(container, {
+    ...getCommonOptions(),
     series: [{
       name: '数据',
       symbolSize: (point) => Math.sqrt((point.value || 10) * 10),
@@ -83,6 +91,7 @@ export function initQuadrantScatterChart(): void {
   const container = document.getElementById('quadrant-scatter-chart')
   if (!container) return
   const chart = new ScatterChart(container, {
+    ...getCommonOptions(),
     series: [{
       name: '产品',
       data: [

@@ -3,8 +3,13 @@
  */
 
 import { BarChart } from '@ldesign/chart-core'
+import { getRendererMode } from '../../main'
 
 let chartInstances: BarChart[] = []
+
+function getCommonOptions() {
+  return { renderer: getRendererMode() }
+}
 
 function registerChart(chart: BarChart): void {
   chartInstances.push(chart)
@@ -23,6 +28,7 @@ export function initBarChart(): void {
   const container = document.getElementById('bar-chart')
   if (!container) return
   const chart = new BarChart(container, {
+    ...getCommonOptions(),
     xAxis: { data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'] },
     series: [{ name: '销量', data: [120, 200, 150, 80, 70, 110, 130] }],
   })
@@ -33,6 +39,7 @@ export function initStackedBarChart(): void {
   const container = document.getElementById('stacked-bar-chart')
   if (!container) return
   const chart = new BarChart(container, {
+    ...getCommonOptions(),
     xAxis: { data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'] },
     series: [
       { name: '直接访问', data: [320, 302, 301, 334, 390, 330, 320], stack: 'total' },
@@ -47,6 +54,7 @@ export function initGroupedBarChart(): void {
   const container = document.getElementById('grouped-bar-chart')
   if (!container) return
   const chart = new BarChart(container, {
+    ...getCommonOptions(),
     xAxis: { data: ['巴西', '印尼', '美国', '印度', '中国'] },
     series: [
       { name: '2011年', data: [18203, 23489, 29034, 104970, 131744] },
@@ -60,6 +68,7 @@ export function initHorizontalBarChart(): void {
   const container = document.getElementById('horizontal-bar-chart')
   if (!container) return
   const chart = new BarChart(container, {
+    ...getCommonOptions(),
     horizontal: true,
     xAxis: { data: ['周一', '周二', '周三', '周四', '周五'] },
     series: [{ name: '数据', data: [120, 200, 150, 80, 70] }],
@@ -71,6 +80,7 @@ export function initNegativeBarChart(): void {
   const container = document.getElementById('negative-bar-chart')
   if (!container) return
   const chart = new BarChart(container, {
+    ...getCommonOptions(),
     xAxis: { data: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'] },
     series: [{ name: '利润', data: [200, -100, 150, -80, 120, -50] }],
   })
@@ -81,6 +91,7 @@ export function initWaterfallChart(): void {
   const container = document.getElementById('waterfall-chart')
   if (!container) return
   const chart = new BarChart(container, {
+    ...getCommonOptions(),
     xAxis: { data: ['总收入', '成本', '毛利', '运营费', '净利润'] },
     series: [{ name: '金额', data: [900, -400, 500, -300, 200] }],
   })
@@ -91,6 +102,7 @@ export function initGradientBarChart(): void {
   const container = document.getElementById('gradient-bar-chart')
   if (!container) return
   const chart = new BarChart(container, {
+    ...getCommonOptions(),
     xAxis: { data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
     series: [{ name: '数据', data: [120, 200, 150, 80, 70, 110, 130], borderRadius: 8 }],
   })
@@ -101,6 +113,7 @@ export function initPolarBarChart(): void {
   const container = document.getElementById('polar-bar-chart')
   if (!container) return
   const chart = new BarChart(container, {
+    ...getCommonOptions(),
     xAxis: { data: ['A', 'B', 'C', 'D', 'E', 'F'] },
     series: [{ name: '数据', data: [43, 83, 66, 53, 90, 72] }],
   })

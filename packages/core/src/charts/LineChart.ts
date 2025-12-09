@@ -111,24 +111,6 @@ export class LineChart {
   private updateAnimationProgress = 1
   private isUpdating = false
 
-  /** 获取 Canvas 2D 上下文（兼容现有代码） */
-  private get ctx(): CanvasRenderingContext2D {
-    const ctx = this.renderer.getContext2D()
-    if (!ctx) {
-      throw new Error('Canvas context not available in SVG mode')
-    }
-    return ctx
-  }
-
-  /** 获取 canvas 元素 */
-  private get canvas(): HTMLCanvasElement {
-    const el = this.renderer.getElement()
-    if (el instanceof HTMLCanvasElement) {
-      return el
-    }
-    throw new Error('Canvas element not available in SVG mode')
-  }
-
   constructor(container: string | HTMLElement, options: LineChartOptions = {}) {
     // 获取容器
     const el = typeof container === 'string' ? document.querySelector(container) : container
@@ -207,10 +189,10 @@ export class LineChart {
       enabled: true,
       entryType: 'drawLine',  // 折线图默认：从左到右绘制
       updateType: 'morph',
-      entryDuration: 1000,
-      updateDuration: 400,
+      entryDuration: 800,     // 缩短动画时长，更流畅
+      updateDuration: 300,
       entryDelay: 0,
-      easing: 'easeOutQuart',
+      easing: 'easeOutCubic', // 使用更自然的缓动
       stagger: false,
       staggerDelay: 30,
     }
@@ -248,6 +230,20 @@ export class LineChart {
     return n1 * (t -= 2.625 / d1) * t + 0.984375
   }
 
+  /** 平滑步进 - 最适合图表绘制动画 */
+  private smoothStep(t: number): number {
+    return t * t * (3 - 2 * t)
+  }
+
+  /** 更平滑的步进 */
+  private smootherStep(t: number): number {
+    return t * t * t * (t * (t * 6 - 15) + 10)
+  }
+
+  private easeInOutCubic(t: number): number {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+  }
+
   private getEasing(name: string): (t: number) => number {
     const easings: Record<string, (t: number) => number> = {
       linear: t => t,
@@ -255,6 +251,9 @@ export class LineChart {
       easeOutCubic: this.easeOutCubic,
       easeOutElastic: this.easeOutElastic,
       easeOutBounce: this.easeOutBounce,
+      smoothStep: this.smoothStep,
+      smootherStep: this.smootherStep,
+      easeInOutCubic: this.easeInOutCubic,
     }
     return easings[name] || this.easeOutQuart
   }
@@ -418,6 +417,36 @@ export class LineChart {
     return series.color ?? series.lineStyle?.color ?? SERIES_COLORS[index % SERIES_COLORS.length]!
   }
 
+  /**
+   * 将颜色转换为带透明度的 rgba 格式
+   */
+  private colorWithOpacity(color: string, opacity: number): string {
+    // 如果已经是 rgba 格式
+    if (color.startsWith('rgba')) {
+      return color.replace(/[\d.]+\)$/, `${opacity})`)
+    }
+
+    // 如果是 rgb 格式
+    if (color.startsWith('rgb(')) {
+      return color.replace('rgb(', 'rgba(').replace(')', `, ${opacity})`)
+    }
+
+    // 如果是 hex 格式
+    if (color.startsWith('#')) {
+      let hex = color.slice(1)
+      if (hex.length === 3) {
+        hex = hex.split('').map(c => c + c).join('')
+      }
+      const r = parseInt(hex.slice(0, 2), 16)
+      const g = parseInt(hex.slice(2, 4), 16)
+      const b = parseInt(hex.slice(4, 6), 16)
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`
+    }
+
+    // 其他情况，尝试使用 CSS 颜色
+    return color
+  }
+
   private getYRange(): { min: number; max: number } {
     const series = this.options.series || []
     const enabledData = series
@@ -490,17 +519,16 @@ export class LineChart {
     // 简单的图例点击检测
     if (pos.y < 30 && this.options.legend?.show !== false) {
       const series = this.options.series || []
-      this.ctx.font = '12px Inter, sans-serif'
       let totalWidth = 0
       series.forEach((s, i) => {
-        totalWidth += this.ctx.measureText(s.name || `系列${i + 1}`).width + 24 + (i < series.length - 1 ? 16 : 0)
+        totalWidth += this.renderer.measureText(s.name || `系列${i + 1}`, 12) + 24 + (i < series.length - 1 ? 16 : 0)
       })
 
       let x = (this.options.width - totalWidth) / 2
       for (let i = 0; i < series.length; i++) {
         const s = series[i]!
         const name = s.name || `系列${i + 1}`
-        const itemWidth = this.ctx.measureText(name).width + 24
+        const itemWidth = this.renderer.measureText(name, 12) + 24
         if (pos.x >= x && pos.x <= x + itemWidth) {
           if (this.enabledSeries.has(name)) {
             this.enabledSeries.delete(name)
@@ -571,41 +599,8 @@ export class LineChart {
 
     if (!options.series?.length) return
 
-    // SVG 模式使用渲染器接口
-    if (renderer.getType() === 'svg') {
-      this.renderWithRenderer()
-      return
-    }
-
-    // Canvas 模式使用原有逻辑
-    const ctx = renderer.getContext2D()
-    if (!ctx) return
-
-    // 绘制图例
-    if (options.legend?.show !== false) {
-      this.drawLegend()
-    }
-
-    // 绘制网格
-    if (options.grid?.show !== false) {
-      this.drawGrid()
-    }
-
-    // 绘制坐标轴
-    this.drawAxes()
-
-    // 绘制悬停参考线
-    if (this.hoverIndex >= 0) {
-      this.drawHoverLine()
-    }
-
-    // 绘制数据
-    this.drawSeries()
-
-    // 绘制标记线
-    if (options.markLine?.data?.length) {
-      this.drawMarkLines()
-    }
+    // 统一使用渲染器接口进行渲染
+    this.renderWithRenderer()
   }
 
   /** SVG 渲染模式 */
@@ -637,9 +632,11 @@ export class LineChart {
     const xStep = chartRect.width / Math.max(labels.length - 1, 1)
     labels.forEach((label, i) => {
       const x = chartRect.x + i * xStep
+      // 第一个标签左对齐，最后一个标签右对齐，中间标签居中对齐
+      const textAlign = i === 0 ? 'left' : i === labels.length - 1 ? 'right' : 'center'
       renderer.drawText(
         { x, y: chartRect.y + chartRect.height + 20, text: label },
-        { fill: colors.textSecondary, fontSize: 11, textAlign: 'center' }
+        { fill: colors.textSecondary, fontSize: 11, textAlign: textAlign as 'left' | 'center' | 'right' }
       )
     })
 
@@ -654,6 +651,11 @@ export class LineChart {
       )
     }
 
+    // 获取动画配置和进度
+    const config = this.getAnimationConfig()
+    const animProgress = this.animationProgress
+    const baseY = chartRect.y + chartRect.height
+
     // 绘制数据线
     series.forEach((s, seriesIndex) => {
       if (!this.enabledSeries.has(s.name || '')) return
@@ -663,25 +665,56 @@ export class LineChart {
       s.data.forEach((value, i) => {
         if (value === null) return
         const x = chartRect.x + i * xStep
-        const y = chartRect.y + chartRect.height - ((value - min) / (max - min)) * chartRect.height
-        points.push({ x, y })
+        let targetY = chartRect.y + chartRect.height - ((value - min) / (max - min)) * chartRect.height
+
+        // 应用动画效果 - grow 动画
+        if (animProgress < 1 && !this.isUpdating && config.entryType === 'grow') {
+          targetY = baseY - (baseY - targetY) * animProgress
+        }
+
+        points.push({ x, y: targetY })
       })
 
       if (points.length < 2) return
 
-      // 绘制面积
+      // 计算动画裁剪进度（用于 drawLine 动画）
+      const isDrawLineAnim = config.entryType === 'drawLine' && animProgress < 1 && !this.isUpdating
+
+      // 如果是 drawLine 动画，使用插值计算可见点
+      let visiblePoints = points
+      if (isDrawLineAnim && points.length > 1) {
+        const totalLength = points.length - 1
+        const visibleLength = totalLength * animProgress
+        const fullPointCount = Math.floor(visibleLength)
+        const partialProgress = visibleLength - fullPointCount
+
+        // 包含完整的点
+        visiblePoints = points.slice(0, fullPointCount + 1)
+
+        // 如果有部分进度，添加插值点实现平滑过渡
+        if (partialProgress > 0 && fullPointCount < totalLength) {
+          const p1 = points[fullPointCount]!
+          const p2 = points[fullPointCount + 1]!
+          visiblePoints.push({
+            x: p1.x + (p2.x - p1.x) * partialProgress,
+            y: p1.y + (p2.y - p1.y) * partialProgress,
+          })
+        }
+      }
+
+      // 绘制面积 - 使用正确的颜色格式
       if (s.areaStyle) {
         const opacity = typeof s.areaStyle === 'object' ? s.areaStyle.opacity ?? 0.3 : 0.3
         renderer.drawArea(
-          points,
+          visiblePoints,
           chartRect.y + chartRect.height,
           {
             type: 'linear',
             x1: 0, y1: chartRect.y,
             x2: 0, y2: chartRect.y + chartRect.height,
             stops: [
-              { offset: 0, color: color.replace(')', `, ${opacity})`.replace('rgb', 'rgba')) },
-              { offset: 1, color: color.replace(')', ', 0.05)').replace('rgb', 'rgba') },
+              { offset: 0, color: this.colorWithOpacity(color, opacity) },
+              { offset: 1, color: this.colorWithOpacity(color, 0.05) },
             ]
           },
           s.smooth
@@ -690,210 +723,100 @@ export class LineChart {
 
       // 绘制线条
       const lineDash = s.lineStyle?.type === 'dashed' ? [6, 4] : s.lineStyle?.type === 'dotted' ? [2, 2] : undefined
-      renderer.drawLine(points, {
+      renderer.drawLine(visiblePoints, {
         stroke: color,
         lineWidth: s.lineStyle?.width ?? 2,
         lineDash,
       }, s.smooth)
 
-      // 绘制数据点
+      // 绘制数据点 - 使用填充圆点，与 Canvas 模式一致
       if (s.showSymbol !== false) {
-        points.forEach((p) => {
+        visiblePoints.forEach((p) => {
           renderer.drawCircle(
             { x: p.x, y: p.y, radius: s.symbolSize ?? 4 },
-            { fill: colors.background, stroke: color, lineWidth: 2 }
+            { fill: color, stroke: color, lineWidth: 0 }
           )
         })
       }
     })
 
-    // 绘制图例
+    // 绘制悬停参考线
+    if (this.hoverIndex >= 0) {
+      const hoverX = chartRect.x + xStep * this.hoverIndex
+      renderer.drawLine(
+        [{ x: hoverX, y: chartRect.y }, { x: hoverX, y: chartRect.y + chartRect.height }],
+        { stroke: colors.grid, lineWidth: 1, lineDash: [4, 4] }
+      )
+    }
+
+    // 绘制标记线
+    if (options.markLine?.data?.length) {
+      const allData = series
+        .filter(s => this.enabledSeries.has(s.name || ''))
+        .flatMap(s => s.data.filter((v): v is number => v !== null))
+
+      if (allData.length) {
+        const avg = allData.reduce((a, b) => a + b, 0) / allData.length
+        const minVal = Math.min(...allData)
+        const maxVal = Math.max(...allData)
+
+        options.markLine.data.forEach(mark => {
+          let yValue: number, label: string, markColor: string
+          if ('type' in mark) {
+            if (mark.type === 'average') { yValue = avg; label = `平均: ${this.formatNumber(avg)}`; markColor = '#f59e0b' }
+            else if (mark.type === 'max') { yValue = maxVal; label = `最大: ${this.formatNumber(maxVal)}`; markColor = '#ef4444' }
+            else { yValue = minVal; label = `最小: ${this.formatNumber(minVal)}`; markColor = '#10b981' }
+          } else {
+            yValue = mark.yAxis; label = mark.name || this.formatNumber(yValue); markColor = mark.color || '#ef4444'
+          }
+
+          const markY = chartRect.y + chartRect.height - ((yValue - min) / (max - min)) * chartRect.height
+          renderer.drawLine(
+            [{ x: chartRect.x, y: markY }, { x: chartRect.x + chartRect.width, y: markY }],
+            { stroke: markColor, lineWidth: 1, lineDash: [6, 4] }
+          )
+          renderer.drawText(
+            { x: chartRect.x + chartRect.width, y: markY - 2, text: label },
+            { fill: markColor, fontSize: 10, textAlign: 'right', textBaseline: 'bottom' }
+          )
+        })
+      }
+    }
+
+    // 绘制图例 - 使用圆形图例
     if (options.legend?.show !== false) {
-      let legendX = options.width / 2 - (series.length * 80) / 2
+      const dotSize = 8
+      // 计算图例总宽度
+      let totalWidth = 0
+      series.forEach((s, i) => {
+        const name = s.name || `系列${i + 1}`
+        const textWidth = renderer.measureText(name, 12)
+        totalWidth += textWidth + dotSize + 8 + (i < series.length - 1 ? 16 : 0)
+      })
+
+      let legendX = (options.width - totalWidth) / 2
+      const legendY = 15
+
       series.forEach((s, i) => {
         const color = this.getSeriesColor(i, s)
         const enabled = this.enabledSeries.has(s.name || '')
-        renderer.drawRect(
-          { x: legendX, y: 12, width: 16, height: 3 },
-          { fill: enabled ? color : colors.textSecondary }
+        const name = s.name || `系列${i + 1}`
+
+        // 绘制圆形图例
+        renderer.drawCircle(
+          { x: legendX + dotSize / 2, y: legendY, radius: dotSize / 2 },
+          { fill: enabled ? color : colors.textSecondary, opacity: enabled ? 1 : 0.4 }
         )
+
+        // 绘制图例文本
         renderer.drawText(
-          { x: legendX + 22, y: 15, text: s.name || `系列${i + 1}` },
-          { fill: enabled ? colors.text : colors.textSecondary, fontSize: 12, textBaseline: 'middle' }
+          { x: legendX + dotSize + 6, y: legendY, text: name },
+          { fill: enabled ? colors.text : colors.textSecondary, fontSize: 12, textBaseline: 'middle', textAlign: 'left' }
         )
-        legendX += 80
+
+        const textWidth = renderer.measureText(name, 12)
+        legendX += textWidth + dotSize + 8 + 16
       })
-    }
-  }
-
-  private drawMarkLines(): void {
-    const { ctx, chartRect, options } = this
-    const { min, max } = this.getYRange()
-    const series = options.series || []
-    const markData = options.markLine?.data || []
-
-    const allData = series
-      .filter(s => this.enabledSeries.has(s.name || ''))
-      .flatMap(s => s.data.filter((v): v is number => v !== null))
-    if (!allData.length) return
-
-    const avg = allData.reduce((a, b) => a + b, 0) / allData.length
-    const minVal = Math.min(...allData)
-    const maxVal = Math.max(...allData)
-
-    markData.forEach(mark => {
-      let yValue: number, label: string, color: string
-      if ('type' in mark) {
-        if (mark.type === 'average') { yValue = avg; label = `平均: ${this.formatNumber(avg)}`; color = '#f59e0b' }
-        else if (mark.type === 'max') { yValue = maxVal; label = `最大: ${this.formatNumber(maxVal)}`; color = '#ef4444' }
-        else { yValue = minVal; label = `最小: ${this.formatNumber(minVal)}`; color = '#10b981' }
-      } else {
-        yValue = mark.yAxis; label = mark.name || this.formatNumber(yValue); color = mark.color || '#ef4444'
-      }
-
-      const y = chartRect.y + chartRect.height - ((yValue - min) / (max - min)) * chartRect.height
-      ctx.beginPath()
-      ctx.moveTo(chartRect.x, y)
-      ctx.lineTo(chartRect.x + chartRect.width, y)
-      ctx.strokeStyle = color
-      ctx.lineWidth = 1
-      ctx.setLineDash([6, 4])
-      ctx.stroke()
-      ctx.setLineDash([])
-
-      ctx.fillStyle = color
-      ctx.font = '10px Inter, sans-serif'
-      ctx.textAlign = 'right'
-      ctx.textBaseline = 'bottom'
-      ctx.fillText(label, chartRect.x + chartRect.width, y - 2)
-    })
-  }
-
-  private drawLegend(): void {
-    const { ctx, options } = this
-    const colors = this.colors
-    const series = options.series || []
-    const fontSize = 12
-    const dotSize = 8
-
-    ctx.font = `${fontSize}px Inter, sans-serif`
-
-    let totalWidth = 0
-    series.forEach((s, i) => {
-      const name = s.name || `系列${i + 1}`
-      totalWidth += ctx.measureText(name).width + dotSize + 8 + (i < series.length - 1 ? 16 : 0)
-    })
-
-    let x = (options.width - totalWidth) / 2
-    const y = 15
-
-    series.forEach((s, i) => {
-      const name = s.name || `系列${i + 1}`
-      const isEnabled = this.enabledSeries.has(name)
-      const color = this.getSeriesColor(i, s)
-
-      ctx.beginPath()
-      ctx.arc(x + dotSize / 2, y, dotSize / 2, 0, Math.PI * 2)
-      ctx.fillStyle = isEnabled ? color : '#64748b'
-      ctx.globalAlpha = isEnabled ? 1 : 0.4
-      ctx.fill()
-
-      ctx.fillStyle = colors.text
-      ctx.textAlign = 'left'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(name, x + dotSize + 6, y)
-      ctx.globalAlpha = 1
-
-      x += ctx.measureText(name).width + dotSize + 8 + 16
-    })
-  }
-
-  private drawGrid(): void {
-    const { ctx, chartRect } = this
-    const colors = this.colors
-    const labels = this.options.xAxis?.data || []
-    const xCount = Math.max(labels.length, 1)
-    const yCount = 5
-
-    ctx.strokeStyle = colors.grid
-    ctx.lineWidth = 0.5  // 更细的网格线
-
-    // 横线
-    for (let i = 0; i <= yCount; i++) {
-      const y = chartRect.y + (chartRect.height / yCount) * i
-      ctx.beginPath()
-      ctx.moveTo(chartRect.x, y)
-      ctx.lineTo(chartRect.x + chartRect.width, y)
-      ctx.stroke()
-    }
-
-    // 竖线 - 大数据量时减少竖线数量
-    const maxVerticalLines = 10
-    const verticalInterval = Math.max(1, Math.ceil(xCount / maxVerticalLines))
-    const xStep = chartRect.width / Math.max(xCount - 1, 1)
-    for (let i = 0; i < xCount; i += verticalInterval) {
-      const x = chartRect.x + xStep * i
-      ctx.beginPath()
-      ctx.moveTo(x, chartRect.y)
-      ctx.lineTo(x, chartRect.y + chartRect.height)
-      ctx.stroke()
-    }
-  }
-
-  private drawAxes(): void {
-    const { ctx, chartRect, options } = this
-    const colors = this.colors
-    const { min, max } = this.getYRange()
-    const labels = options.xAxis?.data || []
-
-    ctx.fillStyle = colors.textSecondary
-    ctx.font = '11px Inter, sans-serif'
-
-    // X 轴标签 - 自动采样
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'top'
-    const xStep = chartRect.width / Math.max(labels.length - 1, 1)
-
-    // 计算标签间隔
-    const configInterval = options.xAxis?.interval
-    let labelInterval: number
-    if (configInterval === 'auto' || configInterval === undefined) {
-      const maxLabels = Math.floor(chartRect.width / 50)
-      labelInterval = Math.max(1, Math.ceil(labels.length / maxLabels))
-    } else {
-      labelInterval = configInterval
-    }
-
-    const rotate = options.xAxis?.rotate ?? 0
-    const formatter = options.xAxis?.formatter
-
-    labels.forEach((label, i) => {
-      if (i % labelInterval !== 0 && i !== labels.length - 1) return
-
-      const x = chartRect.x + xStep * i
-      const y = chartRect.y + chartRect.height + 8
-      const displayLabel = formatter ? formatter(label, i) : label
-
-      if (rotate !== 0) {
-        ctx.save()
-        ctx.translate(x, y)
-        ctx.rotate((rotate * Math.PI) / 180)
-        ctx.textAlign = rotate > 0 ? 'left' : 'right'
-        ctx.fillText(displayLabel, 0, 0)
-        ctx.restore()
-      } else {
-        ctx.fillText(displayLabel, x, y)
-      }
-    })
-
-    // Y 轴标签
-    ctx.textAlign = 'right'
-    ctx.textBaseline = 'middle'
-    const yCount = 5
-    for (let i = 0; i <= yCount; i++) {
-      const value = min + (max - min) * (i / yCount)
-      const y = chartRect.y + chartRect.height - (chartRect.height / yCount) * i
-      ctx.fillText(this.formatNumber(value), chartRect.x - 8, y)
     }
   }
 
@@ -902,278 +825,6 @@ export class LineChart {
     if (Math.abs(num) >= 1000) return (num / 1000).toFixed(1) + 'K'
     if (Number.isInteger(num)) return String(num)
     return num.toFixed(1)
-  }
-
-  private drawHoverLine(): void {
-    const { ctx, chartRect, options } = this
-    const colors = this.colors
-    const labels = options.xAxis?.data || []
-    const xStep = chartRect.width / Math.max(labels.length - 1, 1)
-    const x = chartRect.x + xStep * this.hoverIndex
-
-    ctx.beginPath()
-    ctx.moveTo(x, chartRect.y)
-    ctx.lineTo(x, chartRect.y + chartRect.height)
-    ctx.strokeStyle = colors.grid
-    ctx.lineWidth = 1
-    ctx.setLineDash([4, 4])
-    ctx.stroke()
-    ctx.setLineDash([])
-  }
-
-  private drawSeries(): void {
-    const { chartRect, options } = this
-    const { min, max } = this.getYRange()
-    const labels = options.xAxis?.data || []
-    const xStep = chartRect.width / Math.max(labels.length - 1, 1)
-    const series = options.series || []
-
-    series.forEach((s, si) => {
-      if (!this.enabledSeries.has(s.name || '')) return
-
-      const color = this.getSeriesColor(si, s)
-      const lineWidth = s.lineStyle?.width ?? 2
-      const showSymbol = s.showSymbol !== false
-      const symbolSize = s.symbolSize ?? 4
-
-      // 计算点坐标
-      const baseY = chartRect.y + chartRect.height
-      const config = this.getAnimationConfig()
-      const points: { x: number; y: number; value: number | null }[] = s.data.map((v, i) => {
-        const targetY = v !== null ? chartRect.y + chartRect.height - ((v - min) / (max - min)) * chartRect.height : NaN
-        let y = targetY
-
-        // 入场动画效果
-        if (this.animationProgress < 1 && !this.isUpdating && v !== null) {
-          switch (config.entryType) {
-            case 'grow':
-              // 从底部生长
-              y = baseY - (baseY - targetY) * this.animationProgress
-              break
-            case 'drawLine':
-              // 从左到右绘制 - 在 drawLine 方法中处理
-              break
-            case 'fadeIn':
-              // 淡入 - 在绘制时通过 opacity 处理
-              break
-            default:
-              break
-          }
-        }
-
-        // 更新动画：从旧值过渡到新值
-        if (this.isUpdating && v !== null) {
-          const oldValue = this.previousData[si]?.[i] ?? v
-          const oldY = oldValue !== null ? chartRect.y + chartRect.height - ((oldValue - min) / (max - min)) * chartRect.height : targetY
-          y = oldY + (targetY - oldY) * this.updateAnimationProgress
-        }
-
-        return { x: chartRect.x + xStep * i, y, value: v }
-      })
-
-      // 计算动画裁剪进度（用于 drawLine 动画）
-      const clipProgress = config.entryType === 'drawLine' && this.animationProgress < 1 && !this.isUpdating
-        ? this.animationProgress
-        : 1
-
-      // 绘制面积
-      if (s.areaStyle) {
-        this.drawArea(points, color, s, clipProgress)
-      }
-
-      // 绘制线条
-      this.drawLineWithClip(points, color, lineWidth, s, clipProgress)
-
-      // 绘制数据点
-      if (showSymbol) {
-        this.drawSymbols(points, color, s.symbol || 'circle', symbolSize, clipProgress)
-      }
-    })
-  }
-
-  private drawLineWithClip(points: { x: number; y: number; value: number | null }[], color: string, lineWidth: number, series: LineSeriesData, clipProgress: number = 1): void {
-    const { ctx, chartRect } = this
-
-    // 设置裁剪区域实现从左到右绘制动画
-    if (clipProgress < 1) {
-      ctx.save()
-      ctx.beginPath()
-      ctx.rect(chartRect.x, chartRect.y, chartRect.width * clipProgress, chartRect.height)
-      ctx.clip()
-    }
-
-    ctx.strokeStyle = color
-    ctx.lineWidth = lineWidth
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-
-    const lineStyle = series.lineStyle?.type || 'solid'
-    ctx.setLineDash(lineStyle === 'dashed' ? [8, 4] : lineStyle === 'dotted' ? [2, 4] : [])
-
-    ctx.beginPath()
-    let started = false
-
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i]!
-      if (p.value === null) {
-        if (!series.connectNulls) started = false
-        continue
-      }
-
-      if (!started) {
-        ctx.moveTo(p.x, p.y)
-        started = true
-        continue
-      }
-
-      if (series.smooth) {
-        // 平滑曲线
-        this.drawSmoothSegment(points, i)
-      } else if (series.step) {
-        // 阶梯线
-        const prev = points[i - 1]!
-        if (series.step === 'start') {
-          ctx.lineTo(p.x, prev.y)
-          ctx.lineTo(p.x, p.y)
-        } else if (series.step === 'end') {
-          ctx.lineTo(prev.x, p.y)
-          ctx.lineTo(p.x, p.y)
-        } else {
-          const midX = (prev.x + p.x) / 2
-          ctx.lineTo(midX, prev.y)
-          ctx.lineTo(midX, p.y)
-          ctx.lineTo(p.x, p.y)
-        }
-      } else {
-        ctx.lineTo(p.x, p.y)
-      }
-    }
-
-    ctx.stroke()
-    ctx.setLineDash([])
-
-    if (clipProgress < 1) {
-      ctx.restore()
-    }
-  }
-
-  private drawSmoothSegment(points: { x: number; y: number }[], i: number): void {
-    const { ctx } = this
-    const tension = 0.3
-
-    const p0 = points[Math.max(0, i - 2)]!
-    const p1 = points[i - 1]!
-    const p2 = points[i]!
-    const p3 = points[Math.min(points.length - 1, i + 1)]!
-
-    if (!p1 || !p2 || isNaN(p1.y) || isNaN(p2.y)) return
-
-    const cp1x = p1.x + (p2.x - p0.x) * tension
-    const cp1y = p1.y + (p2.y - p0.y) * tension
-    const cp2x = p2.x - (p3.x - p1.x) * tension
-    const cp2y = p2.y - (p3.y - p1.y) * tension
-
-    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
-  }
-
-  private drawArea(points: { x: number; y: number; value: number | null }[], color: string, series: LineSeriesData, clipProgress: number = 1): void {
-    const { ctx, chartRect } = this
-    const baseY = chartRect.y + chartRect.height
-
-    // 设置裁剪区域实现从左到右动画
-    if (clipProgress < 1) {
-      ctx.save()
-      ctx.beginPath()
-      ctx.rect(chartRect.x, chartRect.y, chartRect.width * clipProgress, chartRect.height)
-      ctx.clip()
-    }
-
-    // 解析颜色并创建更柔和的渐变
-    const opacity = typeof series.areaStyle === 'object' ? (series.areaStyle.opacity ?? 0.25) : 0.25
-    const rgb = this.hexToRgb(color)
-
-    const gradient = ctx.createLinearGradient(0, chartRect.y, 0, baseY)
-    gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`)
-    gradient.addColorStop(0.5, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity * 0.5})`)
-    gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`)
-
-    ctx.fillStyle = gradient
-    ctx.globalAlpha = 1
-    ctx.beginPath()
-
-    let started = false
-    let lastValidX = 0
-
-    for (let i = 0; i < points.length; i++) {
-      const p = points[i]!
-      if (p.value === null) continue
-
-      if (!started) {
-        ctx.moveTo(p.x, baseY)
-        ctx.lineTo(p.x, p.y)
-        started = true
-      } else {
-        if (series.smooth) {
-          this.drawSmoothSegment(points, i)
-        } else {
-          ctx.lineTo(p.x, p.y)
-        }
-      }
-      lastValidX = p.x
-    }
-
-    ctx.lineTo(lastValidX, baseY)
-    ctx.closePath()
-    ctx.fill()
-    ctx.globalAlpha = 1
-
-    if (clipProgress < 1) {
-      ctx.restore()
-    }
-  }
-
-  private drawSymbols(points: { x: number; y: number; value: number | null }[], color: string, symbol: string, size: number, clipProgress: number = 1): void {
-    if (symbol === 'none') return
-
-    const { ctx, chartRect } = this
-    const clipX = chartRect.x + chartRect.width * clipProgress
-
-    points.forEach((p, i) => {
-      if (p.value === null) return
-      // 裁剪动画：只绘制在裁剪区域内的点
-      if (clipProgress < 1 && p.x > clipX) return
-
-      const isHover = i === this.hoverIndex
-      const r = isHover ? size + 2 : size
-
-      ctx.fillStyle = color
-      ctx.strokeStyle = '#fff'
-      ctx.lineWidth = 2
-
-      ctx.beginPath()
-      switch (symbol) {
-        case 'rect':
-          ctx.rect(p.x - r, p.y - r, r * 2, r * 2)
-          break
-        case 'diamond':
-          ctx.moveTo(p.x, p.y - r)
-          ctx.lineTo(p.x + r, p.y)
-          ctx.lineTo(p.x, p.y + r)
-          ctx.lineTo(p.x - r, p.y)
-          ctx.closePath()
-          break
-        case 'triangle':
-          ctx.moveTo(p.x, p.y - r)
-          ctx.lineTo(p.x + r, p.y + r)
-          ctx.lineTo(p.x - r, p.y + r)
-          ctx.closePath()
-          break
-        default: // circle
-          ctx.arc(p.x, p.y, r, 0, Math.PI * 2)
-      }
-      ctx.fill()
-      if (isHover) ctx.stroke()
-    })
   }
 
   private hexToRgb(hex: string): { r: number; g: number; b: number } {
