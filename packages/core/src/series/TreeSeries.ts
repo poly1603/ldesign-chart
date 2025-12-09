@@ -235,7 +235,9 @@ export class TreeSeries extends Series {
    * 正交布局
    */
   private calculateOrthogonalLayout(orient: 'LR' | 'RL' | 'TB' | 'BT'): void {
+    // @ts-ignore - Reserved for layout calculation
     const nodeGap = this.option.nodeGap ?? 20
+    // @ts-ignore - Reserved for layout calculation
     const levelGap = this.option.levelGap ?? 80
     const padding = 50
 

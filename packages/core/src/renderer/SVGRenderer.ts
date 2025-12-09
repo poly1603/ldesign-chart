@@ -31,6 +31,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg'
  */
 export class SVGRenderer implements IRenderer {
   private svg: SVGSVGElement | null = null
+  // @ts-ignore - Reserved for future use
   private container: HTMLElement | null = null
   private width = 0
   private height = 0
@@ -574,7 +575,7 @@ export class SVGRenderer implements IRenderer {
   /**
    * 绘制填充区域（面积图）
    */
-  drawArea(points: Point[], baseY: number, fill: string | GradientDef, smooth: boolean = false): void {
+  drawArea(points: Point[], baseY: number, fill: string | GradientDef, smooth: boolean = false, opacity: number = 1): void {
     if (!this.svg || points.length < 2) return
 
     const path = document.createElementNS(SVG_NS, 'path')
@@ -632,6 +633,9 @@ export class SVGRenderer implements IRenderer {
     }
 
     path.setAttribute('stroke', 'none')
+    if (opacity < 1) {
+      path.setAttribute('opacity', String(opacity))
+    }
     this.applyTransform(path)
     this.appendElement(path)
   }
@@ -793,27 +797,134 @@ export class SVGRenderer implements IRenderer {
   }
 
   /**
-   * 绘制多边形
+   * 绘制堆叠面积（顶部和底部都是曲线）
    */
-  drawPolygon(points: Point[], style: PolygonStyle): void {
+  drawStackedArea(
+    topPoints: Point[],
+    bottomPoints: Point[],
+    style: PolygonStyle,
+    smooth: boolean = false
+  ): void {
+    if (!this.svg || topPoints.length < 2) return
+
+    const path = document.createElementNS(SVG_NS, 'path')
+    let d = `M ${topPoints[0]!.x},${topPoints[0]!.y}`
+
+    // 绘制顶部曲线
+    if (smooth) {
+      for (let i = 1; i < topPoints.length; i++) {
+        const p0 = topPoints[Math.max(0, i - 2)]!
+        const p1 = topPoints[i - 1]!
+        const p2 = topPoints[i]!
+        const p3 = topPoints[Math.min(topPoints.length - 1, i + 1)]!
+
+        const tension = 0.3
+        const cp1x = p1.x + (p2.x - p0.x) * tension
+        const cp1y = p1.y + (p2.y - p0.y) * tension
+        const cp2x = p2.x - (p3.x - p1.x) * tension
+        const cp2y = p2.y - (p3.y - p1.y) * tension
+
+        d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`
+      }
+    } else {
+      for (let i = 1; i < topPoints.length; i++) {
+        d += ` L ${topPoints[i]!.x},${topPoints[i]!.y}`
+      }
+    }
+
+    // 连接到底部最后一点
+    const lastBottom = bottomPoints[bottomPoints.length - 1]!
+    d += ` L ${lastBottom.x},${lastBottom.y}`
+
+    // 绘制底部曲线（反向）
+    if (smooth) {
+      for (let i = bottomPoints.length - 2; i >= 0; i--) {
+        const p0 = bottomPoints[Math.min(bottomPoints.length - 1, i + 2)]!
+        const p1 = bottomPoints[i + 1]!
+        const p2 = bottomPoints[i]!
+        const p3 = bottomPoints[Math.max(0, i - 1)]!
+
+        const tension = 0.3
+        const cp1x = p1.x + (p2.x - p0.x) * tension
+        const cp1y = p1.y + (p2.y - p0.y) * tension
+        const cp2x = p2.x - (p3.x - p1.x) * tension
+        const cp2y = p2.y - (p3.y - p1.y) * tension
+
+        d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`
+      }
+    } else {
+      for (let i = bottomPoints.length - 2; i >= 0; i--) {
+        d += ` L ${bottomPoints[i]!.x},${bottomPoints[i]!.y}`
+      }
+    }
+
+    d += ' Z'
+    path.setAttribute('d', d)
+    path.setAttribute('fill', style.fill || 'none')
+    path.setAttribute('stroke', 'none')
+    if (style.opacity !== undefined) {
+      path.setAttribute('opacity', String(style.opacity))
+    }
+    path.style.transition = 'all 0.3s ease-out'
+    this.applyTransform(path)
+    this.appendElement(path)
+  }
+
+  /**
+   * 绘制多边形
+   * @param smooth - 是否使用平滑曲线
+   */
+  drawPolygon(points: Point[], style: PolygonStyle, smooth: boolean = false): void {
     if (!this.svg || points.length < 3) return
 
-    const polygon = document.createElementNS(SVG_NS, 'polygon')
-    const pointsStr = points.map(p => `${p.x},${p.y}`).join(' ')
-    polygon.setAttribute('points', pointsStr)
-    polygon.setAttribute('fill', style.fill || 'none')
-    polygon.setAttribute('stroke', style.stroke || 'none')
-    if (style.lineWidth) {
-      polygon.setAttribute('stroke-width', String(style.lineWidth))
-    }
-    if (style.opacity !== undefined) {
-      polygon.setAttribute('opacity', String(style.opacity))
-    }
+    if (smooth) {
+      // 使用 path 元素绘制平滑曲线多边形
+      const path = document.createElementNS(SVG_NS, 'path')
+      let d = `M ${points[0]!.x},${points[0]!.y}`
 
-    // CSS transition for smooth animation
-    polygon.style.transition = 'all 0.3s ease-out'
+      for (let i = 1; i < points.length; i++) {
+        const p0 = points[Math.max(0, i - 2)]!
+        const p1 = points[i - 1]!
+        const p2 = points[i]!
+        const p3 = points[Math.min(points.length - 1, i + 1)]!
 
-    this.applyTransform(polygon)
-    this.appendElement(polygon)
+        const tension = 0.3
+        const cp1x = p1.x + (p2.x - p0.x) * tension
+        const cp1y = p1.y + (p2.y - p0.y) * tension
+        const cp2x = p2.x - (p3.x - p1.x) * tension
+        const cp2y = p2.y - (p3.y - p1.y) * tension
+
+        d += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`
+      }
+      d += ' Z'
+
+      path.setAttribute('d', d)
+      path.setAttribute('fill', style.fill || 'none')
+      path.setAttribute('stroke', style.stroke || 'none')
+      if (style.lineWidth) {
+        path.setAttribute('stroke-width', String(style.lineWidth))
+      }
+      if (style.opacity !== undefined) {
+        path.setAttribute('opacity', String(style.opacity))
+      }
+      path.style.transition = 'all 0.3s ease-out'
+      this.applyTransform(path)
+      this.appendElement(path)
+    } else {
+      const polygon = document.createElementNS(SVG_NS, 'polygon')
+      const pointsStr = points.map(p => `${p.x},${p.y}`).join(' ')
+      polygon.setAttribute('points', pointsStr)
+      polygon.setAttribute('fill', style.fill || 'none')
+      polygon.setAttribute('stroke', style.stroke || 'none')
+      if (style.lineWidth) {
+        polygon.setAttribute('stroke-width', String(style.lineWidth))
+      }
+      if (style.opacity !== undefined) {
+        polygon.setAttribute('opacity', String(style.opacity))
+      }
+      polygon.style.transition = 'all 0.3s ease-out'
+      this.applyTransform(polygon)
+      this.appendElement(polygon)
+    }
   }
 }

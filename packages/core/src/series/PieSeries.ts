@@ -740,6 +740,7 @@ export class PieSeries extends EventEmitter {
   /**
    * 渲染标签引导线（旧版，保留兼容）
    */
+  // @ts-ignore - Reserved for backward compatibility
   private renderLabelLine(
     renderer: IRenderer,
     sector: { outerRadius: number },

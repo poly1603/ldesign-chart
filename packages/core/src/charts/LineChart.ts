@@ -628,15 +628,21 @@ export class LineChart {
       }
     }
 
-    // 绘制 X 轴标签
+    // 绘制 X 轴标签 - 智能间隔避免重叠
     const xStep = chartRect.width / Math.max(labels.length - 1, 1)
+    const labelInterval = this.calculateLabelInterval(labels, chartRect.width, renderer)
+
     labels.forEach((label, i) => {
+      // 根据间隔决定是否显示此标签
+      if (labelInterval > 1 && i % labelInterval !== 0 && i !== labels.length - 1) {
+        return // 跳过此标签
+      }
+
       const x = chartRect.x + i * xStep
-      // 第一个标签左对齐，最后一个标签右对齐，中间标签居中对齐
-      const textAlign = i === 0 ? 'left' : i === labels.length - 1 ? 'right' : 'center'
+      // 所有标签居中对齐，确保与数据点位置一致
       renderer.drawText(
         { x, y: chartRect.y + chartRect.height + 20, text: label },
-        { fill: colors.textSecondary, fontSize: 11, textAlign: textAlign as 'left' | 'center' | 'right' }
+        { fill: colors.textSecondary, fontSize: 11, textAlign: 'center' }
       )
     })
 
@@ -677,24 +683,30 @@ export class LineChart {
 
       if (points.length < 2) return
 
+      // 处理阶梯线 - 将点转换为阶梯形状
+      let stepPoints = points
+      if (s.step) {
+        stepPoints = this.convertToStepPoints(points, s.step)
+      }
+
       // 计算动画裁剪进度（用于 drawLine 动画）
       const isDrawLineAnim = config.entryType === 'drawLine' && animProgress < 1 && !this.isUpdating
 
       // 如果是 drawLine 动画，使用插值计算可见点
-      let visiblePoints = points
-      if (isDrawLineAnim && points.length > 1) {
-        const totalLength = points.length - 1
+      let visiblePoints = stepPoints
+      if (isDrawLineAnim && stepPoints.length > 1) {
+        const totalLength = stepPoints.length - 1
         const visibleLength = totalLength * animProgress
         const fullPointCount = Math.floor(visibleLength)
         const partialProgress = visibleLength - fullPointCount
 
         // 包含完整的点
-        visiblePoints = points.slice(0, fullPointCount + 1)
+        visiblePoints = stepPoints.slice(0, fullPointCount + 1)
 
         // 如果有部分进度，添加插值点实现平滑过渡
         if (partialProgress > 0 && fullPointCount < totalLength) {
-          const p1 = points[fullPointCount]!
-          const p2 = points[fullPointCount + 1]!
+          const p1 = stepPoints[fullPointCount]!
+          const p2 = stepPoints[fullPointCount + 1]!
           visiblePoints.push({
             x: p1.x + (p2.x - p1.x) * partialProgress,
             y: p1.y + (p2.y - p1.y) * partialProgress,
@@ -740,12 +752,14 @@ export class LineChart {
       }
     })
 
-    // 绘制悬停参考线
+    // 绘制悬停参考线 - 使用更明显的样式
     if (this.hoverIndex >= 0) {
       const hoverX = chartRect.x + xStep * this.hoverIndex
+      // 主参考线 - 使用主题色半透明
+      const hoverLineColor = this.options.theme === 'dark' ? 'rgba(99, 102, 241, 0.6)' : 'rgba(99, 102, 241, 0.5)'
       renderer.drawLine(
         [{ x: hoverX, y: chartRect.y }, { x: hoverX, y: chartRect.y + chartRect.height }],
-        { stroke: colors.grid, lineWidth: 1, lineDash: [4, 4] }
+        { stroke: hoverLineColor, lineWidth: 2 }
       )
     }
 
@@ -825,6 +839,73 @@ export class LineChart {
     if (Math.abs(num) >= 1000) return (num / 1000).toFixed(1) + 'K'
     if (Number.isInteger(num)) return String(num)
     return num.toFixed(1)
+  }
+
+  /**
+   * 将点数组转换为阶梯线点数组
+   * @param points 原始点数组
+   * @param stepType 阶梯类型：'start' | 'middle' | 'end'
+   */
+  private convertToStepPoints(points: Array<{ x: number; y: number }>, stepType: 'start' | 'middle' | 'end'): Array<{ x: number; y: number }> {
+    if (points.length < 2) return points
+
+    const result: Array<{ x: number; y: number }> = []
+
+    for (let i = 0; i < points.length; i++) {
+      const curr = points[i]!
+      const next = points[i + 1]
+
+      if (i === 0) {
+        result.push({ x: curr.x, y: curr.y })
+      }
+
+      if (next) {
+        if (stepType === 'start') {
+          // 起点阶梯：先垂直变化，再水平延伸
+          result.push({ x: curr.x, y: next.y })
+          result.push({ x: next.x, y: next.y })
+        } else if (stepType === 'end') {
+          // 终点阶梯：先水平延伸，再垂直变化
+          result.push({ x: next.x, y: curr.y })
+          result.push({ x: next.x, y: next.y })
+        } else {
+          // 中点阶梯：在中点位置垂直变化
+          const midX = (curr.x + next.x) / 2
+          result.push({ x: midX, y: curr.y })
+          result.push({ x: midX, y: next.y })
+          result.push({ x: next.x, y: next.y })
+        }
+      }
+    }
+
+    return result
+  }
+
+  /**
+   * 计算X轴标签显示间隔，避免标签重叠
+   * @param labels 标签数组
+   * @param chartWidth 图表宽度
+   * @param renderer 渲染器
+   */
+  private calculateLabelInterval(labels: string[], chartWidth: number, renderer: IRenderer): number {
+    if (labels.length <= 1) return 1
+
+    // 配置的间隔优先
+    const configInterval = this.options.xAxis?.interval
+    if (typeof configInterval === 'number') return Math.max(1, configInterval)
+
+    // 自动计算间隔
+    const minLabelSpacing = 50 // 最小标签间距（像素）
+    const avgLabelWidth = labels.reduce((sum, label) => sum + renderer.measureText(label, 11), 0) / labels.length
+    const availableWidth = chartWidth / (labels.length - 1)
+
+    // 如果标签太密集，计算需要跳过的数量
+    if (availableWidth < avgLabelWidth + minLabelSpacing) {
+      const idealInterval = Math.ceil((avgLabelWidth + minLabelSpacing) / availableWidth)
+      return Math.min(idealInterval, Math.ceil(labels.length / 5)) // 至少显示5个标签
+    }
+
+    return 1
   }
 
   private hexToRgb(hex: string): { r: number; g: number; b: number } {

@@ -61,7 +61,8 @@ export class CalendarCoordinate implements ICoordinate {
   // 缓存的日期到位置映射
   private dateMap: Map<string, { row: number; col: number }> = new Map()
   private weeks: number = 0
-  private daysPerWeek: number = 7
+  // @ts-ignore - Reserved for future use
+  private _daysPerWeek: number = 7
 
   constructor(options: CalendarCoordinateOptions) {
     this.options = options

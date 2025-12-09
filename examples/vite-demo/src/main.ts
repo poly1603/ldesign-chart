@@ -73,6 +73,33 @@ import {
   initBumpChart,
   initNegativeAreaChart,
   initLargeScaleLineChart,
+  // 新增折线图
+  initTemperatureChart,
+  initComparisonChart,
+  initRealtimeChart,
+  initMultiRangeChart,
+  initMarkedLineChart,
+  initPercentageChart,
+  // 更多场景折线图
+  initStockTrendChart,
+  initTrafficChart,
+  initSalesTrendChart,
+  initBudgetActualChart,
+  initUserGrowthChart,
+  initMoMGrowthChart,
+  initMultiMetricChart,
+  initCyclicDataChart,
+  initGoalProgressChart,
+  initSeasonalTrendChart,
+  initConversionLineChart,
+  initLogGrowthChart,
+  initVolatilityChart,
+  initIntradayChart,
+  initEnergyChart,
+  initRegionCompareChart,
+  initForecastChart,
+  initHealthMetricChart,
+  initCompetitorChart,
   disposeAllLineCharts,
   // 柱状图
   initBarChart,
@@ -83,6 +110,25 @@ import {
   initWaterfallChart,
   initGradientBarChart,
   initPolarBarChart,
+  // 新增柱状图
+  initRankingBarChart,
+  initPercentStackBarChart,
+  initBidirectionalBarChart,
+  initMultiSeriesBarChart,
+  initSalesBarChart,
+  initBudgetBarChart,
+  initYoYGrowthBarChart,
+  initHistogramChart,
+  initBackgroundBarChart,
+  initRangeBarChart,
+  initMonthlyBarChart,
+  initCategoryBarChart,
+  initGoalBarChart,
+  initMoMChangeBarChart,
+  initProfitBarChart,
+  initYearlyTrendBarChart,
+  initUserDistBarChart,
+  initOrderStatusBarChart,
   disposeAllBarCharts,
   // 饼图
   initPieChart,
@@ -97,6 +143,16 @@ import {
   initMultiScatterChart,
   initQuadrantScatterChart,
   disposeAllScatterCharts,
+  // 混合图表
+  initBasicMixedChart,
+  initDualAxisMixedChart,
+  initSalesProfitMixedChart,
+  initMultiBarLineMixedChart,
+  initWeatherMixedChart,
+  initInventoryMixedChart,
+  initTrafficConversionMixedChart,
+  initAreaBarMixedChart,
+  disposeAllMixedCharts,
 } from './charts'
 
 // 类型定义
@@ -105,7 +161,7 @@ interface ChartConfig {
   title: string
   subtitle?: string
   description?: string
-  type: 'line' | 'bar' | 'pie' | 'scatter'
+  type: 'line' | 'bar' | 'pie' | 'scatter' | 'mixed'
   icon?: unknown
   init: () => void
 }
@@ -164,10 +220,15 @@ const navSections: NavSection[] = [
     ],
   },
   {
+    title: '组合图表',
+    items: [
+      { id: 'mixed', label: '图表组合', icon: Layers },
+    ],
+  },
+  {
     title: '特殊图表',
     items: [
       { id: 'pictorial', label: '象形柱图', icon: BarChart2 },
-      { id: 'mixed', label: '混合图表', icon: Layers },
     ],
   },
 ]
@@ -191,8 +252,35 @@ const chartConfigs: ChartConfig[] = [
   { id: 'negative-area-chart', title: '正负区域图', subtitle: '正负值分色填充', icon: LineChart, type: 'line', init: initNegativeAreaChart },
   { id: 'large-scale-line-chart', title: '大数据量折线图', subtitle: '200个数据点', icon: LineChart, type: 'line', init: initLargeScaleLineChart },
   { id: 'confidence-band-chart', title: '置信区间图', subtitle: '上下界区间带', icon: LineChart, type: 'line', init: initConfidenceBandChart },
+  // 新增折线图 (6种)
+  { id: 'temperature-chart', title: '温度变化图', subtitle: '一日温度曲线', icon: LineChart, type: 'line', init: initTemperatureChart },
+  { id: 'comparison-chart', title: '多系列对比图', subtitle: '本周/上周/目标对比', icon: LineChart, type: 'line', init: initComparisonChart },
+  { id: 'realtime-chart', title: '实时数据图', subtitle: 'CPU监控模拟', icon: LineChart, type: 'line', init: initRealtimeChart },
+  { id: 'multi-range-chart', title: '多年度折线图', subtitle: '年度数据对比', icon: LineChart, type: 'line', init: initMultiRangeChart },
+  { id: 'marked-line-chart', title: '带标记折线图', subtitle: '平均值/最大值标记', icon: LineChart, type: 'line', init: initMarkedLineChart },
+  { id: 'percentage-chart', title: '百分比折线图', subtitle: '完成率趋势', icon: LineChart, type: 'line', init: initPercentageChart },
+  // 更多场景折线图 (18种)
+  { id: 'stock-trend-chart', title: '股票走势图', subtitle: '分时价格走势', icon: LineChart, type: 'line', init: initStockTrendChart },
+  { id: 'traffic-chart', title: '网站流量图', subtitle: 'PV/UV统计', icon: LineChart, type: 'line', init: initTrafficChart },
+  { id: 'sales-trend-chart', title: '销售趋势图', subtitle: '年度销售额', icon: LineChart, type: 'line', init: initSalesTrendChart },
+  { id: 'budget-actual-chart', title: '预算实际对比', subtitle: '预算vs实际', icon: LineChart, type: 'line', init: initBudgetActualChart },
+  { id: 'user-growth-chart', title: '用户增长图', subtitle: '新增/活跃用户', icon: LineChart, type: 'line', init: initUserGrowthChart },
+  { id: 'mom-growth-chart', title: '环比增长图', subtitle: '月度环比变化', icon: LineChart, type: 'line', init: initMoMGrowthChart },
+  { id: 'multi-metric-chart', title: '多指标监控', subtitle: 'CPU/内存/磁盘', icon: LineChart, type: 'line', init: initMultiMetricChart },
+  { id: 'cyclic-data-chart', title: '周期性数据图', subtitle: '24小时周期', icon: LineChart, type: 'line', init: initCyclicDataChart },
+  { id: 'goal-progress-chart', title: '目标达成图', subtitle: '周度目标追踪', icon: LineChart, type: 'line', init: initGoalProgressChart },
+  { id: 'seasonal-trend-chart', title: '季节性趋势图', subtitle: '年度对比', icon: LineChart, type: 'line', init: initSeasonalTrendChart },
+  { id: 'conversion-line-chart', title: '转化漏斗图', subtitle: '用户转化率', icon: LineChart, type: 'line', init: initConversionLineChart },
+  { id: 'log-growth-chart', title: '指数增长图', subtitle: '爆发式增长', icon: LineChart, type: 'line', init: initLogGrowthChart },
+  { id: 'volatility-chart', title: '波动范围图', subtitle: '高低收盘价', icon: LineChart, type: 'line', init: initVolatilityChart },
+  { id: 'intraday-chart', title: '分时走势图', subtitle: '价格与均价', icon: LineChart, type: 'line', init: initIntradayChart },
+  { id: 'energy-chart', title: '能耗监控图', subtitle: '用电量预警', icon: LineChart, type: 'line', init: initEnergyChart },
+  { id: 'region-compare-chart', title: '区域对比图', subtitle: '多区域销售', icon: LineChart, type: 'line', init: initRegionCompareChart },
+  { id: 'forecast-chart', title: '预测区间图', subtitle: '预测上下界', icon: LineChart, type: 'line', init: initForecastChart },
+  { id: 'health-metric-chart', title: '健康指标图', subtitle: '步数追踪', icon: LineChart, type: 'line', init: initHealthMetricChart },
+  { id: 'competitor-chart', title: '竞品对比图', subtitle: '市场份额对比', icon: LineChart, type: 'line', init: initCompetitorChart },
 
-  // 柱状图系列 (8种)
+  // 柱状图系列 (26种)
   { id: 'bar-chart', title: '基础柱状图', subtitle: '圆角柱形展示', icon: BarChart3, type: 'bar', init: initBarChart },
   { id: 'stacked-bar-chart', title: '堆叠柱状图', subtitle: '多系列堆叠', icon: BarChart3, type: 'bar', init: initStackedBarChart },
   { id: 'grouped-bar-chart', title: '分组柱状图', subtitle: '多年度对比', icon: BarChart3, type: 'bar', init: initGroupedBarChart },
@@ -201,6 +289,25 @@ const chartConfigs: ChartConfig[] = [
   { id: 'waterfall-chart', title: '瀑布图', subtitle: '累积变化展示', icon: BarChart3, type: 'bar', init: initWaterfallChart },
   { id: 'gradient-bar-chart', title: '渐变柱状图', subtitle: '渐变填充柱形', icon: BarChart3, type: 'bar', init: initGradientBarChart },
   { id: 'polar-bar-chart', title: '极坐标柱状图', subtitle: '环形扇形柱', icon: BarChart3, type: 'bar', init: initPolarBarChart },
+  // 新增柱状图 (18种)
+  { id: 'ranking-bar-chart', title: '排行榜柱状图', subtitle: '销量排名展示', icon: BarChart3, type: 'bar', init: initRankingBarChart },
+  { id: 'percent-stack-bar-chart', title: '百分比堆叠图', subtitle: '占比堆叠展示', icon: BarChart3, type: 'bar', init: initPercentStackBarChart },
+  { id: 'bidirectional-bar-chart', title: '双向柱状图', subtitle: '人口金字塔', icon: BarChart3, type: 'bar', init: initBidirectionalBarChart },
+  { id: 'multi-series-bar-chart', title: '多系列对比图', subtitle: '区域销售对比', icon: BarChart3, type: 'bar', init: initMultiSeriesBarChart },
+  { id: 'sales-bar-chart', title: '销售业绩图', subtitle: '员工业绩排名', icon: BarChart3, type: 'bar', init: initSalesBarChart },
+  { id: 'budget-bar-chart', title: '预算对比图', subtitle: '预算vs实际', icon: BarChart3, type: 'bar', init: initBudgetBarChart },
+  { id: 'yoy-growth-bar-chart', title: '同比增长图', subtitle: '年度对比', icon: BarChart3, type: 'bar', init: initYoYGrowthBarChart },
+  { id: 'histogram-chart', title: '直方图', subtitle: '频次分布', icon: BarChart3, type: 'bar', init: initHistogramChart },
+  { id: 'background-bar-chart', title: '完成度图', subtitle: '进度展示', icon: BarChart3, type: 'bar', init: initBackgroundBarChart },
+  { id: 'range-bar-chart', title: '区间柱状图', subtitle: '任务持续时间', icon: BarChart3, type: 'bar', init: initRangeBarChart },
+  { id: 'monthly-bar-chart', title: '月度数据图', subtitle: '12月销量', icon: BarChart3, type: 'bar', init: initMonthlyBarChart },
+  { id: 'category-bar-chart', title: '分类对比图', subtitle: '线上线下对比', icon: BarChart3, type: 'bar', init: initCategoryBarChart },
+  { id: 'goal-bar-chart', title: '目标完成图', subtitle: '团队目标达成', icon: BarChart3, type: 'bar', init: initGoalBarChart },
+  { id: 'mom-change-bar-chart', title: '环比变化图', subtitle: '月度环比', icon: BarChart3, type: 'bar', init: initMoMChangeBarChart },
+  { id: 'profit-bar-chart', title: '利润分析图', subtitle: '收入成本分析', icon: BarChart3, type: 'bar', init: initProfitBarChart },
+  { id: 'yearly-trend-bar-chart', title: '年度趋势图', subtitle: '多年营收', icon: BarChart3, type: 'bar', init: initYearlyTrendBarChart },
+  { id: 'user-dist-bar-chart', title: '用户分布图', subtitle: '年龄性别分布', icon: BarChart3, type: 'bar', init: initUserDistBarChart },
+  { id: 'order-status-bar-chart', title: '订单状态图', subtitle: '订单分类统计', icon: BarChart3, type: 'bar', init: initOrderStatusBarChart },
 
   // 饼图系列 (5种)
   { id: 'pie-chart', title: '饼图', subtitle: '数据占比分析', icon: PieChart, type: 'pie', init: initPieChart },
@@ -214,6 +321,17 @@ const chartConfigs: ChartConfig[] = [
   { id: 'bubble-chart', title: '气泡图', subtitle: '三维数据展示', icon: ScatterChart, type: 'scatter', init: initBubbleChart },
   { id: 'multi-scatter-chart', title: '多系列散点图', subtitle: '分类散点对比', icon: ScatterChart, type: 'scatter', init: initMultiScatterChart },
   { id: 'quadrant-scatter-chart', title: '象限散点图', subtitle: '四象限分析', icon: ScatterChart, type: 'scatter', init: initQuadrantScatterChart },
+
+  // 组合图表系列 (8种) - 使用 MixedChart 灵活组合 line + bar 系列
+  // 核心理念：一个图表，多种系列类型，通过 series.type 指定
+  { id: 'basic-mixed-chart', title: '基础组合图', subtitle: 'bar + line 组合', icon: Layers, type: 'mixed', init: initBasicMixedChart },
+  { id: 'dual-axis-mixed-chart', title: '双Y轴组合图', subtitle: '不同量级双轴', icon: Layers, type: 'mixed', init: initDualAxisMixedChart },
+  { id: 'sales-profit-mixed-chart', title: '销售利润分析', subtitle: '销售额 + 利润率', icon: Layers, type: 'mixed', init: initSalesProfitMixedChart },
+  { id: 'multi-bar-line-mixed-chart', title: '多系列组合图', subtitle: '多柱 + 趋势线', icon: Layers, type: 'mixed', init: initMultiBarLineMixedChart },
+  { id: 'weather-mixed-chart', title: '气象数据图', subtitle: '降水量 + 温度', icon: Layers, type: 'mixed', init: initWeatherMixedChart },
+  { id: 'inventory-mixed-chart', title: '库存周转图', subtitle: '库存量 + 周转率', icon: Layers, type: 'mixed', init: initInventoryMixedChart },
+  { id: 'traffic-conversion-mixed-chart', title: '流量转化图', subtitle: 'UV + 转化率', icon: Layers, type: 'mixed', init: initTrafficConversionMixedChart },
+  { id: 'area-bar-mixed-chart', title: '面积柱状组合', subtitle: '预算 vs 实际', icon: Layers, type: 'mixed', init: initAreaBarMixedChart },
 ]
 
 // 初始化 UI
@@ -344,6 +462,100 @@ const chart = new LineChart('#${chartId}', {
   modal.querySelector('.code-modal-close')?.addEventListener('click', () => modal.remove())
 }
 
+// 统计栏渲染
+function renderStatsBar(type: string): void {
+  const statsBar = document.getElementById('stats-bar')
+  if (!statsBar) return
+
+  // 计算各类型数量
+  const totalCharts = chartConfigs.length
+  const lineCount = chartConfigs.filter(c => c.type === 'line').length
+  const barCount = chartConfigs.filter(c => c.type === 'bar').length
+  const pieCount = chartConfigs.filter(c => c.type === 'pie').length
+  const scatterCount = chartConfigs.filter(c => c.type === 'scatter').length
+  const mixedCount = chartConfigs.filter(c => c.type === 'mixed').length
+
+  // 当前显示的图表数量
+  let visibleCount: number
+  let categoryLabel: string
+
+  if (type === 'all') {
+    visibleCount = totalCharts
+    categoryLabel = '所有图表'
+  } else if (type === 'line') {
+    visibleCount = lineCount
+    categoryLabel = '折线图'
+  } else if (type === 'bar') {
+    visibleCount = barCount
+    categoryLabel = '柱状图'
+  } else if (type === 'pie') {
+    visibleCount = pieCount
+    categoryLabel = '饼图'
+  } else if (type === 'scatter') {
+    visibleCount = scatterCount
+    categoryLabel = '散点图'
+  } else if (type === 'mixed') {
+    visibleCount = mixedCount
+    categoryLabel = '组合图'
+  } else {
+    visibleCount = 0
+    categoryLabel = type
+  }
+
+  statsBar.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-icon blue">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect width="18" height="18" x="3" y="3" rx="2"/>
+          <path d="M3 9h18"/>
+          <path d="M9 21V9"/>
+        </svg>
+      </div>
+      <div class="stat-info">
+        <h3>${visibleCount}</h3>
+        <p>${categoryLabel}</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3v18h18"/>
+          <path d="m19 9-5 5-4-4-3 3"/>
+        </svg>
+      </div>
+      <div class="stat-info">
+        <h3>${lineCount}</h3>
+        <p>折线图</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon yellow">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3v18h18"/>
+          <rect width="4" height="7" x="7" y="10" rx="1"/>
+          <rect width="4" height="12" x="15" y="5" rx="1"/>
+        </svg>
+      </div>
+      <div class="stat-info">
+        <h3>${barCount}</h3>
+        <p>柱状图</p>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon red">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+          <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+        </svg>
+      </div>
+      <div class="stat-info">
+        <h3>${pieCount + scatterCount + mixedCount}</h3>
+        <p>其他图表</p>
+      </div>
+    </div>
+  `
+}
+
 // 筛选图表
 function filterCharts(type: string): void {
   const cards = document.querySelectorAll('.chart-card')
@@ -355,6 +567,9 @@ function filterCharts(type: string): void {
       (card as HTMLElement).style.display = 'none'
     }
   })
+
+  // 更新统计栏
+  renderStatsBar(type)
 }
 
 // 更新导航高亮状态
@@ -395,6 +610,7 @@ function disposeAllCharts(): void {
   disposeAllBarCharts()
   disposeAllPieCharts()
   disposeAllScatterCharts()
+  disposeAllMixedCharts()
 }
 
 // 重新初始化所有图表（用于主题切换）

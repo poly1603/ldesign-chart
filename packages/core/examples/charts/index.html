@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>@ldesign/chart-core - 图表示例</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background: #f5f7fa;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 30px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      border-radius: 16px;
+      color: white;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      opacity: 0.9;
+      font-size: 1rem;
+    }
+
+    .theme-switch {
+      margin-top: 16px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .theme-btn {
+      padding: 8px 20px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 20px;
+      background: transparent;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 14px;
+    }
+
+    .theme-btn:hover,
+    .theme-btn.active {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: white;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      background: white;
+      padding: 8px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .nav-tab {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: #64748b;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.3s;
+    }
+
+    .nav-tab:hover {
+      color: #6366f1;
+      background: #f1f5f9;
+    }
+
+    .nav-tab.active {
+      color: white;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      color: #1e293b;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    .examples-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+      gap: 20px;
+    }
+
+    .example-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .example-card h3 {
+      font-size: 1rem;
+      color: #334155;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .example-card h3 .tag {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: #e0e7ff;
+      color: #4f46e5;
+      font-weight: 500;
+    }
+
+    .example-card p {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .chart-container {
+      width: 100%;
+      height: 280px;
+      background: #f8fafc;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 6px 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      background: white;
+      color: #475569;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      border-color: #6366f1;
+      color: #6366f1;
+    }
+
+    .btn.primary {
+      background: #6366f1;
+      border-color: #6366f1;
+      color: white;
+    }
+
+    .btn.primary:hover {
+      background: #4f46e5;
+    }
+
+    /* Dark theme */
+    [data-theme="dark"] body {
+      background: #0f172a;
+    }
+
+    [data-theme="dark"] .nav-tabs {
+      background: #1e293b;
+    }
+
+    [data-theme="dark"] .nav-tab {
+      color: #94a3b8;
+    }
+
+    [data-theme="dark"] .nav-tab:hover {
+      color: #6366f1;
+      background: #334155;
+    }
+
+    [data-theme="dark"] .section-title {
+      color: #e2e8f0;
+      border-color: #334155;
+    }
+
+    [data-theme="dark"] .example-card {
+      background: #1e293b;
+    }
+
+    [data-theme="dark"] .example-card h3 {
+      color: #e2e8f0;
+    }
+
+    [data-theme="dark"] .example-card p {
+      color: #94a3b8;
+    }
+
+    [data-theme="dark"] .chart-container {
+      background: #0f172a;
+    }
+
+    [data-theme="dark"] .btn {
+      background: #334155;
+      border-color: #475569;
+      color: #e2e8f0;
+    }
+
+    [data-theme="dark"] .btn:hover {
+      border-color: #6366f1;
+      color: #6366f1;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📊 @ldesign/chart-core 图表示例</h1>
+      <p>参考 VChart 和 ECharts 的丰富图表示例</p>
+      <div class="theme-switch">
+        <button class="theme-btn active" onclick="setTheme('light')">☀️ 浅色模式</button>
+        <button class="theme-btn" onclick="setTheme('dark')">🌙 深色模式</button>
+      </div>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showSection('line')">📈 折线图</button>
+      <button class="nav-tab" onclick="showSection('bar')">📊 柱状图</button>
+      <button class="nav-tab" onclick="showSection('pie')">🥧 饼状图</button>
+    </div>
+
+    <!-- 折线图示例 -->
+    <div id="section-line" class="section active">
+      <h2 class="section-title">📈 折线图示例</h2>
+      <div class="examples-grid">
+        <div class="example-card">
+          <h3>基础折线图 <span class="tag">基础</span></h3>
+          <p>最基础的折线图，展示数据随时间的变化趋势。</p>
+          <div class="chart-container" id="line-basic"></div>
+          <div class="controls">
+            <button class="btn" onclick="updateLineBasic()">更新数据</button>
+            <button class="btn" onclick="toggleLineSmooth('line-basic')">切换平滑</button>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <h3>平滑折线图 <span class="tag">平滑</span></h3>
+          <p>使用贝塞尔曲线平滑连接数据点，展示更柔和的趋势。</p>
+          <div class="chart-container" id="line-smooth"></div>
+        </div>
+
+        <div class="example-card">
+          <h3>面积图 <span class="tag">面积</span></h3>
+          <p>在折线图基础上填充面积，强调数据的体积感。</p>
+          <div class="chart-container" id="line-area"></div>
+          <div class="controls">
+            <button class="btn" onclick="toggleAreaOpacity()">切换透明度</button>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <h3>堆叠面积图 <span class="tag">堆叠</span></h3>
+          <p>多系列堆叠显示，展示各部分对总体的贡献。</p>
+          <div class="chart-container" id="line-stacked-area"></div>
+        </div>
+
+        <div class="example-card">
+          <h3>阶梯折线图 <span class="tag">阶梯</span></h3>
+          <p>阶梯式连接数据点，适合展示离散变化的数据。</p>
+          <div class="chart-container" id="line-step"></div>
+          <div class="controls">
+            <button class="btn" onclick="setStepType('start')">起点阶梯</button>
+            <button class="btn" onclick="setStepType('middle')">中点阶梯</button>
+            <button class="btn" onclick="setStepType('end')">终点阶梯</button>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <h3>多系列折线图 <span class="tag">多系列</span></h3>
+          <p>展示多个数据系列的对比趋势。</p>
+          <div class="chart-container" id="line-multi"></div>
+          <div class="controls">
+            <button class="btn" onclick="addLineSeries()">添加系列</button>
+            <button class="btn" onclick="removeLineSeries()">移除系列</button>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <h3>带标记线的折线图 <span class="tag">标记</span></h3>
+          <p>添加平均值、最大值、最小值等标记线。</p>
+          <div class="chart-container" id="line-markline"></div>
+        </div>
+
+        <div class="example-card">
+          <h3>虚线和点线 <span class="tag">样式</span></h3>
+          <p>使用不同的线型样式区分数据系列。</p>
+          <div class="chart-container" id="line-dashed"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 柱状图示例 -->
+    <div id="section-bar" class="section">
+      <h2 class="section-title">📊 柱状图示例</h2>
+      <div class="examples-grid">
+        <div class="example-card">
+          <h3>基础柱状图 <span class="tag">基础</span></h3>
+          <p>最基础的柱状图，展示各类别数据的数值对比。</p>
+          <div class="chart-container" id="bar-basic"></div>
+          <div class="controls">
+            <button class="btn" onclick="updateBarBasic()">更新数据</button>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <h3>分组柱状图 <span class="tag">分组</span></h3>
+          <p>多系列并排显示，便于同一类别下不同系列的对比。</p>
+          <div class="chart-container" id="bar-grouped"></div>
+        </div>
+
+        <div class="example-card">
+          <h3>堆叠柱状图 <span class="tag">堆叠</span></h3>
+          <p>多系列堆叠显示，展示各部分对总体的贡献。</p>
+          <div class="chart-container" id="bar-stacked"></div>
+        </div>
+
+        <div class="example-card">
+          <h3>负值柱状图 <span class="tag">正负值</span></h3>
+          <p>支持正负值的柱状图，展示盈亏等场景。</p>
+          <div class="chart-container" id="bar-negative"></div>
+        </div>
+
+        <div class="example-card">
+          <h3>圆角柱状图 <span class="tag">圆角</span></h3>
+          <p>带圆角的柱状图，视觉效果更柔和。</p>
+          <div class="chart-container" id="bar-rounded"></div>
+          <div class="controls">
+            <button class="btn" onclick="setBarRadius(0)">无圆角</button>
+            <button class="btn" onclick="setBarRadius(4)">小圆角</button>
+            <button class="btn" onclick="setBarRadius(10)">大圆角</button>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <h3>渐变色柱状图 <span class="tag">渐变</span></h3>
+          <p>使用渐变色填充的柱状图，视觉效果更丰富。</p>
+          <div class="chart-container" id="bar-gradient"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 饼状图示例 -->
+    <div id="section-pie" class="section">
+      <h2 class="section-title">🥧 饼状图示例</h2>
+      <div class="examples-grid">
+        <div class="example-card">
+          <h3>基础饼图 <span class="tag">基础</span></h3>
+          <p>最基础的饼图，展示各部分占总体的比例。</p>
+          <div class="chart-container" id="pie-basic"></div>
+          <div class="controls">
+            <button class="btn" onclick="updatePieBasic()">更新数据</button>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <h3>环形图 <span class="tag">环形</span></h3>
+          <p>中间镂空的饼图，可以在中心显示汇总信息。</p>
+          <div class="chart-container" id="pie-doughnut"></div>
+          <div class="controls">
+            <button class="btn" onclick="setInnerRadius(0.3)">细环</button>
+            <button class="btn" onclick="setInnerRadius(0.5)">中环</button>
+            <button class="btn" onclick="setInnerRadius(0.7)">粗环</button>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <h3>南丁格尔玫瑰图 <span class="tag">玫瑰图</span></h3>
+          <p>扇形半径表示数值大小的饼图，又称玫瑰图。</p>
+          <div class="chart-container" id="pie-rose"></div>
+        </div>
+
+        <div class="example-card">
+          <h3>带标签的饼图 <span class="tag">标签</span></h3>
+          <p>在扇形外部或内部显示数据标签。</p>
+          <div class="chart-container" id="pie-label"></div>
+          <div class="controls">
+            <button class="btn" onclick="setLabelPosition('outside')">外部标签</button>
+            <button class="btn" onclick="setLabelPosition('inside')">内部标签</button>
+          </div>
+        </div>
+
+        <div class="example-card">
+          <h3>半圆饼图 <span class="tag">半圆</span></h3>
+          <p>只显示半圆的饼图，节省垂直空间。</p>
+          <div class="chart-container" id="pie-half"></div>
+        </div>
+
+        <div class="example-card">
+          <h3>嵌套环形图 <span class="tag">嵌套</span></h3>
+          <p>多层环形图，展示层级关系数据。</p>
+          <div class="chart-container" id="pie-nested"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+
+</html>

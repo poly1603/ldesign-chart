@@ -276,8 +276,9 @@ export interface IRenderer {
    * 绘制多边形
    * @param points - 顶点数组
    * @param style - 样式
+   * @param smooth - 是否使用平滑曲线（用于面积图）
    */
-  drawPolygon(points: Point[], style: PolygonStyle): void
+  drawPolygon(points: Point[], style: PolygonStyle, smooth?: boolean): void
 
   /**
    * 保存当前状态

@@ -427,9 +427,9 @@ export class CanvasRenderer implements IRenderer {
   }
 
   /**
-   * 绘制填充区域（面积图）
+   * 绘制填充区域（面积图）- 支持平滑顶部曲线和水平基线
    */
-  drawArea(points: Point[], baseY: number, fill: string | GradientDef, smooth: boolean = false): void {
+  drawArea(points: Point[], baseY: number, fill: string | GradientDef, smooth: boolean = false, opacity: number = 1): void {
     if (!this.ctx || points.length < 2) return
 
     this.ctx.beginPath()
@@ -460,6 +460,11 @@ export class CanvasRenderer implements IRenderer {
     this.ctx.lineTo(points[points.length - 1]!.x, baseY)
     this.ctx.closePath()
 
+    // 应用透明度
+    if (opacity < 1) {
+      this.ctx.globalAlpha = opacity
+    }
+
     // 应用填充
     if (typeof fill === 'string') {
       this.ctx.fillStyle = fill
@@ -472,6 +477,83 @@ export class CanvasRenderer implements IRenderer {
     }
 
     this.ctx.fill()
+    this.ctx.globalAlpha = 1
+  }
+
+  /**
+   * 绘制堆叠面积（顶部和底部都是曲线）
+   */
+  drawStackedArea(
+    topPoints: Point[],
+    bottomPoints: Point[],
+    style: PolygonStyle,
+    smooth: boolean = false
+  ): void {
+    if (!this.ctx || topPoints.length < 2) return
+
+    this.ctx.beginPath()
+
+    // 绘制顶部曲线
+    this.ctx.moveTo(topPoints[0]!.x, topPoints[0]!.y)
+    if (smooth) {
+      for (let i = 1; i < topPoints.length; i++) {
+        const p0 = topPoints[Math.max(0, i - 2)]!
+        const p1 = topPoints[i - 1]!
+        const p2 = topPoints[i]!
+        const p3 = topPoints[Math.min(topPoints.length - 1, i + 1)]!
+
+        const tension = 0.3
+        const cp1x = p1.x + (p2.x - p0.x) * tension
+        const cp1y = p1.y + (p2.y - p0.y) * tension
+        const cp2x = p2.x - (p3.x - p1.x) * tension
+        const cp2y = p2.y - (p3.y - p1.y) * tension
+
+        this.ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
+      }
+    } else {
+      for (let i = 1; i < topPoints.length; i++) {
+        this.ctx.lineTo(topPoints[i]!.x, topPoints[i]!.y)
+      }
+    }
+
+    // 从顶部最后一点直线连接到底部最后一点
+    const lastBottom = bottomPoints[bottomPoints.length - 1]!
+    this.ctx.lineTo(lastBottom.x, lastBottom.y)
+
+    // 绘制底部曲线（反向）
+    if (smooth) {
+      for (let i = bottomPoints.length - 2; i >= 0; i--) {
+        const p0 = bottomPoints[Math.min(bottomPoints.length - 1, i + 2)]!
+        const p1 = bottomPoints[i + 1]!
+        const p2 = bottomPoints[i]!
+        const p3 = bottomPoints[Math.max(0, i - 1)]!
+
+        const tension = 0.3
+        const cp1x = p1.x + (p2.x - p0.x) * tension
+        const cp1y = p1.y + (p2.y - p0.y) * tension
+        const cp2x = p2.x - (p3.x - p1.x) * tension
+        const cp2y = p2.y - (p3.y - p1.y) * tension
+
+        this.ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
+      }
+    } else {
+      for (let i = bottomPoints.length - 2; i >= 0; i--) {
+        this.ctx.lineTo(bottomPoints[i]!.x, bottomPoints[i]!.y)
+      }
+    }
+
+    this.ctx.closePath()
+
+    if (style.opacity !== undefined) {
+      this.ctx.globalAlpha = style.opacity
+    }
+
+    if (style.fill) {
+      this.ctx.fillStyle = style.fill
+      this.ctx.fill()
+    }
+
+    this.ctx.globalAlpha = 1
   }
 
   /**
@@ -651,15 +733,34 @@ export class CanvasRenderer implements IRenderer {
 
   /**
    * 绘制多边形
+   * @param smooth - 是否使用平滑曲线（面积图需要与线条匹配）
    */
-  drawPolygon(points: Point[], style: PolygonStyle): void {
+  drawPolygon(points: Point[], style: PolygonStyle, smooth: boolean = false): void {
     if (!this.ctx || points.length < 3) return
 
     this.ctx.beginPath()
     this.ctx.moveTo(points[0]!.x, points[0]!.y)
 
-    for (let i = 1; i < points.length; i++) {
-      this.ctx.lineTo(points[i]!.x, points[i]!.y)
+    if (smooth && points.length > 2) {
+      // 使用贝塞尔曲线绘制平滑边缘（与 drawLine 的 smooth 算法一致）
+      for (let i = 1; i < points.length; i++) {
+        const p0 = points[Math.max(0, i - 2)]!
+        const p1 = points[i - 1]!
+        const p2 = points[i]!
+        const p3 = points[Math.min(points.length - 1, i + 1)]!
+
+        const tension = 0.3
+        const cp1x = p1.x + (p2.x - p0.x) * tension
+        const cp1y = p1.y + (p2.y - p0.y) * tension
+        const cp2x = p2.x - (p3.x - p1.x) * tension
+        const cp2y = p2.y - (p3.y - p1.y) * tension
+
+        this.ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
+      }
+    } else {
+      for (let i = 1; i < points.length; i++) {
+        this.ctx.lineTo(points[i]!.x, points[i]!.y)
+      }
     }
     this.ctx.closePath()
 

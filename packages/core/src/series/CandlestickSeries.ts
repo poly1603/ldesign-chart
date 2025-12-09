@@ -162,6 +162,7 @@ export class CandlestickSeries extends Series {
       return items
     }
 
+    // @ts-ignore - Used for future bar width calculation
     const barWidth = this.calculateBarWidth()
 
     for (let i = 0; i < this.data.length; i++) {

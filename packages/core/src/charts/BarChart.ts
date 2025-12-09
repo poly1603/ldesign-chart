@@ -85,7 +85,9 @@ export class BarChart extends BaseChart<BarChartOptions> {
     const enabledSeries = (options.series || []).filter(s => this.enabledSeries.has(s.name || ''))
     const barGroupWidth = chartRect.width / Math.max(labels.length, 1)
     const barWidth = enabledSeries.length > 0 ? (barGroupWidth * 0.6) / enabledSeries.length : barGroupWidth * 0.6
-    const gap = barGroupWidth * 0.2
+    // 计算柱子组的总宽度和起始偏移，使柱子组居中于分段
+    const totalBarsWidth = barWidth * enabledSeries.length
+    const startOffset = (barGroupWidth - totalBarsWidth) / 2
 
     // 绘制背景
     this.drawBackground()
@@ -112,6 +114,17 @@ export class BarChart extends BaseChart<BarChartOptions> {
       this.drawLegend()
     }
 
+    // 计算零线位置（用于支持负值）
+    const zeroY = chartRect.y + chartRect.height - ((0 - min) / (max - min)) * chartRect.height
+
+    // 绘制零线（如果有负值）
+    if (min < 0) {
+      renderer.drawLine(
+        [{ x: chartRect.x, y: zeroY }, { x: chartRect.x + chartRect.width, y: zeroY }],
+        { stroke: colors.grid, lineWidth: 1 }
+      )
+    }
+
     // 绘制柱子
     enabledSeries.forEach((s, si) => {
       const color = this.getSeriesColor((options.series || []).indexOf(s), s.color)
@@ -119,14 +132,27 @@ export class BarChart extends BaseChart<BarChartOptions> {
 
       s.data.forEach((v, i) => {
         if (v === null) return
-        const x = chartRect.x + gap / 2 + barGroupWidth * i + barWidth * si
-        const fullBarHeight = ((v - min) / (max - min)) * chartRect.height
-        const barHeight = fullBarHeight * this.animationProgress
-        const y = chartRect.y + chartRect.height - barHeight
+        // 柱子居中于标签位置
+        const x = chartRect.x + barGroupWidth * i + startOffset + barWidth * si
         const isHover = i === this.hoverIndex
 
+        // 计算柱子高度和位置（支持正负值）
+        const valueY = chartRect.y + chartRect.height - ((v - min) / (max - min)) * chartRect.height
+        let barY: number
+        let barHeight: number
+
+        if (v >= 0) {
+          // 正值：从零线向上
+          barHeight = Math.abs(zeroY - valueY) * this.animationProgress
+          barY = zeroY - barHeight
+        } else {
+          // 负值：从零线向下
+          barHeight = Math.abs(valueY - zeroY) * this.animationProgress
+          barY = zeroY
+        }
+
         renderer.drawRect(
-          { x, y, width: barWidth, height: barHeight },
+          { x, y: barY, width: barWidth, height: Math.max(barHeight, 1) },
           {
             fill: isHover ? this.lightenColor(color) : color,
             radius
@@ -135,8 +161,9 @@ export class BarChart extends BaseChart<BarChartOptions> {
 
         // 悬停时显示数值
         if (isHover) {
+          const labelY = v >= 0 ? barY - 8 : barY + barHeight + 16
           renderer.drawText(
-            { x: x + barWidth / 2, y: y - 8, text: String(v) },
+            { x: x + barWidth / 2, y: labelY, text: String(v) },
             { fill: colors.text, fontSize: 11, fontWeight: 'bold', textAlign: 'center' }
           )
         }

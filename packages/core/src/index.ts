@@ -1,20 +1,32 @@
 /**
  * @ldesign/chart-core
  * 核心图表库入口文件
+ * 
+ * 推荐使用方式（参考 ECharts）：
+ * ```ts
+ * import { Chart } from '@ldesign/chart-core'
+ * 
+ * const chart = new Chart('#container', {
+ *   xAxis: { data: ['Mon', 'Tue', 'Wed'] },
+ *   series: [
+ *     { type: 'bar', name: '销量', data: [120, 200, 150] },
+ *     { type: 'line', name: '增长率', data: [10, 15, 12] },
+ *   ],
+ * })
+ * ```
  */
 
-// 导出核心类
-export { Chart } from './chart/Chart'
+// ============== 核心图表类（推荐使用）==============
+export { Chart } from './charts'
+export type { ChartOptions, SeriesData, SeriesType, XAxisConfig, YAxisConfig, LineStyle as ChartLineStyle, AreaStyle } from './charts'
 
-// 导出便捷图表类
-export { LineChart, BarChart, PieChart, ScatterChart, BaseChart } from './charts'
-export type {
-  LineChartOptions, LineSeriesData,
-  BarChartOptions, BarSeriesData,
-  PieChartOptions, PieDataItem as PieChartDataItem, PieLabelLineOptions,
-  ScatterChartOptions, ScatterSeriesData, ScatterDataPoint,
-  BaseChartOptions,
-} from './charts'
+// ============== 基础类 ==============
+export { BaseChart } from './charts'
+export type { BaseChartOptions } from './charts'
+
+// ============== 饼图（推荐使用）==============
+export { PieChart } from './charts'
+export type { PieChartOptions, PieDataItem as PieChartDataItem, PieLabelLineOptions } from './charts'
 
 // 导出事件系统
 export { EventEmitter } from './event/EventEmitter'

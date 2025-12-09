@@ -1,13 +1,13 @@
 /**
- * 散点图模块 - 使用 @ldesign/chart-core 的 ScatterChart 类
+ * 散点图模块 - 使用统一的 Chart 类
  */
 
-import { ScatterChart } from '@ldesign/chart-core'
+import { Chart } from '@ldesign/chart-core'
 import { getRendererMode } from '../../main'
 
-let chartInstances: ScatterChart[] = []
+let chartInstances: Chart[] = []
 
-function registerChart(chart: ScatterChart): void {
+function registerChart(chart: Chart): void {
   chartInstances.push(chart)
 }
 
@@ -27,9 +27,10 @@ export function disposeAllScatterCharts(): void {
 export function initScatterChart(): void {
   const container = document.getElementById('scatter-chart')
   if (!container) return
-  const chart = new ScatterChart(container, {
+  const chart = new Chart(container, {
     ...getCommonOptions(),
     series: [{
+      type: 'scatter',
       name: '数据1',
       data: [
         [10.0, 8.04], [8.07, 6.95], [13.0, 7.58], [9.05, 8.81], [11.0, 8.33],
@@ -43,10 +44,11 @@ export function initScatterChart(): void {
 export function initMultiScatterChart(): void {
   const container = document.getElementById('multi-scatter-chart')
   if (!container) return
-  const chart = new ScatterChart(container, {
+  const chart = new Chart(container, {
     ...getCommonOptions(),
     series: [
       {
+        type: 'scatter',
         name: '女性',
         data: [
           [161.2, 51.6], [167.5, 59.0], [159.5, 49.2], [157.0, 63.0], [155.8, 53.6],
@@ -54,6 +56,7 @@ export function initMultiScatterChart(): void {
         ],
       },
       {
+        type: 'scatter',
         name: '男性',
         data: [
           [174.0, 65.6], [175.3, 71.8], [193.5, 80.7], [186.5, 72.6], [187.2, 78.8],
@@ -68,11 +71,12 @@ export function initMultiScatterChart(): void {
 export function initBubbleChart(): void {
   const container = document.getElementById('bubble-chart')
   if (!container) return
-  const chart = new ScatterChart(container, {
+  const chart = new Chart(container, {
     ...getCommonOptions(),
     series: [{
+      type: 'scatter',
       name: '数据',
-      symbolSize: (point) => Math.sqrt((point.value || 10) * 10),
+      symbolSize: 10,
       data: [
         { x: 10, y: 20, value: 30 },
         { x: 20, y: 30, value: 50 },
@@ -90,9 +94,10 @@ export function initBubbleChart(): void {
 export function initQuadrantScatterChart(): void {
   const container = document.getElementById('quadrant-scatter-chart')
   if (!container) return
-  const chart = new ScatterChart(container, {
+  const chart = new Chart(container, {
     ...getCommonOptions(),
     series: [{
+      type: 'scatter',
       name: '产品',
       data: [
         { x: 30, y: 40 }, { x: 60, y: 70 }, { x: 20, y: 80 },
@@ -104,5 +109,5 @@ export function initQuadrantScatterChart(): void {
   registerChart(chart)
 }
 
-export { ScatterChart } from '@ldesign/chart-core'
-export type { ScatterChartOptions, ScatterSeriesData, ScatterDataPoint } from '@ldesign/chart-core'
+export { Chart } from '@ldesign/chart-core'
+export type { ChartOptions, SeriesData } from '@ldesign/chart-core'
