@@ -12,6 +12,9 @@ import type {
   Text,
   TextStyle,
   Rect,
+  Point,
+  LineStyle,
+  GradientDef,
 } from './interface'
 
 /**
@@ -357,6 +360,112 @@ export class CanvasRenderer implements IRenderer {
   }
 
   /**
+   * 绘制线条（多段线）
+   */
+  drawLine(points: Point[], style: LineStyle, smooth: boolean = false): void {
+    if (!this.ctx || points.length < 2) return
+
+    this.ctx.beginPath()
+    this.ctx.moveTo(points[0]!.x, points[0]!.y)
+
+    if (smooth) {
+      // 使用贝塞尔曲线绘制平滑曲线
+      for (let i = 1; i < points.length; i++) {
+        const p0 = points[Math.max(0, i - 2)]!
+        const p1 = points[i - 1]!
+        const p2 = points[i]!
+        const p3 = points[Math.min(points.length - 1, i + 1)]!
+
+        const tension = 0.3
+        const cp1x = p1.x + (p2.x - p0.x) * tension
+        const cp1y = p1.y + (p2.y - p0.y) * tension
+        const cp2x = p2.x - (p3.x - p1.x) * tension
+        const cp2y = p2.y - (p3.y - p1.y) * tension
+
+        this.ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
+      }
+    } else {
+      for (let i = 1; i < points.length; i++) {
+        this.ctx.lineTo(points[i]!.x, points[i]!.y)
+      }
+    }
+
+    // 应用样式
+    if (style.opacity !== undefined) this.ctx.globalAlpha = style.opacity
+    this.ctx.strokeStyle = style.stroke || '#000'
+    this.ctx.lineWidth = style.lineWidth || 1
+    this.ctx.lineCap = style.lineCap || 'round'
+    this.ctx.lineJoin = style.lineJoin || 'round'
+    if (style.lineDash) this.ctx.setLineDash(style.lineDash)
+
+    this.ctx.stroke()
+    this.ctx.setLineDash([])
+    this.ctx.globalAlpha = 1
+  }
+
+  /**
+   * 绘制填充区域（面积图）
+   */
+  drawArea(points: Point[], baseY: number, fill: string | GradientDef, smooth: boolean = false): void {
+    if (!this.ctx || points.length < 2) return
+
+    this.ctx.beginPath()
+    this.ctx.moveTo(points[0]!.x, baseY)
+    this.ctx.lineTo(points[0]!.x, points[0]!.y)
+
+    if (smooth) {
+      for (let i = 1; i < points.length; i++) {
+        const p0 = points[Math.max(0, i - 2)]!
+        const p1 = points[i - 1]!
+        const p2 = points[i]!
+        const p3 = points[Math.min(points.length - 1, i + 1)]!
+
+        const tension = 0.3
+        const cp1x = p1.x + (p2.x - p0.x) * tension
+        const cp1y = p1.y + (p2.y - p0.y) * tension
+        const cp2x = p2.x - (p3.x - p1.x) * tension
+        const cp2y = p2.y - (p3.y - p1.y) * tension
+
+        this.ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y)
+      }
+    } else {
+      for (let i = 1; i < points.length; i++) {
+        this.ctx.lineTo(points[i]!.x, points[i]!.y)
+      }
+    }
+
+    this.ctx.lineTo(points[points.length - 1]!.x, baseY)
+    this.ctx.closePath()
+
+    // 应用填充
+    if (typeof fill === 'string') {
+      this.ctx.fillStyle = fill
+    } else {
+      const gradient = this.ctx.createLinearGradient(fill.x1, fill.y1, fill.x2, fill.y2)
+      for (const stop of fill.stops) {
+        gradient.addColorStop(stop.offset, stop.color)
+      }
+      this.ctx.fillStyle = gradient
+    }
+
+    this.ctx.fill()
+  }
+
+  /**
+   * 获取渲染器类型
+   */
+  getType(): 'canvas' | 'svg' {
+    return 'canvas'
+  }
+
+  /**
+   * 获取根元素
+   */
+  getElement(): HTMLCanvasElement | SVGSVGElement {
+    return this.canvas!
+  }
+
+  /**
    * 获取 Canvas 元素
    */
   getCanvas(): HTMLCanvasElement | null {
@@ -451,5 +560,24 @@ export class CanvasRenderer implements IRenderer {
   ): void {
     if (!this.ctx) return
     this.ctx.arc(cx, cy, radius, startAngle, endAngle, counterclockwise)
+  }
+
+  /**
+   * 获取 Canvas 2D 上下文
+   */
+  getContext2D(): CanvasRenderingContext2D | null {
+    return this.ctx
+  }
+
+  /**
+   * 测量文本宽度
+   */
+  measureText(text: string, fontSize: number = 12, fontFamily: string = 'sans-serif'): number {
+    if (!this.ctx) return 0
+    const oldFont = this.ctx.font
+    this.ctx.font = `${fontSize}px ${fontFamily}`
+    const width = this.ctx.measureText(text).width
+    this.ctx.font = oldFont
+    return width
   }
 }

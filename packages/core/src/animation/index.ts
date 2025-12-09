@@ -13,3 +13,23 @@ export type {
   SeriesAnimationOptions,
   AnimationProgress,
 } from './ChartAnimator'
+
+// 图表动画工具（适用于所有图表类型）
+export {
+  ChartAnimationController,
+  DEFAULT_ANIMATION_CONFIG,
+  easingFns,
+  getEasing,
+  animateGrowY,
+  animateMorph,
+  animateScale,
+  animateOpacity,
+  getPointProgress,
+} from './chartAnimation'
+export type {
+  EntryAnimationType,
+  UpdateAnimationType,
+  AnimationConfig,
+  AnimationState,
+  EasingFn,
+} from './chartAnimation'

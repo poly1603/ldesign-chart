@@ -92,6 +92,38 @@ export interface TextStyle {
 }
 
 /**
+ * 线条样式
+ */
+export interface LineStyle {
+  stroke?: string
+  lineWidth?: number
+  lineCap?: 'butt' | 'round' | 'square'
+  lineJoin?: 'miter' | 'round' | 'bevel'
+  lineDash?: number[]
+  opacity?: number
+}
+
+/**
+ * 多段线点
+ */
+export interface Point {
+  x: number
+  y: number
+}
+
+/**
+ * 渐变定义
+ */
+export interface GradientDef {
+  type: 'linear' | 'radial'
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  stops: Array<{ offset: number; color: string }>
+}
+
+/**
  * 渲染器接口
  */
 export interface IRenderer {
@@ -154,6 +186,23 @@ export interface IRenderer {
   drawText(text: Text, style: TextStyle): void
 
   /**
+   * 绘制线条（多段线）
+   * @param points - 点数组
+   * @param style - 线条样式
+   * @param smooth - 是否平滑曲线
+   */
+  drawLine(points: Point[], style: LineStyle, smooth?: boolean): void
+
+  /**
+   * 绘制填充区域（多边形/面积图）
+   * @param points - 点数组
+   * @param baseY - 基准线Y坐标
+   * @param fill - 填充色或渐变
+   * @param smooth - 是否平滑曲线
+   */
+  drawArea(points: Point[], baseY: number, fill: string | GradientDef, smooth?: boolean): void
+
+  /**
    * 保存当前状态
    */
   save(): void
@@ -198,6 +247,26 @@ export interface IRenderer {
    * 获取画布高度
    */
   getHeight(): number
+
+  /**
+   * 获取渲染器类型
+   */
+  getType(): 'canvas' | 'svg'
+
+  /**
+   * 获取根元素（canvas 或 svg）
+   */
+  getElement(): HTMLCanvasElement | SVGSVGElement
+
+  /**
+   * 获取 Canvas 2D 上下文（仅 Canvas 渲染器有效）
+   */
+  getContext2D(): CanvasRenderingContext2D | null
+
+  /**
+   * 测量文本宽度
+   */
+  measureText(text: string, fontSize?: number, fontFamily?: string): number
 }
 
 /**

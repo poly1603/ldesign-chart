@@ -6,6 +6,15 @@
 // 导出核心类
 export { Chart } from './chart/Chart'
 
+// 导出便捷图表类
+export { LineChart, BarChart, PieChart, ScatterChart } from './charts'
+export type {
+  LineChartOptions, LineSeriesData,
+  BarChartOptions, BarSeriesData,
+  PieChartOptions, PieDataItem as PieChartDataItem,
+  ScatterChartOptions, ScatterSeriesData, ScatterDataPoint,
+} from './charts'
+
 // 导出事件系统
 export { EventEmitter } from './event/EventEmitter'
 
@@ -97,6 +106,9 @@ export type {
 
 // 导出渲染器
 export { CanvasRenderer } from './renderer/CanvasRenderer'
+export { SVGRenderer } from './renderer/SVGRenderer'
+export { createRenderer, initRenderer } from './renderer/createRenderer'
+export type { RendererType } from './renderer/createRenderer'
 export type {
   IRenderer,
   IRendererFactory,
@@ -109,6 +121,9 @@ export type {
   Text,
   TextStyle,
   Rect as RendererRect,
+  Point as RendererPoint,
+  LineStyle as RendererLineStyle,
+  GradientDef,
 } from './renderer/interface'
 
 // 导出主题系统

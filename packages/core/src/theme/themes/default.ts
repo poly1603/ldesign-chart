@@ -48,25 +48,25 @@ export const defaultTheme: Theme = {
     axis: {
       axisLine: {
         lineStyle: {
-          color: '#333333',
+          color: '#d0d0d0',
           width: 1,
         },
       },
       axisTick: {
         lineStyle: {
-          color: '#333333',
+          color: '#d0d0d0',
           width: 1,
         },
       },
       axisLabel: {
         textStyle: {
-          color: '#666666',
+          color: '#333333',
           fontSize: 12,
         },
       },
       splitLine: {
         lineStyle: {
-          color: '#e0e0e0',
+          color: '#f0f0f0',
           width: 1,
           type: 'solid',
         },
