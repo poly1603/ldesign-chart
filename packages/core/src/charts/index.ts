@@ -38,7 +38,7 @@
 
 // ============== 核心图表类（推荐使用）==============
 export { Chart } from './Chart'
-export type { ChartOptions, SeriesData, SeriesType, XAxisConfig, YAxisConfig, LineStyle, AreaStyle, AnimationType, PieDataItem, PieAnimationType, DataZoomConfig } from './Chart'
+export type { ChartOptions, SeriesData, SeriesType, XAxisConfig, YAxisConfig, LineStyle, AreaStyle, AnimationType, PieDataItem, PieAnimationType, ScatterAnimationType, SymbolType, CandlestickDataPoint, CandlestickAnimationType, DataZoomConfig } from './Chart'
 
 // ============== 基础类和工具 ==============
 export { BaseChart, getThemeColors, SERIES_COLORS, Easings } from './BaseChart'

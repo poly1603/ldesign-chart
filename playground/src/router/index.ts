@@ -24,6 +24,18 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/PieChart.vue'),
     meta: { title: '饼图', icon: 'pie' },
   },
+  {
+    path: '/scatter',
+    name: 'Scatter',
+    component: () => import('@/views/ScatterChart.vue'),
+    meta: { title: '散点图', icon: 'scatter' },
+  },
+  {
+    path: '/candlestick',
+    name: 'Candlestick',
+    component: () => import('@/views/CandlestickChart.vue'),
+    meta: { title: 'K线图', icon: 'candlestick' },
+  },
 ]
 
 const router = createRouter({

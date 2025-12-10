@@ -667,26 +667,6 @@ const chart = new Chart('#container', {
     vueCode: `<LChart :options="chartOptions" />
 // dataZoom 支持滑块拖拽和鼠标滚轮缩放`,
   },
-  // ========== DataZoom 柱状图 ==========
-  {
-    id: 'data-zoom-bar', title: '滚动柱状图',
-    options: { 
-      xAxis: { data: Array.from({ length: 50 }, (_, i) => `项目${i + 1}`) },
-      series: [
-        { type: 'bar', name: '销量', data: Array.from({ length: 50 }, () => Math.floor(Math.random() * 200 + 50)), color: '#91cc75' }
-      ],
-      dataZoom: { show: true, start: 0, end: 30 },
-      animationType: 'grow' 
-    } as ChartOptions,
-    nativeCode: `// 滚动柱状图 - dataZoom 同样适用于柱状图
-const chart = new Chart('#container', {
-  xAxis: { data: Array.from({ length: 50 }, (_, i) => '项目' + (i + 1)) },
-  series: [{ type: 'bar', name: '销量', data: [...], color: '#91cc75' }],
-  dataZoom: { show: true, start: 0, end: 30 }
-})`,
-    vueCode: `<LChart :options="chartOptions" />
-// 柱状图也支持 dataZoom 滚动`,
-  },
 ])
 
 const exampleCount = computed(() => examples.value.length)
@@ -790,8 +770,11 @@ defineExpose({ exampleCount })
     <!-- 左侧内容区 -->
     <div class="main-content">
       <div class="page-header">
-        <h2 class="page-title">折线图示例</h2>
-        <span class="example-count">{{ exampleCount }} 个示例</span>
+        <div class="title-row">
+          <h2 class="page-title">折线图示例</h2>
+          <span class="example-count">{{ exampleCount }} 个示例</span>
+        </div>
+        <p class="page-desc">折线图用于展示数据的变化趋势，适合时间序列数据和连续数据的可视化。支持平滑曲线、阶梯线、面积图、多轴等多种组合。</p>
       </div>
       <div class="examples-grid">
         <ChartExample 
@@ -847,16 +830,36 @@ defineExpose({ exampleCount })
 }
 
 .page-header {
+  margin-bottom: 24px;
+}
+
+.title-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 8px;
 }
 
 .page-title {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   margin: 0;
+  color: var(--text-primary, #1e293b);
+}
+
+.example-count {
+  font-size: 12px;
+  padding: 2px 10px;
+  background: var(--primary, #3b82f6);
+  color: white;
+  border-radius: 12px;
+}
+
+.page-desc {
+  font-size: 14px;
+  color: var(--text-secondary, #64748b);
+  margin: 0;
+  line-height: 1.6;
 }
 
 .animation-panel {
@@ -927,29 +930,45 @@ defineExpose({ exampleCount })
 }
 
 /* 暗色模式 */
-:global(.dark) .animation-panel {
+:global([data-theme="dark"]) .animation-panel {
   background: #1e293b;
   border-color: #334155;
 }
 
-:global(.dark) .panel-title {
+:global([data-theme="dark"]) .panel-title {
   color: #f1f5f9;
 }
 
-:global(.dark) .animation-option:hover {
+:global([data-theme="dark"]) .animation-option:hover {
   background: #334155;
 }
 
-:global(.dark) .animation-option.active {
-  background: #1e3a5f;
+:global([data-theme="dark"]) .animation-option.active {
+  background: #2563eb;
   border-color: #3b82f6;
 }
 
-:global(.dark) .option-label {
+:global([data-theme="dark"]) .animation-option.active .option-label {
+  color: #ffffff;
+}
+
+:global([data-theme="dark"]) .animation-option.active .option-desc {
+  color: #bfdbfe;
+}
+
+:global([data-theme="dark"]) .option-label {
   color: #f1f5f9;
 }
 
-:global(.dark) .option-desc {
+:global([data-theme="dark"]) .option-desc {
+  color: #94a3b8;
+}
+
+:global([data-theme="dark"]) .page-title {
+  color: #f1f5f9;
+}
+
+:global([data-theme="dark"]) .page-desc {
   color: #94a3b8;
 }
 </style>

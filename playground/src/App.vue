@@ -1,22 +1,38 @@
 <script setup lang="ts">
-import { ref, computed, watch, provide } from 'vue'
+import { ref, computed, watch, provide, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { routes } from './router'
 
 const route = useRoute()
 
-const isDark = ref(false)
-const useMode = ref<'native' | 'vue'>('native')
-const rendererType = ref<'canvas' | 'svg'>('canvas')
+// 从 localStorage 读取设置，提供默认值
+const getStoredValue = <T extends string>(key: string, defaultValue: T): T => {
+  if (typeof window === 'undefined') return defaultValue
+  return (localStorage.getItem(key) as T) || defaultValue
+}
+
+const isDark = ref(getStoredValue('chart-playground-dark', 'false') === 'true')
+const useMode = ref<'native' | 'vue'>(getStoredValue('chart-playground-mode', 'native'))
+const rendererType = ref<'canvas' | 'svg'>(getStoredValue('chart-playground-renderer', 'canvas'))
 
 const pageTitle = computed(() => {
   const current = routes.find(r => r.path === route.path)
   return (current?.meta?.title as string) || '示例'
 })
 
+// 监听变化并保存到 localStorage
 watch(isDark, (dark) => {
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+  localStorage.setItem('chart-playground-dark', String(dark))
 }, { immediate: true })
+
+watch(useMode, (mode) => {
+  localStorage.setItem('chart-playground-mode', mode)
+})
+
+watch(rendererType, (renderer) => {
+  localStorage.setItem('chart-playground-renderer', renderer)
+})
 
 provide('isDark', isDark)
 provide('useMode', useMode)
@@ -50,6 +66,20 @@ provide('rendererType', rendererType)
             <template v-else-if="r.meta?.icon === 'pie'">
               <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
               <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+            </template>
+            <template v-else-if="r.meta?.icon === 'scatter'">
+              <circle cx="6" cy="6" r="2"/>
+              <circle cx="18" cy="8" r="2"/>
+              <circle cx="10" cy="12" r="2"/>
+              <circle cx="15" cy="16" r="2"/>
+              <circle cx="7" cy="18" r="2"/>
+              <circle cx="20" cy="18" r="2"/>
+            </template>
+            <template v-else-if="r.meta?.icon === 'candlestick'">
+              <line x1="6" y1="4" x2="6" y2="20"/>
+              <rect x="3" y="8" width="6" height="6" fill="currentColor"/>
+              <line x1="18" y1="4" x2="18" y2="20"/>
+              <rect x="15" y="10" width="6" height="8" fill="none"/>
             </template>
           </svg>
           <span>{{ r.meta?.title }}</span>

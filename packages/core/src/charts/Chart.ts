@@ -25,17 +25,20 @@ import type { BaseChartOptions } from './BaseChart'
 // ============== 类型定义 ==============
 
 /** 系列类型 */
-export type SeriesType = 'line' | 'bar' | 'scatter' | 'pie'
+export type SeriesType = 'line' | 'bar' | 'scatter' | 'pie' | 'candlestick'
 
 /** 动画类型 */
 export type AnimationType =
-  | 'rise'    // 从下往上升起（默认）
-  | 'expand'  // 从左到右展开（揭示效果）
-  | 'grow'    // 点依次出现（生长效果）
-  | 'fade'    // 淡入
-  | 'wave'    // 波浪动画 - 数据点依次弹起（折线图专用）
-  | 'draw'    // 绘制动画 - 线条渐进绘制（折线图专用）
-  | 'none'    // 无动画
+  | 'none'      // 无动画
+  | 'rise'      // 从下往上升起（默认）
+  | 'expand'    // 从左到右展开（揭示效果）
+  | 'grow'      // 点依次出现（生长效果）
+  | 'fade'      // 淡入
+  | 'wave'      // 波浪动画 - 数据点依次弹起（折线图专用）
+  | 'draw'      // 绘制动画 - 线条渐进绘制（折线图专用）
+  | 'cascade'   // 级联动画 - 柱子依次升起（柱状图专用）
+  | 'elasticIn' // 弹性进入 - 带回弹效果（柱状图专用）
+  | 'none'      // 无动画
 
 /** 线条样式 */
 export interface LineStyle {
@@ -59,17 +62,52 @@ export interface PieDataItem {
   value: number
   color?: string
   selected?: boolean
+  /** 禁用悬停高亮效果 */
+  noHover?: boolean
 }
 
 /** 饼图动画类型 */
-export type PieAnimationType = 'expand' | 'scale' | 'fade' | 'bounce' | 'none'
+export type PieAnimationType =
+  | 'expand'   // 扇形展开（默认）
+  | 'scale'    // 整体缩放
+  | 'fade'     // 淡入
+  | 'bounce'   // 回弹缩放
+  | 'spin'     // 旋转进入
+  | 'cascade'  // 扇形依次展开
+  | 'fan'      // 扇形依次弹出（带弹性）
+  | 'none'     // 无动画
+
+/** 散点图动画类型 */
+export type ScatterAnimationType =
+  | 'scale'    // 缩放出现（默认）
+  | 'fade'     // 淡入
+  | 'rise'     // 从下方升起
+  | 'ripple'   // 涟漪效果
+  | 'cascade'  // 级联出现
+  | 'none'     // 无动画
+
+/** 散点形状 */
+export type SymbolType = 'circle' | 'rect' | 'triangle' | 'diamond' | 'pin' | 'arrow'
+
+/** K线图数据点 [open, close, low, high] 或 { open, close, low, high, volume? } */
+export type CandlestickDataPoint =
+  | [number, number, number, number]  // [open, close, low, high]
+  | { open: number; close: number; low: number; high: number; volume?: number }
+
+/** K线图动画类型 */
+export type CandlestickAnimationType =
+  | 'grow'      // 蜡烛从中间向上下生长（默认）
+  | 'rise'      // 从底部升起
+  | 'fade'      // 淡入
+  | 'cascade'   // 从左到右依次出现
+  | 'none'      // 无动画
 
 /** 通用系列数据 */
 export interface SeriesData {
   type: SeriesType
   name?: string
-  /** 数据数组：折线/柱状图用 number[], 散点图用 [x,y][], 饼图用 PieDataItem[] */
-  data: (number | null)[] | ScatterDataPoint[] | PieDataItem[]
+  /** 数据数组：折线/柱状图用 number[], 散点图用 [x,y][], 饼图用 PieDataItem[], K线图用 CandlestickDataPoint[] */
+  data: (number | null)[] | ScatterDataPoint[] | PieDataItem[] | CandlestickDataPoint[]
   color?: string
 
   // 折线图特有
@@ -77,7 +115,7 @@ export interface SeriesData {
   step?: false | 'start' | 'middle' | 'end'
   areaStyle?: boolean | AreaStyle
   lineStyle?: LineStyle
-  symbol?: 'circle' | 'rect' | 'triangle' | 'diamond' | 'none'
+  symbol?: SymbolType | 'none'
   symbolSize?: number
   showSymbol?: boolean
   connectNulls?: boolean
@@ -97,12 +135,30 @@ export interface SeriesData {
   roseType?: boolean | 'radius' | 'area'
   /** 饼图动画类型 */
   pieAnimationType?: PieAnimationType
+  /** 散点图动画类型 */
+  scatterAnimationType?: ScatterAnimationType
   /** 起始角度（弧度），默认 -Math.PI/2 (12点钟方向) */
   startAngle?: number
   /** 扇形总角度（弧度），默认 Math.PI*2 (完整圆)，设为 Math.PI 为半圆 */
   sweepAngle?: number
+  /** 扇形间隙角度（弧度），默认 0 */
+  padAngle?: number
+  /** 扇形圆角半径 */
+  cornerRadius?: number
   /** 标签配置 */
   label?: { show?: boolean; position?: 'inside' | 'outside' }
+
+  // K线图特有
+  /** K线图动画类型 */
+  candlestickAnimationType?: CandlestickAnimationType
+  /** 上涨颜色（阳线），默认 #ec0000 */
+  upColor?: string
+  /** 下跌颜色（阴线），默认 #00da3c */
+  downColor?: string
+  /** 是否显示最高最低价标签 */
+  showMinMax?: boolean
+  /** 蜡烛宽度 */
+  candleWidth?: number | string
 
   // 多轴支持
   yAxisIndex?: number
@@ -138,6 +194,28 @@ export interface YAxisConfig {
   position?: 'left' | 'right'
 }
 
+/** 数据区域缩放配置 */
+export interface DataZoomConfig {
+  /** 是否显示，默认 false */
+  show?: boolean
+  /** 类型：slider（滑动条）或 inside（内置，鼠标滚轮/拖拽） */
+  type?: 'slider' | 'inside'
+  /** 起始百分比 0-100，默认 0 */
+  start?: number
+  /** 结束百分比 0-100，默认 100 */
+  end?: number
+  /** 高度（仅 slider 类型），默认 30 */
+  height?: number
+  /** 背景色 */
+  backgroundColor?: string
+  /** 选中区域颜色 */
+  fillerColor?: string
+  /** 边框颜色 */
+  borderColor?: string
+  /** 手柄样式 */
+  handleStyle?: { color?: string; borderColor?: string }
+}
+
 /** 图表配置 */
 export interface ChartOptions extends BaseChartOptions {
   /** X轴配置，支持多个 */
@@ -156,27 +234,43 @@ export interface ChartOptions extends BaseChartOptions {
   horizontal?: boolean
   /** 全局动画类型（可被系列配置覆盖） */
   animationType?: AnimationType
+  /** 数据区域缩放配置 */
+  dataZoom?: DataZoomConfig
 }
 
 // ============== 辅助函数 ==============
 
 /** 从数据中提取数值（用于折线图/柱状图） */
-function getNumericValue(value: number | null | ScatterDataPoint | PieDataItem): number | null {
+function getNumericValue(value: number | null | ScatterDataPoint | PieDataItem | CandlestickDataPoint): number | null {
   if (value === null) return null
   if (typeof value === 'number') return value
+  // 对于 K线图数组数据 [open, close, low, high]，返回 close 价格
+  if (Array.isArray(value) && value.length === 4) return value[1]
   // 对于散点图数据，返回 y 值
   if (Array.isArray(value)) return value[1]
   // 对于饼图数据，返回 value
-  if ('value' in value && 'name' in value) return value.value
-  return value.y
+  if ('value' in value && 'name' in value) return (value as PieDataItem).value
+  // 对于 K线图对象数据，返回 close 价格
+  if ('open' in value && 'close' in value) return (value as { open: number; close: number }).close
+  return (value as { y: number }).y
 }
 
 // ============== Chart 类 ==============
 
 export class Chart extends BaseChart<ChartOptions> {
   private hoverIndex = -1
+  private hoverSeriesIndex = -1  // 用于嵌套饼图
+  private hoverOffsets: Map<string, number> = new Map()  // 存储每个扇形的当前偏移量
+  private hoverAnimationFrame: number | null = null
   private enabledSeries: Set<string> = new Set()
   private tooltipEl: HTMLDivElement | null = null
+
+  // DataZoom 状态
+  private dataZoomStart = 0      // 起始百分比 0-100
+  private dataZoomEnd = 100      // 结束百分比 0-100
+  private dataZoomDragging: 'left' | 'right' | 'middle' | null = null
+  private dataZoomDragStartX = 0
+  private dataZoomDragStartValues = { start: 0, end: 100 }
 
   constructor(container: string | HTMLElement, options: ChartOptions = {}) {
     // 自动检测主题
@@ -199,6 +293,12 @@ export class Chart extends BaseChart<ChartOptions> {
 
     // 启用所有系列
     this.enabledSeries = new Set(this.options.series?.map(s => s.name || '') || [])
+
+    // 初始化 DataZoom
+    if (defaultOptions.dataZoom) {
+      this.dataZoomStart = defaultOptions.dataZoom.start ?? 0
+      this.dataZoomEnd = defaultOptions.dataZoom.end ?? 100
+    }
 
     // 绑定事件
     this.bindEvents()
@@ -255,10 +355,13 @@ export class Chart extends BaseChart<ChartOptions> {
       }
     }
 
+    // DataZoom 占用底部空间
+    const dataZoomHeight = this.options.dataZoom?.show ? (this.options.dataZoom.height ?? 30) + 10 : 0
+
     return {
       top: p.top ?? 40,
       right: p.right ?? 20,
-      bottom: p.bottom ?? 40,
+      bottom: (p.bottom ?? 40) + dataZoomHeight,
       left: p.left ?? defaultLeft,
     }
   }
@@ -303,16 +406,17 @@ export class Chart extends BaseChart<ChartOptions> {
     const { options } = this
     const { horizontal } = options
 
-    const enabledSeries = (options.series || []).filter(s => this.enabledSeries.has(s.name || ''))
+    let enabledSeries = (options.series || []).filter(s => this.enabledSeries.has(s.name || ''))
 
     // 按类型分组系列
     const barSeries = enabledSeries.filter(s => s.type === 'bar')
     const lineSeries = enabledSeries.filter(s => s.type === 'line')
     const scatterSeries = enabledSeries.filter(s => s.type === 'scatter')
     const pieSeries = enabledSeries.filter(s => s.type === 'pie')
+    const candlestickSeries = enabledSeries.filter(s => s.type === 'candlestick')
 
     // 判断是否只有饼图（饼图不需要坐标轴和网格）
-    const isPieOnly = pieSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0
+    const isPieOnly = pieSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0
 
     // 绘制背景
     this.drawBackground()
@@ -324,33 +428,64 @@ export class Chart extends BaseChart<ChartOptions> {
       // 获取轴配置
       const xAxisConfig = this.getAxisConfig(options.xAxis, 0)
       const yAxisConfigs = this.getAxisConfigs(options.yAxis)
-      const labels = xAxisConfig.data || []
+      let labels = xAxisConfig.data || []
 
-      // 计算 Y 轴范围
-      const yRanges = this.calculateYRanges(enabledSeries, yAxisConfigs)
+      // DataZoom 数据过滤
+      const hasDataZoom = options.dataZoom?.show
+      let zoomedSeries = enabledSeries
+      let zoomedLabels = labels
+
+      if (hasDataZoom && labels.length > 0) {
+        const totalLen = labels.length
+        const startIdx = Math.floor(totalLen * this.dataZoomStart / 100)
+        const endIdx = Math.ceil(totalLen * this.dataZoomEnd / 100)
+
+        zoomedLabels = labels.slice(startIdx, endIdx)
+        zoomedSeries = enabledSeries.map(s => ({
+          ...s,
+          data: (s.data as any[]).slice(startIdx, endIdx)
+        }))
+      }
+
+      // 计算 Y 轴范围（使用缩放后的数据）
+      const yRanges = this.calculateYRanges(zoomedSeries, yAxisConfigs)
 
       // 绘制网格
       if (options.grid?.show !== false) {
         this.drawGrid(5)
       }
 
-      // 绘制坐标轴
-      this.drawXAxis(labels, xAxisConfig, yRanges, horizontal)
-      this.drawYAxis(yRanges, yAxisConfigs, labels, horizontal)
+      // 绘制坐标轴（使用缩放后的标签）
+      this.drawXAxis(zoomedLabels, xAxisConfig, yRanges, horizontal)
+      this.drawYAxis(yRanges, yAxisConfigs, zoomedLabels, horizontal)
 
-      // 绘制各类型系列
-      if (barSeries.length > 0) {
-        this.drawBarSeries(barSeries, yRanges, labels, horizontal)
+      // 过滤缩放后的系列数据
+      const zoomedBar = zoomedSeries.filter(s => s.type === 'bar')
+      const zoomedLine = zoomedSeries.filter(s => s.type === 'line')
+      const zoomedScatter = zoomedSeries.filter(s => s.type === 'scatter')
+      const zoomedCandlestick = zoomedSeries.filter(s => s.type === 'candlestick')
+
+      // 绘制各类型系列（使用缩放后的数据）
+      if (zoomedCandlestick.length > 0) {
+        this.drawCandlestickSeries(zoomedCandlestick, yRanges, zoomedLabels)
       }
-      if (lineSeries.length > 0) {
-        this.drawLineSeries(lineSeries, yRanges, labels, horizontal)
+      if (zoomedBar.length > 0) {
+        this.drawBarSeries(zoomedBar, yRanges, zoomedLabels, horizontal)
       }
-      if (scatterSeries.length > 0) {
-        this.drawScatterSeries(scatterSeries, yRanges, labels)
+      if (zoomedLine.length > 0) {
+        this.drawLineSeries(zoomedLine, yRanges, zoomedLabels, horizontal)
+      }
+      if (zoomedScatter.length > 0) {
+        this.drawScatterSeries(zoomedScatter, yRanges, zoomedLabels)
       }
 
       // 绘制悬停参考线
-      this.drawHoverLine(labels)
+      this.drawHoverLine(zoomedLabels)
+
+      // 绘制 DataZoom 滑块
+      if (hasDataZoom) {
+        this.drawDataZoom(labels, enabledSeries)
+      }
     }
 
     // 绘制图例
@@ -475,18 +610,28 @@ export class Chart extends BaseChart<ChartOptions> {
 
     // 计算标签间隔，避免重叠
     let labelInterval = 1
-    if (interval === 'auto' || labels.length > 20) {
-      const avgLabelWidth = 50
-      const maxLabels = Math.floor(chartRect.width / avgLabelWidth)
-      labelInterval = Math.max(1, Math.ceil(labels.length / maxLabels))
-    } else if (typeof interval === 'number') {
+    if (typeof interval === 'number') {
       labelInterval = interval
+    } else {
+      // 自动计算：根据标签实际宽度和可用空间
+      const maxLabelLen = Math.max(...labels.map(l => l.length))
+      const estimatedLabelWidth = Math.max(maxLabelLen * 8, 50) // 每字符约8px
+      const availablePerLabel = chartRect.width / labels.length
+
+      if (availablePerLabel < estimatedLabelWidth) {
+        labelInterval = Math.ceil(estimatedLabelWidth / availablePerLabel)
+      }
+
+      // 数据量大时强制更大间隔
+      if (labels.length > 20 && labelInterval < 2) labelInterval = 2
+      if (labels.length > 40 && labelInterval < 3) labelInterval = 3
     }
 
     const displayLabels = inverse ? [...labels].reverse() : labels
 
     displayLabels.forEach((label, i) => {
-      if (i % labelInterval !== 0 && i !== displayLabels.length - 1) return
+      // 只显示间隔的标签
+      if (i % labelInterval !== 0) return
 
       const x = chartRect.x + barGroupWidth * i + barGroupWidth / 2
       const y = chartRect.y + chartRect.height + 20
@@ -703,27 +848,60 @@ export class Chart extends BaseChart<ChartOptions> {
     const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
     const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4)
 
+    // 弹性缓动函数
+    const easeOutElastic = (t: number) => {
+      if (t === 0 || t === 1) return t
+      const c4 = (2 * Math.PI) / 3
+      return Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1
+    }
+
+    // 回弹缓动
+    const easeOutBounce = (t: number) => {
+      const n1 = 7.5625, d1 = 2.75
+      if (t < 1 / d1) return n1 * t * t
+      if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75
+      if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375
+      return n1 * (t -= 2.625 / d1) * t + 0.984375
+    }
+
     switch (animationType) {
       case 'rise':
-        // 从底部升起，使用缓动
+        // 整体同时从底部升起
         height = targetHeight * easeOutCubic(progress)
         break
       case 'expand':
-        // 从左到右依次展开，每个柱子有重叠
-        const expandDelay = dataIndex / (totalBars + 2)
-        const expandDuration = 1 - expandDelay
-        const expandProgress = Math.max(0, Math.min(1, (progress - expandDelay) / expandDuration))
+        // 从中间向两边展开（宽度动画，但这里用高度模拟视觉效果）
+        // 中间的柱子先出现，两边的后出现
+        const centerIndex = (totalBars - 1) / 2
+        const distanceFromCenter = Math.abs(dataIndex - centerIndex) / centerIndex
+        const expandDelay = distanceFromCenter * 0.5
+        const expandProgress = Math.max(0, Math.min(1, (progress - expandDelay) / (1 - expandDelay)))
         height = targetHeight * easeOutQuart(expandProgress)
+        if (expandProgress <= 0) opacity = 0
         break
       case 'grow':
-        // 依次出现，更平滑的延迟
-        const growDelay = (dataIndex / totalBars) * 0.6
-        const growDuration = 1 - growDelay
-        const growProgress = Math.max(0, Math.min(1, (progress - growDelay) / growDuration))
-        height = targetHeight * easeOutCubic(growProgress)
+        // 从小到大生长，带轻微回弹
+        const growProgress = easeOutBounce(progress)
+        height = targetHeight * growProgress
+        break
+      case 'cascade':
+        // 级联瀑布：柱子像多米诺骨牌一样快速依次倒下（升起）
+        const cascadeDelay = (dataIndex / totalBars) * 0.85
+        const cascadeDuration = 0.2  // 每个柱子升起很快
+        const cascadeProgress = Math.max(0, Math.min(1, (progress - cascadeDelay) / cascadeDuration))
+        height = targetHeight * easeOutQuart(cascadeProgress)
+        if (cascadeProgress <= 0) opacity = 0
+        break
+      case 'elasticIn':
+        // 弹性动画：柱子超过目标高度后回弹
+        const elasticDelay = (dataIndex / totalBars) * 0.4
+        const elasticDuration = 0.7
+        const elasticProgress = Math.max(0, Math.min(1, (progress - elasticDelay) / elasticDuration))
+        height = targetHeight * easeOutElastic(elasticProgress)
+        if (elasticProgress <= 0) opacity = 0
         break
       case 'fade':
-        // 淡入效果
+        // 淡入：高度直接到位，透明度渐变
         height = targetHeight
         opacity = (isHovered ? 1 : 0.85) * easeOutCubic(progress)
         break
@@ -762,28 +940,59 @@ export class Chart extends BaseChart<ChartOptions> {
     // 计算当前层的进度
     const layerProgress = Math.max(0, Math.min(1, (progress - layerStart) / (layerEnd - layerStart)))
 
+    // 弹性缓动函数
+    const easeOutElastic = (t: number) => {
+      if (t === 0 || t === 1) return t
+      const c4 = (2 * Math.PI) / 3
+      return Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1
+    }
+
+    // 回弹缓动
+    const easeOutBounce = (t: number) => {
+      const n1 = 7.5625, d1 = 2.75
+      if (t < 1 / d1) return n1 * t * t
+      if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75
+      if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375
+      return n1 * (t -= 2.625 / d1) * t + 0.984375
+    }
+
     switch (animationType) {
       case 'rise':
         // 从底部升起，每层依次
         height = targetHeight * easeOutCubic(layerProgress)
         break
       case 'expand':
-        // 从左到右依次展开，同时每层依次
-        const expandDelay = dataIndex / (totalBars + 2)
-        const expandDuration = 1 - expandDelay
-        const expandProgress = Math.max(0, Math.min(1, (layerProgress - expandDelay) / expandDuration))
+        // 从中间向两边展开
+        const centerIndex = (totalBars - 1) / 2
+        const distanceFromCenter = Math.abs(dataIndex - centerIndex) / Math.max(centerIndex, 1)
+        const expandDelay = distanceFromCenter * 0.4
+        const expandProgress = Math.max(0, Math.min(1, (layerProgress - expandDelay) / (1 - expandDelay)))
         height = targetHeight * easeOutQuart(expandProgress)
+        if (expandProgress <= 0) opacity = 0
         break
       case 'grow':
-        // 依次出现
-        const growDelay = (dataIndex / totalBars) * 0.4
-        const growDuration = 1 - growDelay
-        const growProgress = Math.max(0, Math.min(1, (layerProgress - growDelay) / growDuration))
-        height = targetHeight * easeOutCubic(growProgress)
+        // 带回弹的生长
+        height = targetHeight * easeOutBounce(layerProgress)
+        break
+      case 'cascade':
+        // 级联瀑布
+        const cascadeDelay = (dataIndex / totalBars) * 0.7
+        const cascadeDuration = 0.25
+        const cascadeProgress = Math.max(0, Math.min(1, (layerProgress - cascadeDelay) / cascadeDuration))
+        height = targetHeight * easeOutQuart(cascadeProgress)
+        if (cascadeProgress <= 0) opacity = 0
+        break
+      case 'elasticIn':
+        // 弹性动画
+        const elasticDelay = (dataIndex / totalBars) * 0.3
+        const elasticDuration = 0.8
+        const elasticProgress = Math.max(0, Math.min(1, (layerProgress - elasticDelay) / elasticDuration))
+        height = targetHeight * easeOutElastic(elasticProgress)
+        if (elasticProgress <= 0) opacity = 0
         break
       case 'fade':
         // 淡入效果
-        height = targetHeight * easeOutCubic(layerProgress)
+        height = targetHeight
         opacity = (isHovered ? 1 : 0.85) * easeOutCubic(layerProgress)
         break
       case 'none':
@@ -1336,25 +1545,491 @@ export class Chart extends BaseChart<ChartOptions> {
     yRanges: { min: number; max: number }[],
     labels: string[]
   ): void {
-    const { renderer, chartRect, colors } = this
+    const { renderer, chartRect, colors, animationProgress } = this
     const barGroupWidth = chartRect.width / Math.max(labels.length, 1)
+
+    // 缓动函数
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    const easeOutBack = (t: number) => {
+      const c1 = 1.70158
+      const c3 = c1 + 1
+      return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
+    }
+    const easeOutElastic = (t: number) => {
+      if (t === 0 || t === 1) return t
+      return Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * (2 * Math.PI) / 3) + 1
+    }
 
     series.forEach((s, seriesIndex) => {
       const color = s.color || SERIES_COLORS[seriesIndex % SERIES_COLORS.length]
       const yRange = yRanges[s.yAxisIndex || 0] || yRanges[0]!
+      const baseRadius = s.symbolSize || 8
+      const symbol: SymbolType = (s.symbol as SymbolType) || 'circle'
+      const animType = s.scatterAnimationType || 'scale'
 
       s.data.forEach((value, dataIndex) => {
         const numValue = getNumericValue(value)
         if (numValue === null) return
+
         const x = chartRect.x + barGroupWidth * dataIndex + barGroupWidth / 2
         const normalizedValue = (numValue - yRange.min) / (yRange.max - yRange.min)
-        const y = chartRect.y + chartRect.height - chartRect.height * normalizedValue
-        const radius = s.symbolSize || 6
+        const targetY = chartRect.y + chartRect.height - chartRect.height * normalizedValue
 
-        renderer.drawCircle(
-          { x, y, radius },
-          { fill: color, stroke: colors.background, lineWidth: 1 }
-        )
+        // 根据动画类型计算进度
+        const delay = animType === 'cascade' ? dataIndex / (s.data.length + 3) : dataIndex / (s.data.length + 8)
+        const progress = Math.max(0, Math.min(1, (animationProgress - delay) / (1 - delay * 0.5)))
+
+        let y = targetY
+        let scale = 1
+        let opacity = 1
+
+        switch (animType) {
+          case 'scale':
+            scale = easeOutBack(progress)
+            opacity = easeOutCubic(progress)
+            break
+          case 'fade':
+            opacity = easeOutCubic(progress)
+            break
+          case 'rise':
+            y = chartRect.y + chartRect.height - (chartRect.y + chartRect.height - targetY) * easeOutBack(progress)
+            opacity = easeOutCubic(progress)
+            break
+          case 'ripple':
+            scale = easeOutElastic(progress)
+            opacity = easeOutCubic(progress)
+            break
+          case 'cascade':
+            scale = easeOutBack(progress)
+            opacity = progress > 0 ? 1 : 0
+            break
+          case 'none':
+            break
+        }
+
+        const radius = baseRadius * scale
+
+        // Hover 效果（平滑过渡）
+        const isHover = dataIndex === this.hoverIndex
+        const hoverKey = `scatter-${seriesIndex}-${dataIndex}`
+        const targetScale = isHover ? 1.4 : 1
+        const currentScale = this.hoverOffsets.get(hoverKey) ?? 1
+        const scaleDiff = targetScale - currentScale
+        const newScale = Math.abs(scaleDiff) < 0.02 ? targetScale : currentScale + scaleDiff * 0.1
+        this.hoverOffsets.set(hoverKey, newScale)
+
+        if (Math.abs(scaleDiff) > 0.02) {
+          this.scheduleHoverAnimation()
+        }
+
+        const finalRadius = radius * newScale
+        const fillColor = isHover && color ? this.lightenColor(color) : color
+
+        if (radius > 0.5 && opacity > 0) {
+          this.drawSymbol(renderer, x, y, finalRadius, symbol, fillColor, colors.background, opacity)
+        }
+      })
+    })
+  }
+
+  // ============== DataZoom 绑制 ==============
+
+  private drawDataZoom(labels: string[], series: SeriesData[]): void {
+    const { renderer, chartRect, colors, options, height } = this
+    const config = options.dataZoom
+    if (!config?.show) return
+
+    const zoomHeight = config.height ?? 30
+    const padding = this.getPadding()
+
+    // DataZoom 区域位置（在图表下方）
+    const zoomRect = {
+      x: chartRect.x,
+      y: height - padding.bottom + 45,
+      width: chartRect.width,
+      height: zoomHeight
+    }
+
+    // 背景
+    const bgColor = config.backgroundColor || (colors.background === '#ffffff' ? '#f5f5f5' : '#2a2a2a')
+    renderer.drawRect(zoomRect, { fill: bgColor, stroke: colors.grid, lineWidth: 1 })
+
+    // 绘制缩略数据预览（小型折线图）
+    if (series.length > 0 && labels.length > 0) {
+      const firstSeries = series.find(s => s.type === 'line' || s.type === 'bar' || s.type === 'candlestick')
+      if (firstSeries) {
+        const data = firstSeries.data as any[]
+        const values = data.map((d) => {
+          if (d === null) return null
+          if (typeof d === 'number') return d
+          if (Array.isArray(d) && d.length === 4) return d[1]
+          if (Array.isArray(d) && d.length === 2) return d[1]
+          return d.value ?? d.close ?? d.y ?? 0
+        }).filter(v => v !== null) as number[]
+
+        if (values.length > 1) {
+          const minVal = Math.min(...values)
+          const maxVal = Math.max(...values)
+          const range = maxVal - minVal || 1
+
+          // 绘制预览线段
+          const points: { x: number; y: number }[] = values.map((v, i) => ({
+            x: zoomRect.x + (i / (values.length - 1)) * zoomRect.width,
+            y: zoomRect.y + zoomRect.height - ((v - minVal) / range) * (zoomRect.height - 4) - 2
+          }))
+
+          renderer.drawLine(points, { stroke: colors.textSecondary, lineWidth: 1 })
+        }
+      }
+    }
+
+    // 选中区域
+    const fillerColor = config.fillerColor || (colors.background === '#ffffff' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.3)')
+    const startX = zoomRect.x + (this.dataZoomStart / 100) * zoomRect.width
+    const endX = zoomRect.x + (this.dataZoomEnd / 100) * zoomRect.width
+    const selectedWidth = endX - startX
+
+    renderer.drawRect(
+      { x: startX, y: zoomRect.y, width: selectedWidth, height: zoomRect.height },
+      { fill: fillerColor }
+    )
+
+    // 边框线
+    const borderColor = config.borderColor || '#3b82f6'
+    renderer.drawRect(
+      { x: startX, y: zoomRect.y, width: selectedWidth, height: zoomRect.height },
+      { fill: 'transparent', stroke: borderColor, lineWidth: 1 }
+    )
+
+    // 左右手柄
+    const handleColor = config.handleStyle?.color || '#3b82f6'
+    const handleWidth = 8
+    const handleHeight = zoomRect.height - 4
+
+    // 左手柄
+    renderer.drawRect(
+      { x: startX - handleWidth / 2, y: zoomRect.y + 2, width: handleWidth, height: handleHeight },
+      { fill: handleColor, stroke: '#fff', lineWidth: 1 }
+    )
+
+    // 右手柄
+    renderer.drawRect(
+      { x: endX - handleWidth / 2, y: zoomRect.y + 2, width: handleWidth, height: handleHeight },
+      { fill: handleColor, stroke: '#fff', lineWidth: 1 }
+    )
+  }
+
+  // 获取 DataZoom 区域
+  private getDataZoomRect(): { x: number; y: number; width: number; height: number } | null {
+    const { options, chartRect, height } = this
+    const config = options.dataZoom
+    if (!config?.show) return null
+
+    const zoomHeight = config.height ?? 30
+    const padding = this.getPadding()
+
+    return {
+      x: chartRect.x,
+      y: height - padding.bottom + 45,
+      width: chartRect.width,
+      height: zoomHeight
+    }
+  }
+
+  // 处理 DataZoom 鼠标事件
+  private handleDataZoomMouseDown(e: MouseEvent): boolean {
+    const zoomRect = this.getDataZoomRect()
+    if (!zoomRect) return false
+
+    const rect = this.container.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+
+    // 检查是否在 DataZoom 区域内
+    if (y < zoomRect.y || y > zoomRect.y + zoomRect.height) return false
+    if (x < zoomRect.x || x > zoomRect.x + zoomRect.width) return false
+
+    const startX = zoomRect.x + (this.dataZoomStart / 100) * zoomRect.width
+    const endX = zoomRect.x + (this.dataZoomEnd / 100) * zoomRect.width
+    const handleWidth = 12
+
+    this.dataZoomDragStartX = x
+    this.dataZoomDragStartValues = { start: this.dataZoomStart, end: this.dataZoomEnd }
+
+    // 判断拖拽类型
+    if (Math.abs(x - startX) < handleWidth) {
+      this.dataZoomDragging = 'left'
+    } else if (Math.abs(x - endX) < handleWidth) {
+      this.dataZoomDragging = 'right'
+    } else if (x > startX && x < endX) {
+      this.dataZoomDragging = 'middle'
+    } else {
+      return false
+    }
+
+    return true
+  }
+
+  private handleDataZoomMouseMove(e: MouseEvent): void {
+    if (!this.dataZoomDragging) return
+
+    const zoomRect = this.getDataZoomRect()
+    if (!zoomRect) return
+
+    const rect = this.container.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const deltaX = x - this.dataZoomDragStartX
+    const deltaPercent = (deltaX / zoomRect.width) * 100
+
+    const { start: origStart, end: origEnd } = this.dataZoomDragStartValues
+    let newStart = this.dataZoomStart
+    let newEnd = this.dataZoomEnd
+
+    switch (this.dataZoomDragging) {
+      case 'left':
+        newStart = Math.max(0, Math.min(origEnd - 5, origStart + deltaPercent))
+        break
+      case 'right':
+        newEnd = Math.min(100, Math.max(origStart + 5, origEnd + deltaPercent))
+        break
+      case 'middle':
+        const range = origEnd - origStart
+        newStart = Math.max(0, Math.min(100 - range, origStart + deltaPercent))
+        newEnd = newStart + range
+        break
+    }
+
+    if (newStart !== this.dataZoomStart || newEnd !== this.dataZoomEnd) {
+      this.dataZoomStart = newStart
+      this.dataZoomEnd = newEnd
+      this.render()
+    }
+  }
+
+  private handleDataZoomMouseUp(): void {
+    this.dataZoomDragging = null
+  }
+
+  // 绘制不同形状的散点（支持 Canvas 和 SVG）
+  private drawSymbol(
+    renderer: any, x: number, y: number, size: number,
+    symbol: SymbolType, fill: string | undefined, stroke: string, opacity: number
+  ): void {
+    const fillColor = fill || '#999'
+    const style = { fill: fillColor, stroke, lineWidth: 2, opacity }
+
+    switch (symbol) {
+      case 'circle':
+        renderer.drawCircle({ x, y, radius: size }, style)
+        break
+      case 'rect':
+        renderer.drawRect({ x: x - size, y: y - size, width: size * 2, height: size * 2 }, style)
+        break
+      case 'diamond':
+        renderer.drawPolygon([
+          { x, y: y - size * 1.2 },
+          { x: x + size, y },
+          { x, y: y + size * 1.2 },
+          { x: x - size, y }
+        ], style)
+        break
+      case 'triangle':
+        renderer.drawPolygon([
+          { x, y: y - size * 1.1 },
+          { x: x + size, y: y + size * 0.8 },
+          { x: x - size, y: y + size * 0.8 }
+        ], style)
+        break
+      case 'pin':
+        // 绘制圆形头部
+        renderer.drawCircle({ x, y: y - size * 0.5, radius: size * 0.7 }, style)
+        // 绘制三角形尾部
+        renderer.drawPolygon([
+          { x, y: y + size * 0.2 },
+          { x: x - size * 0.4, y: y + size },
+          { x: x + size * 0.4, y: y + size }
+        ], style)
+        break
+      case 'arrow':
+        renderer.drawPolygon([
+          { x, y: y - size * 1.2 },
+          { x: x + size * 0.7, y: y + size * 0.3 },
+          { x, y: y - size * 0.2 },
+          { x: x - size * 0.7, y: y + size * 0.3 }
+        ], style)
+        break
+    }
+  }
+
+  // ============== K线图绑制 ==============
+
+  private drawCandlestickSeries(
+    series: SeriesData[],
+    yRanges: { min: number; max: number }[],
+    labels: string[]
+  ): void {
+    const { renderer, chartRect, animationProgress } = this
+    const candleGroupWidth = chartRect.width / Math.max(labels.length, 1)
+
+    // 缓动函数
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    const easeOutBack = (t: number) => {
+      const c1 = 1.70158
+      const c3 = c1 + 1
+      return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
+    }
+
+    series.forEach((s) => {
+      const yRange = yRanges[s.yAxisIndex || 0] || yRanges[0]!
+      const animType = s.candlestickAnimationType || 'grow'
+      const upColor = s.upColor || '#ec0000'     // 上涨颜色（红色）
+      const downColor = s.downColor || '#00da3c' // 下跌颜色（绿色）
+
+      // 计算蜡烛宽度
+      let candleWidth: number
+      if (typeof s.candleWidth === 'number') {
+        candleWidth = s.candleWidth
+      } else if (typeof s.candleWidth === 'string' && s.candleWidth.endsWith('%')) {
+        candleWidth = candleGroupWidth * parseFloat(s.candleWidth) / 100
+      } else {
+        candleWidth = Math.min(candleGroupWidth * 0.6, 20)  // 默认60%宽度，最大20px
+      }
+
+      const data = s.data as CandlestickDataPoint[]
+
+      data.forEach((item, dataIndex) => {
+        if (!item) return
+
+        // 解析数据
+        let open: number, close: number, low: number, high: number
+        if (Array.isArray(item)) {
+          [open, close, low, high] = item
+        } else {
+          open = item.open
+          close = item.close
+          low = item.low
+          high = item.high
+        }
+
+        const isUp = close >= open
+        const color = isUp ? upColor : downColor
+
+        // 计算位置
+        const x = chartRect.x + candleGroupWidth * dataIndex + candleGroupWidth / 2
+
+        // 计算Y坐标
+        const normalizeY = (value: number) => {
+          const normalized = (value - yRange.min) / (yRange.max - yRange.min)
+          return chartRect.y + chartRect.height - chartRect.height * normalized
+        }
+
+        const yOpen = normalizeY(open)
+        const yClose = normalizeY(close)
+        const yLow = normalizeY(low)
+        const yHigh = normalizeY(high)
+
+        // 蜡烛体的顶部和底部
+        const bodyTop = Math.min(yOpen, yClose)
+        const bodyBottom = Math.max(yOpen, yClose)
+        const bodyHeight = Math.max(bodyBottom - bodyTop, 1)  // 至少1px
+
+        // 计算动画进度
+        let progress = animationProgress
+        let opacity = 1
+
+        switch (animType) {
+          case 'cascade': {
+            // 级联动画：从左到右依次出现
+            const delay = dataIndex / data.length * 0.6
+            progress = Math.max(0, Math.min(1, (animationProgress - delay) / 0.4))
+            progress = easeOutCubic(progress)
+            opacity = progress
+            break
+          }
+          case 'fade': {
+            // 淡入动画
+            opacity = easeOutCubic(animationProgress)
+            break
+          }
+          case 'rise': {
+            // 从底部升起
+            progress = easeOutCubic(animationProgress)
+            break
+          }
+          case 'grow':
+          default: {
+            // 从中心向上下生长
+            progress = easeOutBack(animationProgress)
+            break
+          }
+        }
+
+        if (opacity <= 0) return
+
+        // 根据动画类型计算实际绘制位置
+        let drawBodyTop = bodyTop
+        let drawBodyHeight = bodyHeight
+        let drawYHigh = yHigh
+        let drawYLow = yLow
+
+        if (animType === 'grow') {
+          // 从中心向上下生长
+          const centerY = (bodyTop + bodyBottom) / 2
+          drawBodyTop = centerY - (bodyHeight / 2) * progress
+          drawBodyHeight = bodyHeight * progress
+
+          const wickCenter = (yHigh + yLow) / 2
+          drawYHigh = wickCenter - (wickCenter - yHigh) * progress
+          drawYLow = wickCenter + (yLow - wickCenter) * progress
+        } else if (animType === 'rise') {
+          // 从底部升起
+          const baseY = chartRect.y + chartRect.height
+          drawBodyTop = baseY - (baseY - bodyTop) * progress
+          drawYHigh = baseY - (baseY - yHigh) * progress
+          drawYLow = baseY - (baseY - yLow) * progress
+          drawBodyHeight = bodyHeight * progress
+        }
+
+        // 绘制上下影线（芯线）
+        const wickWidth = 1
+        const wickX = x - wickWidth / 2
+
+        // 上影线
+        if (drawYHigh < drawBodyTop) {
+          renderer.drawRect(
+            { x: wickX, y: drawYHigh, width: wickWidth, height: drawBodyTop - drawYHigh },
+            { fill: color, opacity }
+          )
+        }
+
+        // 下影线
+        const drawBodyBottom = drawBodyTop + drawBodyHeight
+        if (drawYLow > drawBodyBottom) {
+          renderer.drawRect(
+            { x: wickX, y: drawBodyBottom, width: wickWidth, height: drawYLow - drawBodyBottom },
+            { fill: color, opacity }
+          )
+        }
+
+        // 绘制蜡烛体
+        const isHover = this.hoverIndex === dataIndex
+        const hoverScale = isHover ? 1.1 : 1
+        const finalCandleWidth = candleWidth * hoverScale
+        const finalBodyX = x - finalCandleWidth / 2
+
+        if (isUp) {
+          // 阳线（上涨）：实心
+          renderer.drawRect(
+            { x: finalBodyX, y: drawBodyTop, width: finalCandleWidth, height: Math.max(drawBodyHeight, 1) },
+            { fill: color, stroke: color, lineWidth: 1, opacity }
+          )
+        } else {
+          // 阴线（下跌）：实心
+          renderer.drawRect(
+            { x: finalBodyX, y: drawBodyTop, width: finalCandleWidth, height: Math.max(drawBodyHeight, 1) },
+            { fill: color, opacity }
+          )
+        }
       })
     })
   }
@@ -1378,16 +2053,82 @@ export class Chart extends BaseChart<ChartOptions> {
       const pieData = s.data as PieDataItem[]
       if (!pieData || pieData.length === 0) return
 
-      // 计算饼图中心和半径
-      // 留出标签空间：左右各留 80px，上下各留 40px
-      const labelPadding = { left: 80, right: 80, top: 40, bottom: 40 }
+      // 计算饼图中心和半径 - 根据是否显示标签动态调整
+      const showLabel = s.label?.show !== false
+
+      // 动态计算标签空间：有标签时预留空间，无标签时最小化边距
+      const basePadding = 15  // 基础边距
+      const labelSpace = showLabel ? Math.min(width, height) * 0.18 : 0  // 标签空间为尺寸的18%
+
+      const labelPadding = {
+        left: basePadding + labelSpace,
+        right: basePadding + labelSpace,
+        top: basePadding,
+        bottom: basePadding
+      }
+
       const availableWidth = width - labelPadding.left - labelPadding.right
       const availableHeight = height - labelPadding.top - labelPadding.bottom
-      const centerX = labelPadding.left + availableWidth / 2
-      const centerY = labelPadding.top + availableHeight / 2
-      const maxRadius = Math.min(availableWidth, availableHeight) / 2 * 0.85
 
-      // 解析半径配置
+      // 起始角度和总角度
+      const baseStartAngle = s.startAngle ?? -Math.PI / 2
+      const sweepAngle = s.sweepAngle ?? Math.PI * 2  // 默认完整圆，Math.PI 为半圆
+
+      // 智能居中：根据扇形范围计算最佳中心点
+      let centerX = width / 2
+      let centerY = height / 2
+
+      // 对于非完整圆，计算扇形的边界来居中
+      if (sweepAngle < Math.PI * 2 - 0.01) {
+        const endAngle = baseStartAngle + sweepAngle
+        const midAngle = baseStartAngle + sweepAngle / 2
+
+        // 计算扇形在各方向的最大延伸
+        const angles = [baseStartAngle, endAngle, midAngle]
+        // 添加关键角度点（0, π/2, π, 3π/2）如果在范围内
+        for (let a = 0; a < Math.PI * 2; a += Math.PI / 2) {
+          if ((a >= baseStartAngle && a <= endAngle) ||
+            (a + Math.PI * 2 >= baseStartAngle && a + Math.PI * 2 <= endAngle)) {
+            angles.push(a)
+          }
+        }
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+        angles.forEach(a => {
+          const x = Math.cos(a)
+          const y = Math.sin(a)
+          minX = Math.min(minX, x)
+          maxX = Math.max(maxX, x)
+          minY = Math.min(minY, y)
+          maxY = Math.max(maxY, y)
+        })
+        // 包含圆心
+        minX = Math.min(minX, 0)
+        maxX = Math.max(maxX, 0)
+        minY = Math.min(minY, 0)
+        maxY = Math.max(maxY, 0)
+
+        // 根据扇形边界调整中心点
+        const rangeX = maxX - minX
+        const rangeY = maxY - minY
+        const offsetX = -(minX + maxX) / 2
+        const offsetY = -(minY + maxY) / 2
+
+        // 计算适合扇形的最大半径
+        const scaleX = rangeX > 0 ? availableWidth / rangeX : availableWidth
+        const scaleY = rangeY > 0 ? availableHeight / rangeY : availableHeight
+        const maxRadius = Math.min(scaleX, scaleY) / 2 * 0.92
+
+        centerX = width / 2 + offsetX * maxRadius
+        centerY = height / 2 + offsetY * maxRadius
+      }
+
+      // 计算最大半径
+      const maxRadius = sweepAngle < Math.PI * 2 - 0.01
+        ? Math.min(availableWidth, availableHeight) / 2 * 0.85  // 非完整圆稍小一点
+        : Math.min(availableWidth / 2, availableHeight / 2) * 0.95
+
+      // 解析半径配置 - 支持嵌套环形图
       let innerRadius = 0
       let outerRadius = maxRadius
       if (s.radius !== undefined) {
@@ -1399,6 +2140,11 @@ export class Chart extends BaseChart<ChartOptions> {
         }
       }
 
+      // 缝隙角度（弧度）
+      const padAngle = s.padAngle ?? 0
+      // 圆角半径
+      const cornerRadius = s.cornerRadius ?? 0
+
       // 计算总值
       const total = pieData.reduce((sum, item) => sum + item.value, 0)
       if (total === 0) return
@@ -1407,14 +2153,16 @@ export class Chart extends BaseChart<ChartOptions> {
       const pieAnimationType = s.pieAnimationType || 'expand'
       const easedProgress = easeOutCubic(animationProgress)
 
-      // 起始角度和总角度
-      const baseStartAngle = s.startAngle ?? -Math.PI / 2
-      const sweepAngle = s.sweepAngle ?? Math.PI * 2  // 默认完整圆，Math.PI 为半圆
       let startAngle = baseStartAngle
 
+      // 获取当前系列在所有系列中的索引
+      const allSeriesIndex = (this.options.series || []).indexOf(s)
+
       pieData.forEach((item, i) => {
-        const fullSliceAngle = (item.value / total) * sweepAngle
-        const isHover = i === this.hoverIndex
+        // 计算扇形角度，减去缝隙
+        const fullSliceAngle = (item.value / total) * sweepAngle - padAngle
+        // 只有当 seriesIndex 和 dataIndex 都匹配，且没有 noHover 时才高亮
+        const isHover = i === this.hoverIndex && allSeriesIndex === this.hoverSeriesIndex && !item.noHover
         const color = item.color || s.color || SERIES_COLORS[(seriesIndex * pieData.length + i) % SERIES_COLORS.length]
 
         // 根据动画类型计算参数
@@ -1422,38 +2170,90 @@ export class Chart extends BaseChart<ChartOptions> {
         let opacity = 1
         let radiusScale = 1
 
+        // 弹性缓动函数
+        const easeOutElastic = (t: number) => {
+          if (t === 0 || t === 1) return t
+          const c4 = (2 * Math.PI) / 3
+          return Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1
+        }
+
+        // 计算每个扇形的延迟（用于级联动画）
+        const sliceDelay = i / pieData.length
+        const sliceProgress = Math.max(0, Math.min(1, (animationProgress - sliceDelay * 0.6) / (1 - sliceDelay * 0.6)))
+        const easedSliceProgress = easeOutCubic(sliceProgress)
+
         switch (pieAnimationType) {
           case 'expand':
+            // 整体扇形展开
             sliceAngle = fullSliceAngle * easedProgress
             break
           case 'scale':
+            // 整体缩放
             sliceAngle = fullSliceAngle
             radiusScale = easedProgress
             break
           case 'fade':
+            // 淡入
             sliceAngle = fullSliceAngle
             opacity = easedProgress
             break
           case 'bounce':
+            // 回弹缩放
             sliceAngle = fullSliceAngle
             radiusScale = easeOutBounce(animationProgress)
+            break
+          case 'spin':
+            // 旋转进入：所有扇形一起旋转，同时展开
+            sliceAngle = fullSliceAngle * easedProgress
+            // startAngle 会在后面被修改以实现旋转效果
+            break
+          case 'cascade':
+            // 扇形依次展开：每个扇形依次从0度展开到目标角度
+            sliceAngle = fullSliceAngle * easedSliceProgress
+            if (sliceProgress <= 0) opacity = 0
+            break
+          case 'fan':
+            // 扇形依次弹出：每个扇形依次从中心弹出，带弹性效果
+            sliceAngle = fullSliceAngle
+            radiusScale = easeOutElastic(sliceProgress)
+            if (sliceProgress <= 0) opacity = 0
             break
           case 'none':
             sliceAngle = fullSliceAngle
             break
         }
 
-        const endAngle = startAngle + sliceAngle
+        // spin 动画：添加旋转偏移
+        let animatedStartAngle = startAngle
+        if (pieAnimationType === 'spin') {
+          // 从 -360度 旋转到 0度
+          const rotationOffset = (1 - easedProgress) * Math.PI * 2
+          animatedStartAngle = startAngle - rotationOffset
+        }
+
+        const endAngle = animatedStartAngle + sliceAngle
 
         // 悬停时扇形外移（带平滑动画效果）
-        let cx = centerX, cy = centerY
-        let hoverOffset = 0
-        if (isHover) {
-          hoverOffset = 10  // hover 时偏移距离
+        const sliceKey = `${allSeriesIndex}-${i}`
+        const targetOffset = isHover ? 10 : 0
+        const currentOffset = this.hoverOffsets.get(sliceKey) ?? 0
+
+        // 平滑过渡到目标偏移
+        const offsetDiff = targetOffset - currentOffset
+        const newOffset = Math.abs(offsetDiff) < 0.5
+          ? targetOffset
+          : currentOffset + offsetDiff * 0.15  // 缓动系数，越小越慢
+        this.hoverOffsets.set(sliceKey, newOffset)
+
+        // 如果还在动画中，请求下一帧
+        if (Math.abs(offsetDiff) > 0.5) {
+          this.scheduleHoverAnimation()
         }
+
+        let cx = centerX, cy = centerY
         const midAngleForOffset = startAngle + fullSliceAngle / 2
-        cx += Math.cos(midAngleForOffset) * hoverOffset
-        cy += Math.sin(midAngleForOffset) * hoverOffset
+        cx += Math.cos(midAngleForOffset) * newOffset
+        cy += Math.sin(midAngleForOffset) * newOffset
 
         // 南丁格尔玫瑰图
         let finalOuterRadius = outerRadius * radiusScale
@@ -1465,14 +2265,23 @@ export class Chart extends BaseChart<ChartOptions> {
 
         // 绘制扇形
         const fillColor = isHover && color ? this.lightenColor(color) : color
-        renderer.drawSector(
-          cx, cy,
-          finalInnerRadius,
-          finalOuterRadius,
-          startAngle,
-          endAngle,
-          { fill: fillColor, opacity }
-        )
+
+        // 使用圆角绘制（需要有内径形成环形）
+        if (cornerRadius > 0 && finalInnerRadius > 0) {
+          this.drawRoundedSector(
+            renderer, cx, cy, finalInnerRadius, finalOuterRadius,
+            animatedStartAngle, endAngle, cornerRadius, fillColor || '#999', opacity
+          )
+        } else {
+          renderer.drawSector(
+            cx, cy,
+            finalInnerRadius,
+            finalOuterRadius,
+            animatedStartAngle,
+            endAngle,
+            { fill: fillColor, opacity }
+          )
+        }
 
         // 标签和引导线（带动画效果，hover 时跟随扇形移动）
         if (s.label?.show !== false && animationProgress > 0.6) {
@@ -1502,9 +2311,10 @@ export class Chart extends BaseChart<ChartOptions> {
             )
           } else {
             // 外部标签 + 引导线（跟随 hover 偏移）
+            // 引导线长度根据饼图大小动态调整
             const direction = Math.cos(midAngle) >= 0 ? 1 : -1
-            const length1 = 15
-            const length2 = 25
+            const length1 = Math.max(8, actualOuterRadius * 0.08)  // 第一段：斜向外
+            const length2 = Math.max(12, actualOuterRadius * 0.12) // 第二段：水平
 
             // 引导线起点（扇形边缘，跟随偏移）
             const lineStartX = labelCenterX + Math.cos(midAngle) * actualOuterRadius
@@ -1548,10 +2358,174 @@ export class Chart extends BaseChart<ChartOptions> {
           }
         }
 
-        // 更新起始角度（始终使用完整角度，动画只影响绘制的扇形大小）
-        startAngle += fullSliceAngle
+        // 更新起始角度（包含缝隙）
+        startAngle += fullSliceAngle + padAngle
       })
     })
+  }
+
+  // 绘制带圆角的扇形（四角小圆角）- 支持 Canvas 和 SVG
+  private drawRoundedSector(
+    renderer: any,
+    cx: number, cy: number,
+    innerRadius: number, outerRadius: number,
+    startAngle: number, endAngle: number,
+    cornerRadius: number,
+    fill: string, opacity: number
+  ): void {
+    if (innerRadius <= 0) {
+      renderer.drawSector(cx, cy, innerRadius, outerRadius, startAngle, endAngle, { fill, opacity })
+      return
+    }
+
+    const thickness = outerRadius - innerRadius
+    const angleSpan = endAngle - startAngle
+
+    // 根据扇形大小动态调整圆角
+    const maxCornerByThickness = thickness / 3
+    const maxCornerByAngle = (angleSpan * innerRadius) / 4
+    const r = Math.min(cornerRadius, maxCornerByThickness, maxCornerByAngle)
+
+    // 圆角太小时回退到普通扇形
+    if (r < 1) {
+      renderer.drawSector(cx, cy, innerRadius, outerRadius, startAngle, endAngle, { fill, opacity })
+      return
+    }
+
+    // 尝试使用 Canvas ctx
+    const ctx = renderer.ctx
+    if (ctx) {
+      // Canvas 模式：使用 arcTo 绘制圆角
+      ctx.save()
+      ctx.globalAlpha = opacity
+      ctx.fillStyle = fill
+      ctx.beginPath()
+
+      const outerStartAngle = startAngle + r / outerRadius
+      const outerEndAngle = endAngle - r / outerRadius
+      const innerStartAngle = startAngle + r / innerRadius
+      const innerEndAngle = endAngle - r / innerRadius
+
+      ctx.moveTo(
+        cx + Math.cos(outerStartAngle) * outerRadius,
+        cy + Math.sin(outerStartAngle) * outerRadius
+      )
+      ctx.arc(cx, cy, outerRadius, outerStartAngle, outerEndAngle, false)
+      ctx.arcTo(
+        cx + Math.cos(endAngle) * outerRadius,
+        cy + Math.sin(endAngle) * outerRadius,
+        cx + Math.cos(endAngle) * innerRadius,
+        cy + Math.sin(endAngle) * innerRadius,
+        r
+      )
+      ctx.arcTo(
+        cx + Math.cos(endAngle) * innerRadius,
+        cy + Math.sin(endAngle) * innerRadius,
+        cx + Math.cos(innerEndAngle) * innerRadius,
+        cy + Math.sin(innerEndAngle) * innerRadius,
+        r
+      )
+      ctx.arc(cx, cy, innerRadius, innerEndAngle, innerStartAngle, true)
+      ctx.arcTo(
+        cx + Math.cos(startAngle) * innerRadius,
+        cy + Math.sin(startAngle) * innerRadius,
+        cx + Math.cos(startAngle) * outerRadius,
+        cy + Math.sin(startAngle) * outerRadius,
+        r
+      )
+      ctx.arcTo(
+        cx + Math.cos(startAngle) * outerRadius,
+        cy + Math.sin(startAngle) * outerRadius,
+        cx + Math.cos(outerStartAngle) * outerRadius,
+        cy + Math.sin(outerStartAngle) * outerRadius,
+        r
+      )
+      ctx.closePath()
+      ctx.fill()
+      ctx.restore()
+    } else {
+      // SVG 模式：使用 drawPath 绘制带圆角的扇形
+      const outerStartAngle = startAngle + r / outerRadius
+      const outerEndAngle = endAngle - r / outerRadius
+      const innerStartAngle = startAngle + r / innerRadius
+      const innerEndAngle = endAngle - r / innerRadius
+
+      // 判断是否为大弧
+      const outerArcLarge = (outerEndAngle - outerStartAngle) > Math.PI
+      const innerArcLarge = (innerEndAngle - innerStartAngle) > Math.PI
+
+      const commands: any[] = [
+        // 移动到外弧起点
+        {
+          type: 'M',
+          x: cx + Math.cos(outerStartAngle) * outerRadius,
+          y: cy + Math.sin(outerStartAngle) * outerRadius
+        },
+        // 外弧
+        {
+          type: 'A',
+          rx: outerRadius, ry: outerRadius,
+          rotation: 0, large: outerArcLarge, sweep: true,
+          x: cx + Math.cos(outerEndAngle) * outerRadius,
+          y: cy + Math.sin(outerEndAngle) * outerRadius
+        },
+        // 右上圆角 (用二次贝塞尔曲线)
+        {
+          type: 'Q',
+          x1: cx + Math.cos(endAngle) * outerRadius,
+          y1: cy + Math.sin(endAngle) * outerRadius,
+          x: cx + Math.cos(endAngle) * (outerRadius - r),
+          y: cy + Math.sin(endAngle) * (outerRadius - r)
+        },
+        // 连接到内弧终点
+        {
+          type: 'L',
+          x: cx + Math.cos(endAngle) * (innerRadius + r),
+          y: cy + Math.sin(endAngle) * (innerRadius + r)
+        },
+        // 右下圆角
+        {
+          type: 'Q',
+          x1: cx + Math.cos(endAngle) * innerRadius,
+          y1: cy + Math.sin(endAngle) * innerRadius,
+          x: cx + Math.cos(innerEndAngle) * innerRadius,
+          y: cy + Math.sin(innerEndAngle) * innerRadius
+        },
+        // 内弧（逆向）
+        {
+          type: 'A',
+          rx: innerRadius, ry: innerRadius,
+          rotation: 0, large: innerArcLarge, sweep: false,
+          x: cx + Math.cos(innerStartAngle) * innerRadius,
+          y: cy + Math.sin(innerStartAngle) * innerRadius
+        },
+        // 左下圆角
+        {
+          type: 'Q',
+          x1: cx + Math.cos(startAngle) * innerRadius,
+          y1: cy + Math.sin(startAngle) * innerRadius,
+          x: cx + Math.cos(startAngle) * (innerRadius + r),
+          y: cy + Math.sin(startAngle) * (innerRadius + r)
+        },
+        // 连接到外弧起点
+        {
+          type: 'L',
+          x: cx + Math.cos(startAngle) * (outerRadius - r),
+          y: cy + Math.sin(startAngle) * (outerRadius - r)
+        },
+        // 左上圆角
+        {
+          type: 'Q',
+          x1: cx + Math.cos(startAngle) * outerRadius,
+          y1: cy + Math.sin(startAngle) * outerRadius,
+          x: cx + Math.cos(outerStartAngle) * outerRadius,
+          y: cy + Math.sin(outerStartAngle) * outerRadius
+        },
+        { type: 'Z' }
+      ]
+
+      renderer.drawPath({ commands }, { fill, opacity })
+    }
   }
 
   private lightenColor(hex: string): string {
@@ -1561,6 +2535,15 @@ export class Chart extends BaseChart<ChartOptions> {
     const g = Math.min(255, ((num >> 8) & 0xff) + 40)
     const b = Math.min(255, (num & 0xff) + 40)
     return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
+  }
+
+  // 调度 hover 动画
+  private scheduleHoverAnimation(): void {
+    if (this.hoverAnimationFrame) return;
+    this.hoverAnimationFrame = requestAnimationFrame(() => {
+      this.hoverAnimationFrame = null;
+      this.render();
+    });
   }
 
   // ============== 辅助绑制方法 ==============
@@ -1682,6 +2665,21 @@ export class Chart extends BaseChart<ChartOptions> {
     container.addEventListener('mousemove', this.handleMouseMove.bind(this))
     container.addEventListener('mouseleave', this.handleMouseLeave.bind(this))
     container.addEventListener('click', this.handleClick.bind(this))
+
+    // DataZoom 拖拽事件
+    container.addEventListener('mousedown', (e: MouseEvent) => {
+      if (this.handleDataZoomMouseDown(e)) {
+        e.preventDefault()
+      }
+    })
+
+    document.addEventListener('mousemove', (e: MouseEvent) => {
+      this.handleDataZoomMouseMove(e)
+    })
+
+    document.addEventListener('mouseup', () => {
+      this.handleDataZoomMouseUp()
+    })
   }
 
   private handleMouseMove(e: MouseEvent): void {
@@ -1711,87 +2709,120 @@ export class Chart extends BaseChart<ChartOptions> {
       newIndex = Math.floor((x - this.chartRect.x) / barGroupWidth)
     }
 
-    if (newIndex >= 0 && newIndex < labels.length && newIndex !== this.hoverIndex) {
-      this.hoverIndex = newIndex
-      this.render()
-      this.showTooltip(e, newIndex)
-    }
-  }
+    // 检查是否在有效数据范围内
+    const isInRange = newIndex >= 0 && newIndex < labels.length
+    const isInChartArea = x >= this.chartRect.x && x <= this.chartRect.x + this.chartRect.width &&
+      y >= this.chartRect.y && y <= this.chartRect.y + this.chartRect.height
 
-  private handlePieMouseMove(x: number, y: number, e: MouseEvent): void {
-    const pieSeries = (this.options.series || []).filter(s => s.type === 'pie')
-    if (pieSeries.length === 0) return
-
-    const s = pieSeries[0]!
-    const pieData = s.data as PieDataItem[]
-    if (!pieData || pieData.length === 0) return
-
-    // 计算饼图中心和半径（与绑制时一致）
-    const labelPadding = { left: 80, right: 80, top: 40, bottom: 40 }
-    const availableWidth = this.width - labelPadding.left - labelPadding.right
-    const availableHeight = this.height - labelPadding.top - labelPadding.bottom
-    const centerX = labelPadding.left + availableWidth / 2
-    const centerY = labelPadding.top + availableHeight / 2
-    const maxRadius = Math.min(availableWidth, availableHeight) / 2 * 0.85
-
-    let outerRadius = maxRadius
-    let innerRadius = 0
-    if (s.radius !== undefined) {
-      if (Array.isArray(s.radius)) {
-        innerRadius = s.radius[0] * maxRadius
-        outerRadius = s.radius[1] * maxRadius
-      } else {
-        outerRadius = s.radius * maxRadius
+    if (isInRange && isInChartArea) {
+      if (newIndex !== this.hoverIndex) {
+        this.hoverIndex = newIndex
+        this.render()
+        this.showTooltip(e, newIndex)
       }
-    }
-
-    // 计算鼠标相对于圆心的位置
-    const dx = x - centerX
-    const dy = y - centerY
-    const dist = Math.sqrt(dx * dx + dy * dy)
-    let angle = Math.atan2(dy, dx)
-
-    // 检查是否在饼图范围内
-    if (dist < innerRadius || dist > outerRadius) {
+    } else {
+      // 鼠标移出数据区域，立即隐藏tooltip
       if (this.hoverIndex !== -1) {
         this.hoverIndex = -1
         this.hideTooltip()
         this.render()
       }
-      return
     }
+  }
 
-    // 计算总值和起始角度
-    const total = pieData.reduce((sum, item) => sum + item.value, 0)
-    const baseStartAngle = s.startAngle ?? -Math.PI / 2
+  private handlePieMouseMove(x: number, y: number, e: MouseEvent): void {
+    const allSeries = this.options.series || []
+    const pieSeries = allSeries.filter(s => s.type === 'pie')
+    if (pieSeries.length === 0) return
 
-    // 将角度调整到与饼图起始角度一致
-    if (angle < baseStartAngle) {
-      angle += Math.PI * 2
-    }
+    // 计算中心点（简化版本，使用画布中心）
+    const centerX = this.width / 2
+    const centerY = this.height / 2
+    const basePadding = 15
+    const maxRadius = Math.min(this.width, this.height) / 2 * 0.95 - basePadding
 
-    // 找到鼠标所在的扇形
-    let startAngle = baseStartAngle
-    let found = -1
-    for (let i = 0; i < pieData.length; i++) {
-      const sliceAngle = (pieData[i]!.value / total) * Math.PI * 2
-      const endAngle = startAngle + sliceAngle
+    // 计算鼠标相对于圆心的位置
+    const dx = x - centerX
+    const dy = y - centerY
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    const angle = Math.atan2(dy, dx)
 
-      let checkAngle = angle
-      if (checkAngle < startAngle) checkAngle += Math.PI * 2
-
-      if (checkAngle >= startAngle && checkAngle < endAngle) {
-        found = i
-        break
+    // 从外到内检查每个饼图系列（外层优先）
+    // 按外半径从大到小排序
+    const sortedSeries = pieSeries.map((s) => {
+      let outerR = maxRadius
+      if (s.radius !== undefined) {
+        outerR = Array.isArray(s.radius) ? s.radius[1] * maxRadius : s.radius * maxRadius
       }
-      startAngle = endAngle
+      return { series: s, originalIndex: allSeries.indexOf(s), outerRadius: outerR }
+    }).sort((a, b) => b.outerRadius - a.outerRadius)
+
+    let foundSeriesIdx = -1
+    let foundDataIdx = -1
+    let foundItem: PieDataItem | null = null
+    let foundTotal = 0
+
+    for (const { series: s, originalIndex } of sortedSeries) {
+      const pieData = s.data as PieDataItem[]
+      if (!pieData || pieData.length === 0) continue
+
+      let outerRadius = maxRadius
+      let innerRadius = 0
+      if (s.radius !== undefined) {
+        if (Array.isArray(s.radius)) {
+          innerRadius = s.radius[0] * maxRadius
+          outerRadius = s.radius[1] * maxRadius
+        } else {
+          outerRadius = s.radius * maxRadius
+        }
+      }
+
+      // 检查是否在这个环的范围内
+      if (dist < innerRadius || dist > outerRadius) continue
+
+      // 计算总值和起始角度
+      const total = pieData.reduce((sum, item) => sum + item.value, 0)
+      const baseStartAngle = s.startAngle ?? -Math.PI / 2
+      const sweepAngle = s.sweepAngle ?? Math.PI * 2
+      const padAngle = s.padAngle ?? 0
+
+      // 将角度调整到正确范围
+      let checkAngle = angle
+      if (checkAngle < baseStartAngle) checkAngle += Math.PI * 2
+
+      // 找到鼠标所在的扇形
+      let startAngle = baseStartAngle
+      for (let i = 0; i < pieData.length; i++) {
+        const item = pieData[i]!
+        const sliceAngle = (item.value / total) * sweepAngle - padAngle
+        const endAngle = startAngle + sliceAngle
+
+        let testAngle = checkAngle
+        if (testAngle < startAngle) testAngle += Math.PI * 2
+
+        if (testAngle >= startAngle && testAngle < endAngle) {
+          // 跳过 noHover 的项
+          if (!item.noHover) {
+            foundSeriesIdx = originalIndex
+            foundDataIdx = i
+            foundItem = item
+            foundTotal = total
+          }
+          break
+        }
+        startAngle += sliceAngle + padAngle
+      }
+
+      if (foundDataIdx >= 0) break  // 找到了就停止
     }
 
-    if (found !== this.hoverIndex) {
-      this.hoverIndex = found
+    // 更新状态
+    if (foundSeriesIdx !== this.hoverSeriesIndex || foundDataIdx !== this.hoverIndex) {
+      this.hoverSeriesIndex = foundSeriesIdx
+      this.hoverIndex = foundDataIdx
       this.render()
-      if (found >= 0) {
-        this.showPieTooltip(e, pieData[found]!, total)
+      if (foundItem) {
+        this.showPieTooltip(e, foundItem, foundTotal)
       } else {
         this.hideTooltip()
       }
@@ -1824,6 +2855,7 @@ export class Chart extends BaseChart<ChartOptions> {
 
   private handleMouseLeave(): void {
     this.hoverIndex = -1
+    this.hoverSeriesIndex = -1
     this.hideTooltip()
     this.render()
   }
