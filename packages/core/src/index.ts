@@ -2,11 +2,16 @@
  * @ldesign/chart-core
  * 核心图表库入口文件
  * 
- * 推荐使用方式（参考 ECharts）：
+ * 推荐使用方式（新架构，支持按需加载）：
  * ```ts
- * import { Chart } from '@ldesign/chart-core'
+ * import { ChartCore, use } from '@ldesign/chart-core'
+ * import { LineSeriesNew, BarSeriesNew } from '@ldesign/chart-core/presets/basic'
  * 
- * const chart = new Chart('#container', {
+ * // 注册需要的图表类型
+ * use([LineSeriesNew, BarSeriesNew])
+ * 
+ * // 创建图表
+ * const chart = new ChartCore('#container', {
  *   xAxis: { data: ['Mon', 'Tue', 'Wed'] },
  *   series: [
  *     { type: 'bar', name: '销量', data: [120, 200, 150] },
@@ -14,13 +19,82 @@
  *   ],
  * })
  * ```
+ * 
+ * 向后兼容使用方式：
+ * ```ts
+ * import { Chart } from '@ldesign/chart-core'
+ * // Chart 类包含所有图表类型，但不支持 tree-shaking
+ * ```
  */
 
-// ============== 核心图表类（推荐使用）==============
-export { Chart } from './charts'
-export type { ChartOptions, SeriesData, SeriesType, XAxisConfig, YAxisConfig, LineStyle as ChartLineStyle, AreaStyle, AnimationType, PieDataItem as ChartPieDataItem, PieAnimationType } from './charts'
+// ============== 新核心系统（推荐使用）==============
+export {
+  // 图表类
+  ChartCore,
 
-// ============== 基础类 ==============
+  // 注册系统
+  use,
+  registerSeries,
+  registerComponent,
+  hasSeriesType,
+  hasComponentType,
+
+  // 主题系统
+  registerTheme,
+  getTheme,
+  setGlobalTheme,
+  getGlobalTheme,
+  detectSystemTheme,
+  getThemeColors as getCoreThemeColors,
+  getSeriesColor as getCoreSeriesColor,
+  colorWithOpacity,
+  lightTheme,
+  darkTheme as coreDarkTheme,
+  DEFAULT_PALETTE,
+  LIGHT_COLORS,
+  DARK_COLORS,
+
+  // 动画系统
+  easings,
+  getEasing as getCoreEasing,
+  resolveAnimationConfig,
+  calculateItemProgress,
+  calculateAnimationTransform,
+  DEFAULT_ANIMATION_CONFIG,
+} from './core'
+
+export type {
+  // 图表类型
+  ChartCoreOptions,
+  ChartRect,
+  Padding,
+  AxisConfig,
+  SeriesConfig,
+
+  // 注册系统类型
+  RegisterableSeries,
+  ISeriesInstance,
+  SeriesConstructorParams,
+  SeriesOptionBase,
+  RegisterableComponent,
+  IComponentInstance,
+
+  // 主题类型
+  ThemeColors,
+
+  // 动画类型
+  ChartAnimationConfig,
+  EasingName,
+  EasingFn,
+  EntryAnimationType,
+  UpdateAnimationType,
+} from './core'
+
+// ============== 向后兼容：旧图表类 ==============
+export { Chart } from './charts'
+export type { ChartOptions, SeriesData, SeriesType, XAxisConfig, YAxisConfig, LineStyle as ChartLineStyle, AreaStyle, AnimationType, PieDataItem as ChartPieDataItem, PieAnimationType, DataZoomConfig } from './charts'
+
+// ============== 向后兼容：基础类 ==============
 export { BaseChart } from './charts'
 export type { BaseChartOptions } from './charts'
 

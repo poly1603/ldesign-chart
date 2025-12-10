@@ -384,14 +384,33 @@ export class CanvasRenderer implements IRenderer {
 
   /**
    * 绘制线条（多段线）
+   * @param step - 阶梯线类型: 'start' | 'middle' | 'end' | false
    */
-  drawLine(points: Point[], style: LineStyle, smooth: boolean = false): void {
+  drawLine(points: Point[], style: LineStyle, smooth: boolean = false, step?: false | 'start' | 'middle' | 'end'): void {
     if (!this.ctx || points.length < 2) return
 
     this.ctx.beginPath()
     this.ctx.moveTo(points[0]!.x, points[0]!.y)
 
-    if (smooth) {
+    if (step) {
+      // 阶梯线绘制
+      for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1]!
+        const curr = points[i]!
+        if (step === 'start') {
+          this.ctx.lineTo(prev.x, curr.y)
+          this.ctx.lineTo(curr.x, curr.y)
+        } else if (step === 'middle') {
+          const midX = (prev.x + curr.x) / 2
+          this.ctx.lineTo(midX, prev.y)
+          this.ctx.lineTo(midX, curr.y)
+          this.ctx.lineTo(curr.x, curr.y)
+        } else if (step === 'end') {
+          this.ctx.lineTo(curr.x, prev.y)
+          this.ctx.lineTo(curr.x, curr.y)
+        }
+      }
+    } else if (smooth) {
       // 使用贝塞尔曲线绘制平滑曲线
       for (let i = 1; i < points.length; i++) {
         const p0 = points[Math.max(0, i - 2)]!

@@ -220,8 +220,9 @@ export interface IRenderer {
    * @param points - 点数组
    * @param style - 线条样式
    * @param smooth - 是否平滑曲线
+   * @param step - 阶梯线类型: 'start' | 'middle' | 'end' | false
    */
-  drawLine(points: Point[], style: LineStyle, smooth?: boolean): void
+  drawLine(points: Point[], style: LineStyle, smooth?: boolean, step?: false | 'start' | 'middle' | 'end'): void
 
   /**
    * 绘制填充区域（多边形/面积图）

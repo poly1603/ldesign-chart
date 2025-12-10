@@ -33,6 +33,8 @@ export type AnimationType =
   | 'expand'  // 从左到右展开（揭示效果）
   | 'grow'    // 点依次出现（生长效果）
   | 'fade'    // 淡入
+  | 'wave'    // 波浪动画 - 数据点依次弹起（折线图专用）
+  | 'draw'    // 绘制动画 - 线条渐进绘制（折线图专用）
   | 'none'    // 无动画
 
 /** 线条样式 */
@@ -1044,6 +1046,29 @@ export class Chart extends BaseChart<ChartOptions> {
           case 'fade':
             // 淡入效果：点位置不变
             break
+          case 'wave':
+            // 波浪动画：数据点依次弹起，带有弹性效果
+            {
+              const pointDelay = dataIndex / Math.max(s.data.length - 1, 1)
+              const pointProgress = Math.max(0, (animationProgress - pointDelay * 0.6) / (1 - pointDelay * 0.6))
+              // 弹性缓动
+              const bounceEase = (t: number) => {
+                if (t < 0) return 0
+                if (t > 1) return 1
+                const c4 = (2 * Math.PI) / 3
+                return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1
+              }
+              const easedPoint = bounceEase(pointProgress)
+              if (horizontal) {
+                animatedX = baseX + (targetX - baseX) * easedPoint
+              } else {
+                animatedY = baseY + (targetY - baseY) * easedPoint
+              }
+            }
+            break
+          case 'draw':
+            // 绘制动画：线条从左到右渐进绘制，点位置不变
+            break
           case 'none':
             // 无动画：点位置不变
             break
@@ -1156,8 +1181,31 @@ export class Chart extends BaseChart<ChartOptions> {
       if (animationType === 'expand' && targetPoints) {
         drawPoints = targetPoints
       } else if (animationType === 'grow' && targetPoints) {
+        // 生长动画：点一个个出现（阶梯式）
         const visibleCount = Math.ceil(targetPoints.length * easedProgress)
         drawPoints = targetPoints.slice(0, Math.max(2, visibleCount))
+      } else if (animationType === 'draw' && targetPoints) {
+        // 绘制动画：平滑绘制，支持绘制到两点之间的位置
+        const progress = easedProgress * (targetPoints.length - 1)
+        const fullPoints = Math.floor(progress)
+        const partialProgress = progress - fullPoints
+
+        // 获取完整的点
+        drawPoints = targetPoints.slice(0, fullPoints + 1)
+
+        // 如果还有下一个点，插值计算当前绘制位置
+        if (fullPoints < targetPoints.length - 1 && partialProgress > 0) {
+          const currentPoint = targetPoints[fullPoints]!
+          const nextPoint = targetPoints[fullPoints + 1]!
+          const interpolatedPoint = {
+            x: currentPoint.x + (nextPoint.x - currentPoint.x) * partialProgress,
+            y: currentPoint.y + (nextPoint.y - currentPoint.y) * partialProgress
+          }
+          drawPoints = [...drawPoints, interpolatedPoint]
+        }
+      } else if (animationType === 'wave') {
+        // 波浪动画：使用动画后的点位置
+        drawPoints = points
       }
 
       // 绘制线条
@@ -1184,6 +1232,20 @@ export class Chart extends BaseChart<ChartOptions> {
         opacity: lineOpacity,
       }, s.smooth)
 
+      // draw 动画：绘制"笔尖"发光效果
+      if (animationType === 'draw' && drawPoints.length > 0 && animationProgress < 1) {
+        const tipPoint = drawPoints[drawPoints.length - 1]!
+        // 发光圈
+        renderer.drawCircle(
+          { x: tipPoint.x, y: tipPoint.y, radius: 8 },
+          { fill: color, opacity: 0.3 }
+        )
+        renderer.drawCircle(
+          { x: tipPoint.x, y: tipPoint.y, radius: 4 },
+          { fill: color, opacity: 0.8 }
+        )
+      }
+
       if (animationType === 'expand') {
         renderer.restore()
       }
@@ -1204,25 +1266,64 @@ export class Chart extends BaseChart<ChartOptions> {
         } else if (animationType === 'fade') {
           symbolOpacity = animationProgress
           symbolScale = 1
-        } else if (animationType === 'grow') {
+        } else if (animationType === 'grow' || animationType === 'draw') {
+          symbolScale = 1
+        } else if (animationType === 'wave') {
+          // 波浪动画：数据点跟随弹起
+          symbolOpacity = 1
           symbolScale = 1
         }
 
         if (symbolOpacity > 0) {
-          const pointsToDraw = animationType === 'grow' ? drawPoints : points
+          const pointsToDraw = (animationType === 'grow' || animationType === 'draw') ? drawPoints : points
+          const symbolType = s.symbol || 'circle'
+
+          // symbol: 'none' 或 showSymbol: false 不绘制数据点
+          if (symbolType === 'none') return
+
           pointsToDraw.forEach((point, idx) => {
-            // grow 动画：点依次出现
-            if (animationType === 'grow' && targetPoints) {
+            // grow/draw 动画：点依次出现
+            if ((animationType === 'grow' || animationType === 'draw') && targetPoints) {
               const pointProgress = (idx / targetPoints.length)
               if (pointProgress > animationProgress) return
             }
 
-            const radius = (s.symbolSize || 4) * symbolScale
-            if (radius > 0.5) {
-              renderer.drawCircle(
-                { x: point.x, y: point.y, radius },
-                { fill: colors.background, stroke: color, lineWidth: 2 }
-              )
+            // wave 动画：点依次弹起时显示
+            if (animationType === 'wave' && targetPoints) {
+              const pointDelay = idx / Math.max(targetPoints.length - 1, 1)
+              const pointProgress = Math.max(0, (animationProgress - pointDelay * 0.6) / (1 - pointDelay * 0.6))
+              if (pointProgress < 0.1) return // 还没开始弹起的点不显示
+            }
+
+            const size = (s.symbolSize || 4) * symbolScale
+            if (size > 0.5) {
+              // 根据 symbol 类型绘制不同形状
+              if (symbolType === 'rect') {
+                renderer.drawRect(
+                  { x: point.x - size, y: point.y - size, width: size * 2, height: size * 2 },
+                  { fill: color, stroke: colors.background, lineWidth: 1, opacity: symbolOpacity }
+                )
+              } else if (symbolType === 'triangle') {
+                const h = size * 1.8
+                renderer.drawPolygon([
+                  { x: point.x, y: point.y - h / 2 },
+                  { x: point.x - size, y: point.y + h / 2 },
+                  { x: point.x + size, y: point.y + h / 2 }
+                ], { fill: color, opacity: symbolOpacity })
+              } else if (symbolType === 'diamond') {
+                renderer.drawPolygon([
+                  { x: point.x, y: point.y - size * 1.2 },
+                  { x: point.x + size, y: point.y },
+                  { x: point.x, y: point.y + size * 1.2 },
+                  { x: point.x - size, y: point.y }
+                ], { fill: color, opacity: symbolOpacity })
+              } else {
+                // 默认圆形 - 实心填充
+                renderer.drawCircle(
+                  { x: point.x, y: point.y, radius: size },
+                  { fill: color, stroke: colors.background, lineWidth: 2, opacity: symbolOpacity }
+                )
+              }
             }
           })
         }

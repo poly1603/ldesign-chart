@@ -2,19 +2,14 @@
  * Vue 3 Chart Composable
  */
 
-import { ref, onMounted, onBeforeUnmount, watch, type Ref } from 'vue'
+import { ref, shallowRef, onMounted, onBeforeUnmount, watch, type Ref } from 'vue'
+import { Chart } from '@ldesign/chart-core'
+import type { ChartOptions } from '@ldesign/chart-core'
 
 /**
  * Chart 配置选项
  */
-export interface ChartOption {
-  series?: Array<{
-    type: string
-    data: number[]
-    [key: string]: any
-  }>
-  [key: string]: any
-}
+export type ChartOption = ChartOptions
 
 /**
  * useChart 配置
@@ -30,9 +25,10 @@ export interface UseChartOptions {
  */
 export interface UseChartReturn {
   containerRef: Ref<HTMLDivElement | null>
-  chartInstance: Ref<any>
+  chartInstance: Ref<Chart | null>
   resize: () => void
   dispose: () => void
+  refresh: () => void
 }
 
 /**
@@ -63,47 +59,53 @@ export function useChart(options: UseChartOptions): UseChartReturn {
   const { option, theme, autoResize = true } = options
 
   const containerRef = ref<HTMLDivElement | null>(null)
-  const chartInstance = ref<any>(null)
+  const chartInstance = shallowRef<Chart | null>(null)
   let resizeObserver: ResizeObserver | null = null
 
   /**
    * 初始化图表
    */
   const initChart = () => {
-    if (!containerRef.value) {
-      console.warn('[useChart] Container ref is not available')
-      return
+    if (!containerRef.value) return
+
+    // 销毁旧实例
+    if (chartInstance.value) {
+      chartInstance.value.dispose()
+      chartInstance.value = null
     }
 
-    // TODO: 使用 @ldesign/chart-core 创建图表实例
-    // 当前仅创建占位，实际实现需要等待核心包API确定
-    console.log('[useChart] Chart initialized with option:', option.value)
-    
-    // chartInstance.value = new Chart({
-    //   container: containerRef.value,
-    //   option: option.value,
-    //   theme: theme?.value
-    // })
+    // 合并主题配置
+    const chartOptions: ChartOptions = {
+      ...option.value,
+      theme: theme?.value === 'dark' ? 'dark' : 'light',
+    }
+
+    chartInstance.value = new Chart(containerRef.value, chartOptions)
   }
 
   /**
    * 更新图表配置
    */
   const updateChart = () => {
-    if (!chartInstance.value) return
-    
-    console.log('[useChart] Chart updated with option:', option.value)
-    // chartInstance.value.setOption(option.value)
+    if (!chartInstance.value) {
+      initChart()
+      return
+    }
+    chartInstance.value.setOption(option.value)
   }
 
   /**
    * 调整图表大小
    */
   const resize = () => {
-    if (!chartInstance.value) return
-    
-    console.log('[useChart] Chart resized')
-    // chartInstance.value.resize()
+    chartInstance.value?.resize()
+  }
+
+  /**
+   * 刷新图表
+   */
+  const refresh = () => {
+    initChart()
   }
 
   /**
@@ -114,10 +116,8 @@ export function useChart(options: UseChartOptions): UseChartReturn {
       resizeObserver.disconnect()
       resizeObserver = null
     }
-
     if (chartInstance.value) {
-      console.log('[useChart] Chart disposed')
-      // chartInstance.value.dispose()
+      chartInstance.value.dispose()
       chartInstance.value = null
     }
   }
@@ -127,50 +127,32 @@ export function useChart(options: UseChartOptions): UseChartReturn {
    */
   const setupAutoResize = () => {
     if (!autoResize || !containerRef.value) return
-
-    resizeObserver = new ResizeObserver(() => {
-      resize()
-    })
-
+    resizeObserver = new ResizeObserver(() => resize())
     resizeObserver.observe(containerRef.value)
   }
 
-  // 生命周期：挂载后初始化
   onMounted(() => {
     initChart()
     setupAutoResize()
   })
 
-  // 生命周期：卸载前清理
   onBeforeUnmount(() => {
     dispose()
   })
 
   // 监听配置变化
-  watch(
-    () => option.value,
-    () => {
-      updateChart()
-    },
-    { deep: true }
-  )
+  watch(() => option.value, updateChart, { deep: true })
 
   // 监听主题变化
   if (theme) {
-    watch(
-      () => theme.value,
-      (newTheme) => {
-        if (!chartInstance.value) return
-        console.log('[useChart] Theme changed to:', newTheme)
-        // chartInstance.value.setTheme(newTheme)
-      }
-    )
+    watch(() => theme.value, () => initChart())
   }
 
   return {
     containerRef,
     chartInstance,
     resize,
-    dispose
+    dispose,
+    refresh
   }
 }

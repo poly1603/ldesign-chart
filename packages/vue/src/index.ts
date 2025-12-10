@@ -10,18 +10,12 @@ export { default as LChart } from './components/LChart.vue'
 export { useChart } from './composables/useChart'
 
 // 导出类型
-export type { 
+export type {
   ChartOption,
   UseChartOptions,
-  UseChartReturn 
+  UseChartReturn
 } from './composables/useChart'
 
-export type { LChartProps } from './components/LChart.vue'
-
-// 重新导出核心包的类型和工具
-export type {
-  Theme,
-  ColorTheme,
-  IAnimation,
-  AnimationOptions,
-} from '@ldesign/chart-core'
+// 重新导出核心包的 Chart 类和类型
+export { Chart } from '@ldesign/chart-core'
+export type { ChartOptions } from '@ldesign/chart-core'
