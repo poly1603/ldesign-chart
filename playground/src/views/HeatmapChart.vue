@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import ChartExample from '@/components/ChartExample.vue'
+import ChartPageLayout from '@/components/ChartPageLayout.vue'
 import type { ChartOptions, HeatmapAnimationType } from '@ldesign/chart-core'
 
 const props = defineProps<{ useMode: 'native' | 'vue'; rendererType: 'canvas' | 'svg'; isDark: boolean }>()
 
 // 动画类型选项
-const animationTypes: { value: HeatmapAnimationType; label: string; desc: string }[] = [
+const animationTypes = [
   { value: 'fade', label: '淡入', desc: '整体渐变显示' },
   { value: 'scale', label: '缩放', desc: '单元格缩放出现' },
   { value: 'wave', label: '波浪', desc: '波浪式显示' },
@@ -309,218 +309,20 @@ colorRange: ['#f7fcb9', '#004529']`,
 ])
 
 const exampleCount = computed(() => examples.value.length)
-
-function refreshExample(_index: number) {
-  // computed 自动响应
-}
-
 defineExpose({ exampleCount })
 </script>
 
 <template>
-  <div class="chart-page">
-    <div class="page-content">
-      <div class="page-header">
-        <div class="title-row">
-          <h2 class="page-title">热力图示例</h2>
-          <span class="example-count">{{ exampleCount }} 个示例</span>
-        </div>
-        <p class="page-desc">热力图（Heatmap）通过颜色深浅展示二维数据的分布情况。支持三种渲染模式：<b>单元格</b>（标准网格）、<b>平滑</b>（颜色平滑过渡）、<b>等高线</b>（离散色带效果）。</p>
-      </div>
-
-      <div class="examples-grid">
-        <ChartExample
-          v-for="(example, index) in examples"
-          :key="example.id"
-          :title="example.title"
-          :options="example.options"
-          :native-code="example.nativeCode"
-          :vue-code="example.vueCode"
-          :use-mode="props.useMode"
-          :renderer-type="props.rendererType"
-          :is-dark="props.isDark"
-          @refresh="refreshExample(index)"
-        />
-      </div>
-    </div>
-
-    <!-- 右侧动画选择面板 -->
-    <div class="animation-panel">
-      <h3 class="panel-title">动画效果</h3>
-      <div class="animation-options">
-        <label
-          v-for="anim in animationTypes"
-          :key="anim.value"
-          class="animation-option"
-          :class="{ active: selectedAnimationType === anim.value }"
-        >
-          <input
-            type="radio"
-            :value="anim.value"
-            v-model="selectedAnimationType"
-            class="radio-input"
-          />
-          <div class="option-content">
-            <span class="option-label">{{ anim.label }}</span>
-            <span class="option-desc">{{ anim.desc }}</span>
-          </div>
-        </label>
-      </div>
-    </div>
-  </div>
+  <ChartPageLayout
+    title="热力图示例"
+    description="热力图（Heatmap）通过颜色深浅展示二维数据的分布情况。支持三种渲染模式：<b>单元格</b>（标准网格）、<b>平滑</b>（颜色平滑过渡）、<b>等高线</b>（离散色带效果）。"
+    :examples="examples"
+    :use-mode="props.useMode"
+    :renderer-type="props.rendererType"
+    :is-dark="props.isDark"
+    :animation-types="animationTypes"
+    :selected-animation="selectedAnimationType"
+    layout="sidebar"
+    @update:selected-animation="selectedAnimationType = $event as HeatmapAnimationType"
+  />
 </template>
-
-<style scoped>
-.chart-page {
-  display: flex;
-  gap: 24px;
-}
-
-.page-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.example-count {
-  font-size: 14px;
-  color: #64748b;
-  background: #f1f5f9;
-  padding: 2px 10px;
-  border-radius: 12px;
-}
-
-.page-desc {
-  color: #64748b;
-  font-size: 14px;
-  line-height: 1.6;
-  margin: 0;
-  max-width: 800px;
-}
-
-.examples-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 20px;
-}
-
-/* 动画面板 */
-.animation-panel {
-  position: sticky;
-  top: 20px;
-  width: 220px;
-  height: fit-content;
-  background: #fff;
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid #e2e8f0;
-  flex-shrink: 0;
-}
-
-.panel-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0 0 12px 0;
-  color: #1e293b;
-}
-
-.animation-options {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.animation-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  border: 1px solid transparent;
-}
-
-.animation-option:hover {
-  background: #f8fafc;
-}
-
-.animation-option.active {
-  background: #eff6ff;
-  border-color: #3b82f6;
-}
-
-.radio-input {
-  margin-top: 2px;
-  accent-color: #3b82f6;
-}
-
-.option-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.option-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: #1e293b;
-}
-
-.option-desc {
-  font-size: 11px;
-  color: #64748b;
-}
-
-/* 暗色模式 */
-:global(.dark) .example-count {
-  background: #334155;
-  color: #94a3b8;
-}
-
-:global(.dark) .page-desc {
-  color: #94a3b8;
-}
-
-:global(.dark) .animation-panel {
-  background: #1e293b;
-  border-color: #334155;
-}
-
-:global(.dark) .panel-title {
-  color: #f1f5f9;
-}
-
-:global(.dark) .animation-option:hover {
-  background: #334155;
-}
-
-:global(.dark) .animation-option.active {
-  background: #1e3a5f;
-  border-color: #3b82f6;
-}
-
-:global(.dark) .option-label {
-  color: #f1f5f9;
-}
-
-:global(.dark) .option-desc {
-  color: #94a3b8;
-}
-</style>

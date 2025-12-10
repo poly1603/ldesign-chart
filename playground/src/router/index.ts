@@ -48,6 +48,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/HeatmapChart.vue'),
     meta: { title: '热力图', icon: 'heatmap' },
   },
+  {
+    path: '/graph',
+    name: 'Graph',
+    component: () => import('@/views/GraphChart.vue'),
+    meta: { title: '关系图', icon: 'graph' },
+  },
 ]
 
 const router = createRouter({

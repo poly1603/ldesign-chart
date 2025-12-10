@@ -101,6 +101,17 @@ provide('rendererType', rendererType)
               <rect x="9" y="15" width="5" height="5" fill="currentColor" opacity="0.6"/>
               <rect x="15" y="15" width="5" height="5" fill="currentColor" opacity="0.9"/>
             </template>
+            <template v-else-if="r.meta?.icon === 'graph'">
+              <circle cx="6" cy="6" r="3" fill="currentColor"/>
+              <circle cx="17" cy="6" r="3" fill="currentColor"/>
+              <circle cx="6" cy="17" r="3" fill="currentColor"/>
+              <circle cx="17" cy="17" r="3" fill="currentColor"/>
+              <line x1="6" y1="6" x2="17" y2="6" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="6" y1="6" x2="6" y2="17" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="6" y1="17" x2="17" y2="17" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="17" y1="6" x2="17" y2="17" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="6" y1="6" x2="17" y2="17" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+            </template>
           </svg>
           <span>{{ r.meta?.title }}</span>
         </router-link>

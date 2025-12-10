@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import ChartExample from '@/components/ChartExample.vue'
+import ChartPageLayout from '@/components/ChartPageLayout.vue'
 import type { ChartOptions } from '@ldesign/chart-core'
 
 const props = defineProps<{ useMode: 'native' | 'vue'; rendererType: 'canvas' | 'svg'; isDark: boolean }>()
@@ -766,209 +766,17 @@ defineExpose({ exampleCount })
 </script>
 
 <template>
-  <div class="line-chart-page">
-    <!-- 左侧内容区 -->
-    <div class="main-content">
-      <div class="page-header">
-        <div class="title-row">
-          <h2 class="page-title">折线图示例</h2>
-          <span class="example-count">{{ exampleCount }} 个示例</span>
-        </div>
-        <p class="page-desc">折线图用于展示数据的变化趋势，适合时间序列数据和连续数据的可视化。支持平滑曲线、阶梯线、面积图、多轴等多种组合。</p>
-      </div>
-      <div class="examples-grid">
-        <ChartExample 
-          v-for="(e, i) in examplesWithAnimation" 
-          :key="e.id + '-' + i + '-' + globalAnimation" 
-          :title="e.title" 
-          :options="e.options"
-          :native-code="e.nativeCode" 
-          :vue-code="e.vueCode" 
-          :use-mode="props.useMode" 
-          :renderer-type="props.rendererType"
-          :is-dark="props.isDark"
-          @refresh="refreshExample(i)"
-        />
-      </div>
-    </div>
-    
-    <!-- 右侧动画控制面板 -->
-    <div class="animation-panel">
-      <div class="panel-title">动画效果</div>
-      <div class="animation-options">
-        <label 
-          v-for="opt in animationOptions" 
-          :key="opt.value"
-          class="animation-option"
-          :class="{ active: globalAnimation === opt.value }"
-        >
-          <input 
-            type="radio" 
-            :value="opt.value" 
-            v-model="globalAnimation"
-            class="radio-input"
-          />
-          <div class="option-content">
-            <span class="option-label">{{ opt.label }}</span>
-            <span class="option-desc">{{ opt.desc }}</span>
-          </div>
-        </label>
-      </div>
-    </div>
-  </div>
+  <ChartPageLayout
+    title="折线图示例"
+    description="折线图用于展示数据的变化趋势，适合时间序列数据和连续数据的可视化。支持平滑曲线、阶梯线、面积图、多轴等多种组合。"
+    :examples="examplesWithAnimation"
+    :use-mode="props.useMode"
+    :renderer-type="props.rendererType"
+    :is-dark="props.isDark"
+    :animation-types="animationOptions"
+    :selected-animation="globalAnimation"
+    layout="sidebar"
+    @update:selected-animation="globalAnimation = $event"
+    @refresh="refreshExample"
+  />
 </template>
-
-<style scoped>
-.line-chart-page {
-  display: flex;
-  gap: 20px;
-}
-
-.main-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.page-title {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0;
-  color: var(--text-primary, #1e293b);
-}
-
-.example-count {
-  font-size: 12px;
-  padding: 2px 10px;
-  background: var(--primary, #3b82f6);
-  color: white;
-  border-radius: 12px;
-}
-
-.page-desc {
-  font-size: 14px;
-  color: var(--text-secondary, #64748b);
-  margin: 0;
-  line-height: 1.6;
-}
-
-.animation-panel {
-  width: 180px;
-  flex-shrink: 0;
-  position: sticky;
-  top: 20px;
-  height: fit-content;
-  background: var(--bg-secondary, #f8fafc);
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid var(--border-color, #e2e8f0);
-}
-
-.panel-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: var(--text-primary, #1e293b);
-}
-
-.animation-options {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.animation-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  border: 1px solid transparent;
-}
-
-.animation-option:hover {
-  background: var(--bg-hover, #f1f5f9);
-}
-
-.animation-option.active {
-  background: var(--primary-light, #eff6ff);
-  border-color: var(--primary, #3b82f6);
-}
-
-.radio-input {
-  margin-top: 2px;
-  accent-color: var(--primary, #3b82f6);
-}
-
-.option-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.option-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary, #1e293b);
-}
-
-.option-desc {
-  font-size: 11px;
-  color: var(--text-secondary, #64748b);
-}
-
-/* 暗色模式 */
-:global([data-theme="dark"]) .animation-panel {
-  background: #1e293b;
-  border-color: #334155;
-}
-
-:global([data-theme="dark"]) .panel-title {
-  color: #f1f5f9;
-}
-
-:global([data-theme="dark"]) .animation-option:hover {
-  background: #334155;
-}
-
-:global([data-theme="dark"]) .animation-option.active {
-  background: #2563eb;
-  border-color: #3b82f6;
-}
-
-:global([data-theme="dark"]) .animation-option.active .option-label {
-  color: #ffffff;
-}
-
-:global([data-theme="dark"]) .animation-option.active .option-desc {
-  color: #bfdbfe;
-}
-
-:global([data-theme="dark"]) .option-label {
-  color: #f1f5f9;
-}
-
-:global([data-theme="dark"]) .option-desc {
-  color: #94a3b8;
-}
-
-:global([data-theme="dark"]) .page-title {
-  color: #f1f5f9;
-}
-
-:global([data-theme="dark"]) .page-desc {
-  color: #94a3b8;
-}
-</style>

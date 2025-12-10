@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import ChartExample from '@/components/ChartExample.vue'
+import ChartPageLayout from '@/components/ChartPageLayout.vue'
 import type { ChartOptions, RadarAnimationType } from '@ldesign/chart-core'
 
 const props = defineProps<{ useMode: 'native' | 'vue'; rendererType: 'canvas' | 'svg'; isDark: boolean }>()
@@ -327,209 +327,17 @@ defineExpose({ exampleCount })
 </script>
 
 <template>
-  <div class="chart-page">
-    <div class="page-content">
-      <div class="page-header">
-        <div class="title-row">
-          <h2 class="page-title">雷达图示例</h2>
-          <span class="example-count">{{ exampleCount }} 个示例</span>
-        </div>
-        <p class="page-desc">雷达图（Radar Chart）也叫蜘蛛网图，常用于多维度数据的可视化对比。支持多边形和圆形两种形状，以及多系列数据叠加显示。</p>
-      </div>
-
-      <div class="examples-grid">
-        <ChartExample
-          v-for="(example, index) in examples"
-          :key="example.id"
-          :title="example.title"
-          :options="example.options"
-          :native-code="example.nativeCode"
-          :vue-code="example.vueCode"
-          :use-mode="props.useMode"
-          :renderer-type="props.rendererType"
-          :is-dark="props.isDark"
-          @refresh="refreshExample(index)"
-        />
-      </div>
-    </div>
-
-    <!-- 右侧动画选择面板 -->
-    <div class="animation-panel">
-      <h3 class="panel-title">动画效果</h3>
-      <div class="animation-options">
-        <label
-          v-for="anim in animationTypes"
-          :key="anim.value"
-          class="animation-option"
-          :class="{ active: selectedAnimationType === anim.value }"
-        >
-          <input
-            type="radio"
-            :value="anim.value"
-            v-model="selectedAnimationType"
-            class="radio-input"
-          />
-          <div class="option-content">
-            <span class="option-label">{{ anim.label }}</span>
-            <span class="option-desc">{{ anim.desc }}</span>
-          </div>
-        </label>
-      </div>
-    </div>
-  </div>
+  <ChartPageLayout
+    title="雷达图示例"
+    description="雷达图（Radar Chart）也叫蜘蛛网图，常用于多维度数据的可视化对比。支持多边形和圆形两种形状，以及多系列数据叠加显示。"
+    :examples="examples"
+    :use-mode="props.useMode"
+    :renderer-type="props.rendererType"
+    :is-dark="props.isDark"
+    :animation-types="animationTypes"
+    :selected-animation="selectedAnimationType"
+    layout="sidebar"
+    @update:selected-animation="selectedAnimationType = $event as RadarAnimationType"
+    @refresh="refreshExample"
+  />
 </template>
-
-<style scoped>
-.chart-page {
-  display: flex;
-  gap: 24px;
-}
-
-.page-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.example-count {
-  font-size: 14px;
-  color: #64748b;
-  background: #f1f5f9;
-  padding: 2px 10px;
-  border-radius: 12px;
-}
-
-.page-desc {
-  color: #64748b;
-  font-size: 14px;
-  line-height: 1.6;
-  margin: 0;
-  max-width: 800px;
-}
-
-.examples-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 20px;
-}
-
-/* 动画面板 */
-.animation-panel {
-  position: sticky;
-  top: 20px;
-  width: 220px;
-  height: fit-content;
-  background: #fff;
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid #e2e8f0;
-  flex-shrink: 0;
-}
-
-.panel-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0 0 12px 0;
-  color: #1e293b;
-}
-
-.animation-options {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.animation-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  border: 1px solid transparent;
-}
-
-.animation-option:hover {
-  background: #f8fafc;
-}
-
-.animation-option.active {
-  background: #eff6ff;
-  border-color: #3b82f6;
-}
-
-.radio-input {
-  margin-top: 2px;
-  accent-color: #3b82f6;
-}
-
-.option-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.option-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: #1e293b;
-}
-
-.option-desc {
-  font-size: 11px;
-  color: #64748b;
-}
-
-/* 暗色模式 */
-:global(.dark) .example-count {
-  background: #334155;
-  color: #94a3b8;
-}
-
-:global(.dark) .page-desc {
-  color: #94a3b8;
-}
-
-:global(.dark) .animation-panel {
-  background: #1e293b;
-  border-color: #334155;
-}
-
-:global(.dark) .panel-title {
-  color: #f1f5f9;
-}
-
-:global(.dark) .animation-option:hover {
-  background: #334155;
-}
-
-:global(.dark) .animation-option.active {
-  background: #1e3a5f;
-  border-color: #3b82f6;
-}
-
-:global(.dark) .option-label {
-  color: #f1f5f9;
-}
-
-:global(.dark) .option-desc {
-  color: #94a3b8;
-}
-</style>

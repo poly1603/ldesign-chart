@@ -25,7 +25,7 @@ import type { BaseChartOptions } from './BaseChart'
 // ============== 类型定义 ==============
 
 /** 系列类型 */
-export type SeriesType = 'line' | 'bar' | 'scatter' | 'pie' | 'candlestick' | 'radar' | 'heatmap'
+export type SeriesType = 'line' | 'bar' | 'scatter' | 'pie' | 'candlestick' | 'radar' | 'heatmap' | 'graph'
 
 /** 动画类型 */
 export type AnimationType =
@@ -139,6 +139,49 @@ export type HeatmapRenderMode =
 /** 热力图数据项 [x索引, y索引, 值] 或 { x, y, value } */
 export type HeatmapDataItem = [number, number, number] | { x: number; y: number; value: number }
 
+/** 关系图动画类型 */
+export type GraphAnimationType =
+  | 'fade'      // 淡入（默认）
+  | 'scale'     // 缩放出现
+  | 'expand'    // 从中心扩展
+  | 'none'      // 无动画
+
+/** 关系图布局类型 */
+export type GraphLayout = 'force' | 'circular' | 'grid'
+
+/** 关系图节点 */
+export interface GraphNode {
+  id: string
+  name: string
+  x?: number
+  y?: number
+  value?: number
+  category?: number
+  symbolSize?: number
+  itemStyle?: { color?: string }
+}
+
+/** 关系图边 */
+export interface GraphLink {
+  source: string
+  target: string
+  value?: number
+  lineStyle?: { color?: string; width?: number; curveness?: number }
+}
+
+/** 关系图分类 */
+export interface GraphCategory {
+  name: string
+  itemStyle?: { color?: string }
+}
+
+/** 关系图数据 */
+export interface GraphData {
+  nodes: GraphNode[]
+  links: GraphLink[]
+  categories?: GraphCategory[]
+}
+
 /** 通用系列数据 */
 export interface SeriesData {
   type: SeriesType
@@ -222,6 +265,22 @@ export interface SeriesData {
   showLabel?: boolean
   /** 等高线层数（仅contour模式） */
   contourLevels?: number
+
+  // 关系图特有
+  /** 关系图数据 */
+  graphData?: GraphData
+  /** 关系图布局 */
+  graphLayout?: GraphLayout
+  /** 关系图动画类型 */
+  graphAnimationType?: GraphAnimationType
+  /** 节点大小 */
+  nodeSize?: number
+  /** 边宽度 */
+  edgeWidth?: number
+  /** 是否显示节点标签 */
+  showNodeLabel?: boolean
+  /** 是否显示箭头 */
+  showArrow?: boolean
 
   // 多轴支持
   yAxisIndex?: number
@@ -360,6 +419,10 @@ export class Chart extends BaseChart<ChartOptions> {
   private dataZoomDragging: 'left' | 'right' | 'middle' | null = null
   private dataZoomDragStartX = 0
   private dataZoomDragStartValues = { start: 0, end: 100 }
+
+  // 关系图状态
+  private graphNodePositions: Map<string, { x: number; y: number; node: GraphNode }> = new Map()
+  private hoverGraphNode: string | null = null
 
   constructor(container: string | HTMLElement, options: ChartOptions = {}) {
     // 自动检测主题
@@ -505,11 +568,13 @@ export class Chart extends BaseChart<ChartOptions> {
     const candlestickSeries = enabledSeries.filter(s => s.type === 'candlestick')
     const radarSeries = enabledSeries.filter(s => s.type === 'radar')
     const heatmapSeries = enabledSeries.filter(s => s.type === 'heatmap')
+    const graphSeries = enabledSeries.filter(s => s.type === 'graph')
 
     // 判断是否只有特殊图表（不需要标准坐标轴和网格）
-    const isPieOnly = pieSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0 && radarSeries.length === 0 && heatmapSeries.length === 0
-    const isRadarOnly = radarSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0 && pieSeries.length === 0 && heatmapSeries.length === 0
-    const isHeatmapOnly = heatmapSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0 && pieSeries.length === 0 && radarSeries.length === 0
+    const isPieOnly = pieSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0 && radarSeries.length === 0 && heatmapSeries.length === 0 && graphSeries.length === 0
+    const isRadarOnly = radarSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0 && pieSeries.length === 0 && heatmapSeries.length === 0 && graphSeries.length === 0
+    const isHeatmapOnly = heatmapSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0 && pieSeries.length === 0 && radarSeries.length === 0 && graphSeries.length === 0
+    const isGraphOnly = graphSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0 && pieSeries.length === 0 && radarSeries.length === 0 && heatmapSeries.length === 0
 
     // 绘制背景
     this.drawBackground()
@@ -523,6 +588,9 @@ export class Chart extends BaseChart<ChartOptions> {
     } else if (isHeatmapOnly) {
       // 纯热力图模式
       this.drawHeatmapSeries(heatmapSeries)
+    } else if (isGraphOnly) {
+      // 纯关系图模式
+      this.drawGraphSeries(graphSeries)
     } else {
       // 获取轴配置
       const xAxisConfig = this.getAxisConfig(options.xAxis, 0)
@@ -3469,6 +3537,13 @@ export class Chart extends BaseChart<ChartOptions> {
       return
     }
 
+    // 检查是否有关系图系列
+    const graphSeries = (this.options.series || []).filter(s => s.type === 'graph')
+    if (graphSeries.length > 0) {
+      this.handleGraphMouseMove(x, y, e)
+      return
+    }
+
     const xAxisConfig = this.getAxisConfig(this.options.xAxis, 0)
     const labels = xAxisConfig.data || []
     const { horizontal } = this.options
@@ -3780,5 +3855,386 @@ export class Chart extends BaseChart<ChartOptions> {
 
   private startEntryAnimation(): void {
     this.startAnimation()
+  }
+
+  // ============== 关系图绑制 ==============
+
+  private drawGraphSeries(series: SeriesData[]): void {
+    const { renderer, animationProgress, width, height, colors } = this
+
+    // 缓动函数
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    const easeOutBack = (t: number) => {
+      const c1 = 1.70158
+      const c3 = c1 + 1
+      return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
+    }
+
+    // 计算绘图区域 - 减小边距以充分利用空间
+    const hasCategories = series.some(s => s.graphData?.categories && s.graphData.categories.length > 0)
+    const padding = { top: hasCategories ? 32 : 15, right: 15, bottom: 25, left: 15 }
+    const chartWidth = width - padding.left - padding.right
+    const chartHeight = height - padding.top - padding.bottom
+    const centerX = padding.left + chartWidth / 2
+    const centerY = padding.top + chartHeight / 2
+
+    series.forEach((s) => {
+      const graphData = s.graphData
+      if (!graphData || !graphData.nodes || graphData.nodes.length === 0) return
+
+      const animType = s.graphAnimationType || 'fade'
+      const layout = s.graphLayout || 'force'
+      const nodeSize = s.nodeSize ?? 20
+      const edgeWidth = s.edgeWidth ?? 1
+      const showNodeLabel = s.showNodeLabel ?? true
+      const showArrow = s.showArrow ?? false
+      const categories = graphData.categories || []
+
+      const nodes = graphData.nodes
+      const links = graphData.links
+
+      // 计算最大节点尺寸
+      const maxNodeSize = Math.max(...nodes.map(n => n.symbolSize || nodeSize))
+      const labelSpace = showNodeLabel ? 16 : 0
+
+      // 计算节点位置
+      const nodePositions: Map<string, { x: number; y: number }> = new Map()
+
+      if (layout === 'circular') {
+        // 环形布局 - 充分利用空间
+        const radius = Math.min(chartWidth, chartHeight) / 2 - maxNodeSize / 2 - labelSpace
+        nodes.forEach((node, i) => {
+          const angle = (i / nodes.length) * Math.PI * 2 - Math.PI / 2
+          nodePositions.set(node.id, {
+            x: node.x ?? (centerX + Math.cos(angle) * radius),
+            y: node.y ?? (centerY + Math.sin(angle) * radius)
+          })
+        })
+      } else if (layout === 'grid') {
+        // 网格布局 - 根据宽高比自适应
+        const aspectRatio = chartWidth / chartHeight
+        let cols: number, rows: number
+        if (aspectRatio > 1.5) {
+          cols = Math.ceil(Math.sqrt(nodes.length * aspectRatio))
+          rows = Math.ceil(nodes.length / cols)
+        } else if (aspectRatio < 0.67) {
+          rows = Math.ceil(Math.sqrt(nodes.length / aspectRatio))
+          cols = Math.ceil(nodes.length / rows)
+        } else {
+          cols = Math.ceil(Math.sqrt(nodes.length))
+          rows = Math.ceil(nodes.length / cols)
+        }
+
+        const usableWidth = chartWidth - maxNodeSize
+        const usableHeight = chartHeight - maxNodeSize - labelSpace
+        const cellWidth = cols > 1 ? usableWidth / (cols - 1) : 0
+        const cellHeight = rows > 1 ? usableHeight / (rows - 1) : 0
+        const startX = padding.left + maxNodeSize / 2
+        const startY = padding.top + maxNodeSize / 2
+
+        nodes.forEach((node, i) => {
+          const col = i % cols
+          const row = Math.floor(i / cols)
+          const nodesInRow = row === rows - 1 ? nodes.length - row * cols : cols
+          let xOffset = 0
+          if (nodesInRow < cols && cols > 1) {
+            xOffset = (cols - nodesInRow) * cellWidth / 2
+          }
+          nodePositions.set(node.id, {
+            x: node.x ?? (cols === 1 ? centerX : startX + col * cellWidth + xOffset),
+            y: node.y ?? (rows === 1 ? centerY : startY + row * cellHeight)
+          })
+        })
+      } else {
+        // 力导向布局 - 充分利用空间
+        const radiusX = chartWidth / 2 - maxNodeSize / 2 - 5
+        const radiusY = chartHeight / 2 - maxNodeSize / 2 - labelSpace - 5
+
+        if (nodes.length <= 1) {
+          nodes.forEach((node) => {
+            nodePositions.set(node.id, { x: node.x ?? centerX, y: node.y ?? centerY })
+          })
+        } else if (nodes.length <= 8) {
+          // 少量节点：环形分布
+          nodes.forEach((node, i) => {
+            if (node.x !== undefined && node.y !== undefined) {
+              nodePositions.set(node.id, { x: node.x, y: node.y })
+            } else {
+              const angle = (i / nodes.length) * Math.PI * 2 - Math.PI / 2
+              nodePositions.set(node.id, {
+                x: centerX + Math.cos(angle) * radiusX * 0.9,
+                y: centerY + Math.sin(angle) * radiusY * 0.9
+              })
+            }
+          })
+        } else {
+          // 多节点：向日葵螺旋分布
+          const phi = (1 + Math.sqrt(5)) / 2
+          nodes.forEach((node, i) => {
+            if (node.x !== undefined && node.y !== undefined) {
+              nodePositions.set(node.id, { x: node.x, y: node.y })
+            } else {
+              const theta = 2 * Math.PI * i / (phi * phi)
+              const normalizedDist = Math.sqrt((i + 1) / nodes.length)
+              nodePositions.set(node.id, {
+                x: centerX + Math.cos(theta) * radiusX * normalizedDist * 0.95,
+                y: centerY + Math.sin(theta) * radiusY * normalizedDist * 0.95
+              })
+            }
+          })
+        }
+      }
+
+      // 计算动画进度
+      const easedProgress = easeOutCubic(animationProgress)
+
+      // 预计算节点颜色映射
+      const nodeColorMap: Map<string, string> = new Map()
+      nodes.forEach((node, i) => {
+        let nodeColor = node.itemStyle?.color
+        if (!nodeColor && node.category !== undefined && categories[node.category]) {
+          nodeColor = categories[node.category]!.itemStyle?.color
+        }
+        if (!nodeColor) {
+          nodeColor = SERIES_COLORS[i % SERIES_COLORS.length]
+        }
+        nodeColorMap.set(node.id, nodeColor || '#999')
+      })
+
+      // 绘制边
+      links.forEach((link) => {
+        const sourcePos = nodePositions.get(link.source)
+        const targetPos = nodePositions.get(link.target)
+        if (!sourcePos || !targetPos) return
+
+        const sourceColor = nodeColorMap.get(link.source) || '#999'
+        const defaultEdgeColor = this.fadeColor(sourceColor, 0.3)
+        const lineColor = link.lineStyle?.color || defaultEdgeColor
+        const lineWidth = link.lineStyle?.width || Math.max(edgeWidth, 1.5)
+        const curveness = link.lineStyle?.curveness ?? 0
+
+        let opacity = animType === 'fade' || animType === 'expand' ? easedProgress : 1
+        const isHoverLink = this.hoverGraphNode === link.source || this.hoverGraphNode === link.target
+        const linkOpacity = isHoverLink ? opacity : opacity * 0.6
+
+        if (curveness === 0) {
+          renderer.drawLine(
+            [{ x: sourcePos.x, y: sourcePos.y }, { x: targetPos.x, y: targetPos.y }],
+            { stroke: lineColor, lineWidth: isHoverLink ? lineWidth * 1.5 : lineWidth, opacity: linkOpacity }
+          )
+        } else {
+          const midX = (sourcePos.x + targetPos.x) / 2
+          const midY = (sourcePos.y + targetPos.y) / 2
+          const dx = targetPos.x - sourcePos.x
+          const dy = targetPos.y - sourcePos.y
+          const ctrlX = midX - dy * curveness
+          const ctrlY = midY + dx * curveness
+
+          renderer.drawPath(
+            {
+              commands: [
+                { type: 'M', x: sourcePos.x, y: sourcePos.y },
+                { type: 'Q', x1: ctrlX, y1: ctrlY, x: targetPos.x, y: targetPos.y }
+              ]
+            },
+            { stroke: lineColor, lineWidth: isHoverLink ? lineWidth * 1.5 : lineWidth, fill: 'none', opacity: linkOpacity }
+          )
+        }
+
+        // 绘制箭头
+        if (showArrow) {
+          const angle = Math.atan2(targetPos.y - sourcePos.y, targetPos.x - sourcePos.x)
+          const arrowSize = isHoverLink ? 10 : 8
+          const targetNode = nodes.find(n => n.id === link.target)
+          const targetRadius = (targetNode?.symbolSize || nodeSize) / 2
+          const arrowX = targetPos.x - Math.cos(angle) * (targetRadius + 2)
+          const arrowY = targetPos.y - Math.sin(angle) * (targetRadius + 2)
+
+          renderer.drawPath(
+            {
+              commands: [
+                { type: 'M', x: arrowX, y: arrowY },
+                { type: 'L', x: arrowX - Math.cos(angle - Math.PI / 6) * arrowSize, y: arrowY - Math.sin(angle - Math.PI / 6) * arrowSize },
+                { type: 'L', x: arrowX - Math.cos(angle + Math.PI / 6) * arrowSize, y: arrowY - Math.sin(angle + Math.PI / 6) * arrowSize },
+                { type: 'Z' }
+              ]
+            },
+            { fill: lineColor, opacity: linkOpacity }
+          )
+        }
+      })
+
+      // 存储节点位置用于 hover 检测
+      this.graphNodePositions.clear()
+      nodes.forEach((node) => {
+        const pos = nodePositions.get(node.id)
+        if (pos) {
+          this.graphNodePositions.set(node.id, { ...pos, node })
+        }
+      })
+
+      // 绘制节点
+      nodes.forEach((node, i) => {
+        const pos = nodePositions.get(node.id)
+        if (!pos) return
+
+        const size = node.symbolSize || nodeSize
+        let nodeColor = node.itemStyle?.color
+        if (!nodeColor && node.category !== undefined && categories[node.category]) {
+          nodeColor = categories[node.category]!.itemStyle?.color
+        }
+        if (!nodeColor) {
+          nodeColor = SERIES_COLORS[i % SERIES_COLORS.length]
+        }
+
+        let opacity = 1
+        let scale = 1
+        const isHovered = this.hoverGraphNode === node.id
+
+        switch (animType) {
+          case 'fade': opacity = easedProgress; break
+          case 'scale': scale = easeOutBack(animationProgress); break
+          case 'expand':
+            const dist = Math.sqrt(Math.pow(pos.x - centerX, 2) + Math.pow(pos.y - centerY, 2))
+            const maxDist = Math.sqrt(Math.pow(chartWidth / 2, 2) + Math.pow(chartHeight / 2, 2))
+            const delay = dist / maxDist * 0.5
+            opacity = Math.max(0, Math.min(1, (animationProgress - delay) / 0.5))
+            scale = opacity
+            break
+        }
+
+        if (isHovered) scale *= 1.2
+        const actualSize = size * scale
+
+        renderer.drawCircle(
+          { x: pos.x, y: pos.y, radius: actualSize / 2 },
+          {
+            fill: isHovered ? this.lightenColor(nodeColor || '#999') : nodeColor,
+            opacity,
+            stroke: isHovered ? nodeColor : colors.background,
+            lineWidth: isHovered ? 3 : 2
+          }
+        )
+
+        if (showNodeLabel && opacity > 0.3) {
+          renderer.drawText(
+            { x: pos.x, y: pos.y + actualSize / 2 + 12, text: node.name },
+            { fill: colors.text, fontSize: isHovered ? 11 : 10, textAlign: 'center', opacity, fontWeight: isHovered ? 'bold' : undefined }
+          )
+        }
+      })
+    })
+
+    // 绘制分类图例
+    this.drawGraphLegend(series)
+  }
+
+  private drawGraphLegend(series: SeriesData[]): void {
+    const { renderer, colors, width } = this
+    const s = series[0]
+    if (!s || !s.graphData?.categories || s.graphData.categories.length === 0) return
+
+    const categories = s.graphData.categories
+    const legendY = 16
+    const fontSize = 11
+
+    let totalWidth = 0
+    const legendItems: { name: string; color: string; width: number }[] = []
+
+    categories.forEach((cat, i) => {
+      const color = cat.itemStyle?.color || SERIES_COLORS[i % SERIES_COLORS.length]
+      const textWidth = renderer.measureText(cat.name, fontSize)
+      const itemWidth = 16 + textWidth + 14
+      legendItems.push({ name: cat.name, color: color || '#999', width: itemWidth })
+      totalWidth += itemWidth
+    })
+
+    let legendX = (width - totalWidth) / 2
+
+    legendItems.forEach((item) => {
+      renderer.drawCircle({ x: legendX + 5, y: legendY, radius: 4 }, { fill: item.color })
+      renderer.drawText({ x: legendX + 13, y: legendY + 3, text: item.name }, { fill: colors.text, fontSize })
+      legendX += item.width
+    })
+  }
+
+  private handleGraphMouseMove(x: number, y: number, e: MouseEvent): void {
+    let hoveredNode: string | null = null
+    const graphSeries = (this.options.series || []).find(s => s.type === 'graph')
+
+    for (const [nodeId, nodeData] of this.graphNodePositions) {
+      const size = nodeData.node.symbolSize || (graphSeries?.nodeSize ?? 20)
+      const dist = Math.sqrt(Math.pow(x - nodeData.x, 2) + Math.pow(y - nodeData.y, 2))
+
+      if (dist <= size / 2 + 5) {
+        hoveredNode = nodeId
+        break
+      }
+    }
+
+    if (hoveredNode !== this.hoverGraphNode) {
+      this.hoverGraphNode = hoveredNode
+      this.render()
+
+      if (hoveredNode) {
+        const nodeData = this.graphNodePositions.get(hoveredNode)
+        if (nodeData) {
+          this.showGraphTooltip(e, nodeData.node)
+        }
+      } else {
+        this.hideTooltip()
+      }
+    }
+  }
+
+  private showGraphTooltip(e: MouseEvent, node: GraphNode): void {
+    if (!this.tooltipEl) {
+      this.tooltipEl = document.createElement('div')
+      this.tooltipEl.className = 'chart-tooltip'
+      document.body.appendChild(this.tooltipEl)
+    }
+
+    this.tooltipEl.style.cssText = `
+      position: fixed; padding: 8px 12px; background: ${this.colors.tooltipBg}; color: ${this.colors.text};
+      border-radius: 6px; font-size: 12px; pointer-events: none; z-index: 9999;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15); max-width: 200px; line-height: 1.5;
+    `
+
+    let content = `<div style="font-weight:bold;margin-bottom:4px;">${node.name}</div>`
+    if (node.value !== undefined) content += `<div>值: ${node.value}</div>`
+
+    const graphSeries = (this.options.series || []).find(s => s.type === 'graph')
+    if (graphSeries?.graphData?.categories && node.category !== undefined) {
+      const category = graphSeries.graphData.categories[node.category]
+      if (category) content += `<div>分类: ${category.name}</div>`
+    }
+
+    if (graphSeries?.graphData?.links) {
+      const linkCount = graphSeries.graphData.links.filter(l => l.source === node.id || l.target === node.id).length
+      content += `<div>连接: ${linkCount}</div>`
+    }
+
+    this.tooltipEl.innerHTML = content
+    this.tooltipEl.style.display = 'block'
+
+    const tooltipRect = this.tooltipEl.getBoundingClientRect()
+    let left = e.clientX + 15
+    let top = e.clientY - tooltipRect.height / 2
+
+    if (left + tooltipRect.width > window.innerWidth) left = e.clientX - tooltipRect.width - 15
+    if (top < 0) top = 5
+    if (top + tooltipRect.height > window.innerHeight) top = window.innerHeight - tooltipRect.height - 5
+
+    this.tooltipEl.style.left = `${left}px`
+    this.tooltipEl.style.top = `${top}px`
+  }
+
+  private fadeColor(hex: string, alpha: number): string {
+    if (!hex.startsWith('#')) return hex
+    const num = parseInt(hex.slice(1), 16)
+    const r = (num >> 16) & 0xff
+    const g = (num >> 8) & 0xff
+    const b = num & 0xff
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
   }
 }
