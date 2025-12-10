@@ -25,7 +25,7 @@ import type { BaseChartOptions } from './BaseChart'
 // ============== 类型定义 ==============
 
 /** 系列类型 */
-export type SeriesType = 'line' | 'bar' | 'scatter' | 'pie' | 'candlestick'
+export type SeriesType = 'line' | 'bar' | 'scatter' | 'pie' | 'candlestick' | 'radar' | 'heatmap'
 
 /** 动画类型 */
 export type AnimationType =
@@ -102,12 +102,49 @@ export type CandlestickAnimationType =
   | 'cascade'   // 从左到右依次出现
   | 'none'      // 无动画
 
+/** 雷达图动画类型 */
+export type RadarAnimationType =
+  | 'scale'     // 从中心缩放展开（默认）
+  | 'rotate'    // 旋转展开
+  | 'fade'      // 淡入
+  | 'unfold'    // 各顶点依次展开
+  | 'none'      // 无动画
+
+/** 雷达图指示器（维度）配置 */
+export interface RadarIndicator {
+  /** 指示器名称 */
+  name: string
+  /** 最大值，默认自动计算 */
+  max?: number
+  /** 最小值，默认 0 */
+  min?: number
+  /** 指示器颜色 */
+  color?: string
+}
+
+/** 热力图动画类型 */
+export type HeatmapAnimationType =
+  | 'fade'      // 整体淡入（默认）
+  | 'scale'     // 单元格缩放出现
+  | 'wave'      // 波浪式出现
+  | 'cascade'   // 从左上角依次出现
+  | 'none'      // 无动画
+
+/** 热力图渲染模式 */
+export type HeatmapRenderMode =
+  | 'cell'      // 单元格模式（默认）
+  | 'smooth'    // 平滑插值模式
+  | 'contour'   // 等高线模式
+
+/** 热力图数据项 [x索引, y索引, 值] 或 { x, y, value } */
+export type HeatmapDataItem = [number, number, number] | { x: number; y: number; value: number }
+
 /** 通用系列数据 */
 export interface SeriesData {
   type: SeriesType
   name?: string
-  /** 数据数组：折线/柱状图用 number[], 散点图用 [x,y][], 饼图用 PieDataItem[], K线图用 CandlestickDataPoint[] */
-  data: (number | null)[] | ScatterDataPoint[] | PieDataItem[] | CandlestickDataPoint[]
+  /** 数据数组：折线/柱状图用 number[], 散点图用 [x,y][], 饼图用 PieDataItem[], K线图用 CandlestickDataPoint[], 热力图用 HeatmapDataItem[] */
+  data: (number | null)[] | ScatterDataPoint[] | PieDataItem[] | CandlestickDataPoint[] | HeatmapDataItem[]
   color?: string
 
   // 折线图特有
@@ -159,6 +196,32 @@ export interface SeriesData {
   showMinMax?: boolean
   /** 蜡烛宽度 */
   candleWidth?: number | string
+
+  // 雷达图特有
+  /** 雷达图动画类型 */
+  radarAnimationType?: RadarAnimationType
+  /** 区域填充样式 */
+  areaColor?: string
+  /** 区域填充透明度 */
+  areaOpacity?: number
+  /** 是否显示数据点 */
+  showDataPoints?: boolean
+
+  // 热力图特有
+  /** 热力图动画类型 */
+  heatmapAnimationType?: HeatmapAnimationType
+  /** 热力图渲染模式: cell(单元格), smooth(平滑插值), contour(等高线) */
+  heatmapRenderMode?: HeatmapRenderMode
+  /** 热力图颜色范围 [低值颜色, 高值颜色] */
+  colorRange?: [string, string]
+  /** 单元格圆角 */
+  cellBorderRadius?: number
+  /** 单元格间距 */
+  cellGap?: number
+  /** 是否显示标签 */
+  showLabel?: boolean
+  /** 等高线层数（仅contour模式） */
+  contourLevels?: number
 
   // 多轴支持
   yAxisIndex?: number
@@ -216,6 +279,30 @@ export interface DataZoomConfig {
   handleStyle?: { color?: string; borderColor?: string }
 }
 
+/** 雷达图坐标系配置 */
+export interface RadarConfig {
+  /** 雷达图指示器配置 */
+  indicator: RadarIndicator[]
+  /** 中心位置 [x, y]，支持百分比或像素 */
+  center?: [string | number, string | number]
+  /** 半径，支持百分比或像素 */
+  radius?: string | number
+  /** 起始角度（度数），默认 90（12点钟方向） */
+  startAngle?: number
+  /** 雷达图形状：polygon（多边形）或 circle（圆形） */
+  shape?: 'polygon' | 'circle'
+  /** 分割段数，默认 5 */
+  splitNumber?: number
+  /** 是否显示轴线 */
+  axisLine?: { show?: boolean; lineStyle?: { color?: string; width?: number } }
+  /** 是否显示分隔线 */
+  splitLine?: { show?: boolean; lineStyle?: { color?: string; width?: number } }
+  /** 是否显示分隔区域 */
+  splitArea?: { show?: boolean; areaStyle?: { color?: string[] } }
+  /** 是否显示指示器名称 */
+  axisName?: { show?: boolean; color?: string; fontSize?: number }
+}
+
 /** 图表配置 */
 export interface ChartOptions extends BaseChartOptions {
   /** X轴配置，支持多个 */
@@ -236,6 +323,8 @@ export interface ChartOptions extends BaseChartOptions {
   animationType?: AnimationType
   /** 数据区域缩放配置 */
   dataZoom?: DataZoomConfig
+  /** 雷达图坐标系配置 */
+  radar?: RadarConfig
 }
 
 // ============== 辅助函数 ==============
@@ -414,9 +503,13 @@ export class Chart extends BaseChart<ChartOptions> {
     const scatterSeries = enabledSeries.filter(s => s.type === 'scatter')
     const pieSeries = enabledSeries.filter(s => s.type === 'pie')
     const candlestickSeries = enabledSeries.filter(s => s.type === 'candlestick')
+    const radarSeries = enabledSeries.filter(s => s.type === 'radar')
+    const heatmapSeries = enabledSeries.filter(s => s.type === 'heatmap')
 
-    // 判断是否只有饼图（饼图不需要坐标轴和网格）
-    const isPieOnly = pieSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0
+    // 判断是否只有特殊图表（不需要标准坐标轴和网格）
+    const isPieOnly = pieSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0 && radarSeries.length === 0 && heatmapSeries.length === 0
+    const isRadarOnly = radarSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0 && pieSeries.length === 0 && heatmapSeries.length === 0
+    const isHeatmapOnly = heatmapSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0 && pieSeries.length === 0 && radarSeries.length === 0
 
     // 绘制背景
     this.drawBackground()
@@ -424,6 +517,12 @@ export class Chart extends BaseChart<ChartOptions> {
     if (isPieOnly) {
       // 纯饼图模式：只绘制饼图
       this.drawPieSeries(pieSeries)
+    } else if (isRadarOnly) {
+      // 纯雷达图模式：只绘制雷达图
+      this.drawRadarSeries(radarSeries)
+    } else if (isHeatmapOnly) {
+      // 纯热力图模式
+      this.drawHeatmapSeries(heatmapSeries)
     } else {
       // 获取轴配置
       const xAxisConfig = this.getAxisConfig(options.xAxis, 0)
@@ -488,8 +587,8 @@ export class Chart extends BaseChart<ChartOptions> {
       }
     }
 
-    // 绘制图例
-    if (options.legend?.show !== false && !isPieOnly) {
+    // 绘制图例（饼图、雷达图、热力图有自己的图例绘制逻辑）
+    if (options.legend?.show !== false && !isPieOnly && !isRadarOnly && !isHeatmapOnly) {
       this.drawLegend()
     }
   }
@@ -2364,6 +2463,673 @@ export class Chart extends BaseChart<ChartOptions> {
     })
   }
 
+  // ============== 雷达图绑制 ==============
+
+  // 存储雷达图状态用于hover检测
+  private radarState: {
+    centerX: number
+    centerY: number
+    radius: number
+    startAngle: number
+    angleStep: number
+    indicators: any[]
+    series: SeriesData[]
+    dataPoints: { seriesIndex: number; pointIndex: number; x: number; y: number; value: number }[]
+  } | null = null
+
+  private drawRadarSeries(series: SeriesData[]): void {
+    const { renderer, animationProgress, options, width, height, colors } = this
+    const radarConfig = options.radar
+    if (!radarConfig?.indicator || radarConfig.indicator.length === 0) return
+
+    // 缓动函数
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    const easeOutBack = (t: number) => {
+      const c1 = 1.70158
+      const c3 = c1 + 1
+      return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
+    }
+
+    const indicators = radarConfig.indicator
+    const indicatorCount = indicators.length
+
+    // 计算中心点和半径 - 考虑图例和标签空间
+    const legendHeight = 35  // 图例区域高度
+    const labelPadding = 25  // 指标标签外延距离
+    let centerX = width / 2
+    let centerY = legendHeight + (height - legendHeight) / 2  // 中心点在图例下方区域的中间
+    let radius = Math.min(width - labelPadding * 2, height - legendHeight - labelPadding * 2) / 2 * 0.88
+
+    if (radarConfig.center) {
+      const [cx, cy] = radarConfig.center
+      centerX = typeof cx === 'string' ? width * parseFloat(cx) / 100 : cx
+      centerY = typeof cy === 'string' ? height * parseFloat(cy) / 100 : cy
+    }
+    if (radarConfig.radius) {
+      const r = radarConfig.radius
+      radius = typeof r === 'string' ? Math.min(width, height) / 2 * parseFloat(r) / 100 : r
+    }
+
+    // 起始角度（默认 90 度，即 12 点钟方向）
+    const startAngle = ((radarConfig.startAngle ?? 90) - 90) * Math.PI / 180
+    const shape = radarConfig.shape ?? 'polygon'
+    const splitNumber = radarConfig.splitNumber ?? 5
+
+    // 计算每个指示器的角度
+    const angleStep = (Math.PI * 2) / indicatorCount
+
+    // 存储状态用于hover检测
+    this.radarState = {
+      centerX, centerY, radius, startAngle, angleStep, indicators, series,
+      dataPoints: []
+    }
+
+    // 绘制分隔区域
+    if (radarConfig.splitArea?.show !== false) {
+      const areaColors = radarConfig.splitArea?.areaStyle?.color ||
+        (colors.background === '#ffffff'
+          ? ['rgba(0,0,0,0.02)', 'rgba(0,0,0,0.05)']
+          : ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.05)'])
+
+      for (let i = splitNumber; i > 0; i--) {
+        const layerRadius = radius * (i / splitNumber)
+        const fillColor = areaColors[(splitNumber - i) % areaColors.length]
+
+        if (shape === 'circle') {
+          renderer.drawCircle(
+            { x: centerX, y: centerY, radius: layerRadius },
+            { fill: fillColor, stroke: 'transparent' }
+          )
+        } else {
+          const points: { x: number; y: number }[] = []
+          for (let j = 0; j < indicatorCount; j++) {
+            const angle = startAngle + j * angleStep
+            points.push({
+              x: centerX + Math.cos(angle) * layerRadius,
+              y: centerY + Math.sin(angle) * layerRadius
+            })
+          }
+          renderer.drawPolygon(points, { fill: fillColor })
+        }
+      }
+    }
+
+    // 绘制分隔线
+    if (radarConfig.splitLine?.show !== false) {
+      const lineColor = radarConfig.splitLine?.lineStyle?.color || colors.grid
+      const lineWidth = radarConfig.splitLine?.lineStyle?.width || 1
+
+      for (let i = 1; i <= splitNumber; i++) {
+        const layerRadius = radius * (i / splitNumber)
+
+        if (shape === 'circle') {
+          renderer.drawCircle(
+            { x: centerX, y: centerY, radius: layerRadius },
+            { fill: 'transparent', stroke: lineColor, lineWidth }
+          )
+        } else {
+          const points: { x: number; y: number }[] = []
+          for (let j = 0; j < indicatorCount; j++) {
+            const angle = startAngle + j * angleStep
+            points.push({
+              x: centerX + Math.cos(angle) * layerRadius,
+              y: centerY + Math.sin(angle) * layerRadius
+            })
+          }
+          points.push(points[0]!) // 闭合
+          renderer.drawLine(points, { stroke: lineColor, lineWidth })
+        }
+      }
+    }
+
+    // 绘制轴线
+    if (radarConfig.axisLine?.show !== false) {
+      const lineColor = radarConfig.axisLine?.lineStyle?.color || colors.grid
+      const lineWidth = radarConfig.axisLine?.lineStyle?.width || 1
+
+      for (let i = 0; i < indicatorCount; i++) {
+        const angle = startAngle + i * angleStep
+        const endX = centerX + Math.cos(angle) * radius
+        const endY = centerY + Math.sin(angle) * radius
+
+        renderer.drawLine(
+          [{ x: centerX, y: centerY }, { x: endX, y: endY }],
+          { stroke: lineColor, lineWidth }
+        )
+      }
+    }
+
+    // 绘制指示器名称
+    if (radarConfig.axisName?.show !== false) {
+      const nameColor = radarConfig.axisName?.color || colors.textSecondary  // 使用次要颜色，更柔和
+      const fontSize = radarConfig.axisName?.fontSize || 10  // 默认字号减小
+
+      indicators.forEach((indicator, i) => {
+        const angle = startAngle + i * angleStep
+        const labelRadius = radius + 10  // 减小标签距离
+        const x = centerX + Math.cos(angle) * labelRadius
+        const y = centerY + Math.sin(angle) * labelRadius
+
+        // 根据角度调整文本对齐
+        let textAlign: 'left' | 'center' | 'right' = 'center'
+        if (Math.abs(Math.cos(angle)) > 0.1) {
+          textAlign = Math.cos(angle) > 0 ? 'left' : 'right'
+        }
+
+        renderer.drawText(
+          { x, y, text: indicator.name },
+          { fill: nameColor, fontSize, textAlign, textBaseline: 'middle' }
+        )
+      })
+    }
+
+    // 绘制数据系列
+    series.forEach((s, seriesIndex) => {
+      const data = s.data as number[]
+      if (!data || data.length === 0) return
+
+      const color = s.color || SERIES_COLORS[seriesIndex % SERIES_COLORS.length]
+      const animType = s.radarAnimationType || 'scale'
+      const areaOpacity = s.areaOpacity ?? 0.3
+      const showDataPoints = s.showDataPoints !== false
+
+      // 计算动画进度
+      const easedProgress = animType === 'scale' ? easeOutBack(animationProgress) : easeOutCubic(animationProgress)
+
+      // 计算数据点位置
+      const points: { x: number; y: number }[] = []
+
+      data.forEach((value, i) => {
+        if (i >= indicatorCount) return
+
+        const indicator = indicators[i]!
+        const max = indicator.max ?? Math.max(...(data as number[]))
+        const min = indicator.min ?? 0
+        const normalizedValue = (value - min) / (max - min)
+
+        const angle = startAngle + i * angleStep
+        let pointRadius = radius * normalizedValue
+
+        // 应用动画
+        switch (animType) {
+          case 'scale':
+            pointRadius *= easedProgress
+            break
+          case 'rotate':
+            // 旋转动画：角度随进度变化
+            const rotateAngle = angle - (1 - easedProgress) * Math.PI * 2
+            points.push({
+              x: centerX + Math.cos(rotateAngle) * pointRadius,
+              y: centerY + Math.sin(rotateAngle) * pointRadius
+            })
+            return
+          case 'unfold':
+            // 依次展开
+            const pointDelay = i / indicatorCount
+            const pointProgress = Math.max(0, Math.min(1, (animationProgress - pointDelay * 0.5) / (1 - pointDelay * 0.5)))
+            pointRadius *= easeOutCubic(pointProgress)
+            break
+          case 'fade':
+            // 淡入（半径不变，透明度在下面处理）
+            break
+        }
+
+        points.push({
+          x: centerX + Math.cos(angle) * pointRadius,
+          y: centerY + Math.sin(angle) * pointRadius
+        })
+      })
+
+      if (points.length === 0) return
+
+      // 存储数据点位置用于hover检测
+      const seriesData = s.data as number[]
+      points.forEach((point, i) => {
+        if (this.radarState) {
+          this.radarState.dataPoints.push({
+            seriesIndex,
+            pointIndex: i,
+            x: point.x,
+            y: point.y,
+            value: seriesData[i] ?? 0
+          })
+        }
+      })
+
+      // 计算透明度
+      let opacity = 1
+      if (animType === 'fade') {
+        opacity = easedProgress
+      }
+
+      // 检查是否有hover的系列
+      const isHoverSeries = this.hoverSeriesIndex === seriesIndex
+
+      // 绘制填充区域
+      if (areaOpacity > 0) {
+        renderer.drawPolygon(points, {
+          fill: s.areaColor || color,
+          opacity: (isHoverSeries ? areaOpacity * 1.5 : areaOpacity) * opacity
+        })
+      }
+
+      // 绘制边框线
+      const linePoints = [...points, points[0]!] // 闭合
+      renderer.drawLine(linePoints, {
+        stroke: color,
+        lineWidth: isHoverSeries ? 3 : 2,
+        opacity
+      })
+
+      // 绘制数据点
+      if (showDataPoints) {
+        points.forEach((point, i) => {
+          const isHoverPoint = isHoverSeries && this.hoverIndex === i
+          const pointRadius = isHoverPoint ? 6 : 4
+          const pointColor = isHoverPoint ? this.lightenColor(color || '#999') : color
+
+          renderer.drawCircle(
+            { x: point.x, y: point.y, radius: pointRadius },
+            { fill: pointColor, stroke: colors.background, lineWidth: 2, opacity }
+          )
+        })
+      }
+    })
+
+    // 绘制图例
+    this.drawRadarLegend(series)
+  }
+
+  private drawRadarLegend(series: SeriesData[]): void {
+    const { renderer, colors, width } = this
+    const legendY = 16
+    const fontSize = 11  // 减小字号
+
+    // 先计算总宽度以便居中
+    let totalWidth = 0
+    const legendItems: { name: string; color: string; width: number }[] = []
+
+    series.forEach((s, i) => {
+      const color = s.color || SERIES_COLORS[i % SERIES_COLORS.length]
+      const name = s.name || `系列${i + 1}`
+      const textWidth = renderer.measureText(name, fontSize)
+      const itemWidth = 16 + textWidth + 14 // 圆点 + 文字 + 间距（更紧凑）
+      legendItems.push({ name, color: color || '#999', width: itemWidth })
+      totalWidth += itemWidth
+    })
+
+    // 居中起始位置
+    let legendX = (width - totalWidth) / 2
+
+    legendItems.forEach((item) => {
+      const isEnabled = this.enabledSeries.has(item.name)
+      const disabledColor = colors.textSecondary
+
+      // 绘制图例标记（小圆点）
+      renderer.drawCircle(
+        { x: legendX + 5, y: legendY, radius: 4 },
+        { fill: isEnabled ? item.color : disabledColor }
+      )
+
+      // 绘制图例文字
+      renderer.drawText(
+        { x: legendX + 13, y: legendY + 3, text: item.name },
+        { fill: isEnabled ? colors.text : disabledColor, fontSize }
+      )
+
+      legendX += item.width
+    })
+  }
+
+  // ============== 热力图绑制 ==============
+
+  private drawHeatmapSeries(series: SeriesData[]): void {
+    const { renderer, animationProgress, options, width, height, colors } = this
+    const xAxisConfig = this.getAxisConfig(options.xAxis, 0)
+    const yAxisConfig = this.getAxisConfig(options.yAxis as any, 0)
+
+    const xLabels = xAxisConfig.data || []
+    const yLabels = yAxisConfig.data || []
+
+    if (xLabels.length === 0 || yLabels.length === 0) return
+
+    // 缓动函数
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+
+    // 计算绘图区域（留出标签空间）
+    const padding = { top: 40, right: 20, bottom: 40, left: 50 }
+    const chartWidth = width - padding.left - padding.right
+    const chartHeight = height - padding.top - padding.bottom
+
+    const cellWidth = chartWidth / xLabels.length
+    const cellHeight = chartHeight / yLabels.length
+
+    // 绘制 X 轴标签
+    xLabels.forEach((label, i) => {
+      const x = padding.left + i * cellWidth + cellWidth / 2
+      const y = height - padding.bottom + 20
+      renderer.drawText(
+        { x, y, text: label },
+        { fill: colors.textSecondary, fontSize: 10, textAlign: 'center' }
+      )
+    })
+
+    // 绘制 Y 轴标签
+    yLabels.forEach((label, i) => {
+      const x = padding.left - 8
+      const y = padding.top + i * cellHeight + cellHeight / 2
+      renderer.drawText(
+        { x, y, text: label },
+        { fill: colors.textSecondary, fontSize: 10, textAlign: 'right', textBaseline: 'middle' }
+      )
+    })
+
+    // 绘制热力图数据
+    series.forEach((s) => {
+      const data = s.data as HeatmapDataItem[]
+      if (!data || data.length === 0) return
+
+      const renderMode = s.heatmapRenderMode || 'cell'
+      const animType = s.heatmapAnimationType || 'fade'
+      const colorRange = s.colorRange || ['#313695', '#d73027']  // 蓝到红
+      const cellGap = s.cellGap ?? 1
+      const showLabel = s.showLabel ?? false
+      const contourLevels = s.contourLevels ?? 10
+
+      // 计算数据范围
+      let minVal = Infinity, maxVal = -Infinity
+      data.forEach(item => {
+        const value = Array.isArray(item) ? item[2] : item.value
+        minVal = Math.min(minVal, value)
+        maxVal = Math.max(maxVal, value)
+      })
+
+      // 构建数据网格
+      const gridData: number[][] = []
+      for (let yi = 0; yi < yLabels.length; yi++) {
+        gridData[yi] = new Array(xLabels.length).fill(0)
+      }
+      data.forEach(item => {
+        const xIdx = Array.isArray(item) ? item[0] : item.x
+        const yIdx = Array.isArray(item) ? item[1] : item.y
+        const value = Array.isArray(item) ? item[2] : item.value
+        if (yIdx < yLabels.length && xIdx < xLabels.length) {
+          gridData[yIdx]![xIdx] = value
+        }
+      })
+
+      const easedProgress = easeOutCubic(animationProgress)
+      const globalOpacity = animType === 'fade' ? easedProgress : 1
+
+      // 检查是否为 Canvas 模式（smooth/contour 仅支持 Canvas）
+      const ctx = (renderer as any).ctx as CanvasRenderingContext2D | undefined
+      const canUsePixelMode = ctx && (renderMode === 'smooth' || renderMode === 'contour')
+
+      if (canUsePixelMode) {
+        // 平滑/等高线模式：逐像素绘制（仅 Canvas）
+        this.drawSmoothHeatmap(
+          ctx, padding, chartWidth, chartHeight,
+          gridData, xLabels.length, yLabels.length,
+          minVal, maxVal, colorRange,
+          renderMode === 'contour' ? contourLevels : 0,
+          globalOpacity
+        )
+      } else if ((renderMode === 'smooth' || renderMode === 'contour') && !ctx) {
+        // SVG 模式下的平滑/等高线：使用插值生成更多单元格
+        const resolution = 3  // 每个原始单元格细分为 3x3
+        const subCellWidth = cellWidth / resolution
+        const subCellHeight = cellHeight / resolution
+
+        // 双线性插值获取值
+        const getValue = (fx: number, fy: number): number => {
+          const x0 = Math.floor(fx)
+          const y0 = Math.floor(fy)
+          const x1 = Math.min(x0 + 1, xLabels.length - 1)
+          const y1 = Math.min(y0 + 1, yLabels.length - 1)
+          const tx = fx - x0
+          const ty = fy - y0
+          const v00 = gridData[y0]?.[x0] ?? 0
+          const v10 = gridData[y0]?.[x1] ?? 0
+          const v01 = gridData[y1]?.[x0] ?? 0
+          const v11 = gridData[y1]?.[x1] ?? 0
+          const v0 = v00 * (1 - tx) + v10 * tx
+          const v1 = v01 * (1 - tx) + v11 * tx
+          return v0 * (1 - ty) + v1 * ty
+        }
+
+        for (let yi = 0; yi < yLabels.length * resolution; yi++) {
+          for (let xi = 0; xi < xLabels.length * resolution; xi++) {
+            const fx = xi / resolution
+            const fy = yi / resolution
+            const value = getValue(fx, fy)
+            let ratio = maxVal === minVal ? 0.5 : (value - minVal) / (maxVal - minVal)
+            ratio = Math.max(0, Math.min(1, ratio))
+
+            // 等高线模式：量化颜色
+            if (renderMode === 'contour' && contourLevels > 0) {
+              ratio = Math.floor(ratio * contourLevels) / contourLevels
+            }
+
+            const cellColor = this.interpolateColor(colorRange[0], colorRange[1], ratio)
+            const x = padding.left + xi * subCellWidth
+            const y = padding.top + yi * subCellHeight
+
+            renderer.drawRect(
+              { x, y, width: subCellWidth + 0.5, height: subCellHeight + 0.5 },
+              { fill: cellColor, opacity: globalOpacity }
+            )
+          }
+        }
+      } else {
+        // 单元格模式
+        data.forEach((item) => {
+          const xIdx = Array.isArray(item) ? item[0] : item.x
+          const yIdx = Array.isArray(item) ? item[1] : item.y
+          const value = Array.isArray(item) ? item[2] : item.value
+
+          if (xIdx >= xLabels.length || yIdx >= yLabels.length) return
+
+          const x = padding.left + xIdx * cellWidth + cellGap / 2
+          const y = padding.top + yIdx * cellHeight + cellGap / 2
+          const w = cellWidth - cellGap
+          const h = cellHeight - cellGap
+
+          const ratio = maxVal === minVal ? 0.5 : (value - minVal) / (maxVal - minVal)
+          const cellColor = this.interpolateColor(colorRange[0], colorRange[1], ratio)
+
+          let opacity = 1
+          let scale = 1
+
+          switch (animType) {
+            case 'fade':
+              opacity = easedProgress
+              break
+            case 'scale':
+              scale = easedProgress
+              break
+            case 'wave':
+              const wave = Math.sin((xIdx + yIdx) * 0.5 - animationProgress * Math.PI * 2)
+              opacity = 0.3 + 0.7 * Math.max(0, (easedProgress - 0.3 + wave * 0.3))
+              break
+            case 'cascade':
+              const delay = (xIdx + yIdx) / (xLabels.length + yLabels.length)
+              opacity = Math.max(0, Math.min(1, (animationProgress - delay * 0.5) / 0.5))
+              break
+          }
+
+          const actualW = w * scale
+          const actualH = h * scale
+          const offsetX = (w - actualW) / 2
+          const offsetY = (h - actualH) / 2
+
+          renderer.drawRect(
+            { x: x + offsetX, y: y + offsetY, width: actualW, height: actualH },
+            { fill: cellColor, opacity }
+          )
+
+          if (showLabel && opacity > 0.5) {
+            const textColor = ratio > 0.5 ? '#fff' : colors.text
+            renderer.drawText(
+              { x: x + w / 2, y: y + h / 2 + 3, text: String(value) },
+              { fill: textColor, fontSize: 10, textAlign: 'center', opacity }
+            )
+          }
+        })
+      }
+    })
+
+    // 绘制颜色图例
+    this.drawHeatmapLegend(series)
+  }
+
+  // 绘制平滑/等高线热力图（仅 Canvas 模式）
+  private drawSmoothHeatmap(
+    ctx: CanvasRenderingContext2D,
+    padding: { top: number; right: number; bottom: number; left: number },
+    chartWidth: number, chartHeight: number,
+    gridData: number[][], xCount: number, yCount: number,
+    minVal: number, maxVal: number,
+    colorRange: [string, string],
+    contourLevels: number,
+    opacity: number
+  ): void {
+    // 创建 ImageData
+    const imgWidth = Math.floor(chartWidth)
+    const imgHeight = Math.floor(chartHeight)
+    if (imgWidth <= 0 || imgHeight <= 0) return
+
+    const imageData = ctx.createImageData(imgWidth, imgHeight)
+    const pixels = imageData.data
+
+    // 解析颜色
+    const hex2rgb = (hex: string) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+      return result ? [
+        parseInt(result[1]!, 16),
+        parseInt(result[2]!, 16),
+        parseInt(result[3]!, 16)
+      ] : [0, 0, 0]
+    }
+    const c1 = hex2rgb(colorRange[0])
+    const c2 = hex2rgb(colorRange[1])
+
+    // 双线性插值获取值
+    const getValue = (fx: number, fy: number): number => {
+      const x0 = Math.floor(fx)
+      const y0 = Math.floor(fy)
+      const x1 = Math.min(x0 + 1, xCount - 1)
+      const y1 = Math.min(y0 + 1, yCount - 1)
+
+      const tx = fx - x0
+      const ty = fy - y0
+
+      const v00 = gridData[y0]?.[x0] ?? 0
+      const v10 = gridData[y0]?.[x1] ?? 0
+      const v01 = gridData[y1]?.[x0] ?? 0
+      const v11 = gridData[y1]?.[x1] ?? 0
+
+      // 双线性插值
+      const v0 = v00 * (1 - tx) + v10 * tx
+      const v1 = v01 * (1 - tx) + v11 * tx
+      return v0 * (1 - ty) + v1 * ty
+    }
+
+    // 逐像素绘制
+    for (let py = 0; py < imgHeight; py++) {
+      for (let px = 0; px < imgWidth; px++) {
+        // 映射到数据坐标
+        const fx = (px / imgWidth) * (xCount - 1)
+        const fy = (py / imgHeight) * (yCount - 1)
+
+        let value = getValue(fx, fy)
+        let ratio = maxVal === minVal ? 0.5 : (value - minVal) / (maxVal - minVal)
+        ratio = Math.max(0, Math.min(1, ratio))
+
+        // 等高线模式：量化颜色
+        if (contourLevels > 0) {
+          ratio = Math.floor(ratio * contourLevels) / contourLevels
+        }
+
+        // 计算颜色
+        const r = Math.round(c1[0]! + (c2[0]! - c1[0]!) * ratio)
+        const g = Math.round(c1[1]! + (c2[1]! - c1[1]!) * ratio)
+        const b = Math.round(c1[2]! + (c2[2]! - c1[2]!) * ratio)
+
+        const idx = (py * imgWidth + px) * 4
+        pixels[idx] = r
+        pixels[idx + 1] = g
+        pixels[idx + 2] = b
+        pixels[idx + 3] = Math.round(255 * opacity)
+      }
+    }
+
+    // 绘制到 canvas
+    ctx.putImageData(imageData, padding.left, padding.top)
+  }
+
+  // 颜色插值
+  private interpolateColor(color1: string, color2: string, ratio: number): string {
+    const hex2rgb = (hex: string) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+      return result ? {
+        r: parseInt(result[1]!, 16),
+        g: parseInt(result[2]!, 16),
+        b: parseInt(result[3]!, 16)
+      } : { r: 0, g: 0, b: 0 }
+    }
+
+    const c1 = hex2rgb(color1)
+    const c2 = hex2rgb(color2)
+
+    const r = Math.round(c1.r + (c2.r - c1.r) * ratio)
+    const g = Math.round(c1.g + (c2.g - c1.g) * ratio)
+    const b = Math.round(c1.b + (c2.b - c1.b) * ratio)
+
+    return `rgb(${r},${g},${b})`
+  }
+
+  private drawHeatmapLegend(series: SeriesData[]): void {
+    const { renderer, colors, width } = this
+    const s = series[0]
+    if (!s) return
+
+    const colorRange = s.colorRange || ['#313695', '#d73027']
+
+    // 绘制渐变色条
+    const legendWidth = 100
+    const legendHeight = 10
+    const legendX = width - legendWidth - 20
+    const legendY = 12
+
+    // 绘制渐变（用多个小矩形模拟）
+    const steps = 20
+    const stepWidth = legendWidth / steps
+    for (let i = 0; i < steps; i++) {
+      const ratio = i / (steps - 1)
+      const color = this.interpolateColor(colorRange[0], colorRange[1], ratio)
+      renderer.drawRect(
+        { x: legendX + i * stepWidth, y: legendY, width: stepWidth + 1, height: legendHeight },
+        { fill: color }
+      )
+    }
+
+    // 绘制边框
+    renderer.drawRect(
+      { x: legendX, y: legendY, width: legendWidth, height: legendHeight },
+      { stroke: colors.grid, lineWidth: 1 }
+    )
+
+    // 绘制标签
+    renderer.drawText(
+      { x: legendX - 5, y: legendY + 8, text: '低' },
+      { fill: colors.textSecondary, fontSize: 9, textAlign: 'right' }
+    )
+    renderer.drawText(
+      { x: legendX + legendWidth + 5, y: legendY + 8, text: '高' },
+      { fill: colors.textSecondary, fontSize: 9, textAlign: 'left' }
+    )
+  }
+
   // 绘制带圆角的扇形（四角小圆角）- 支持 Canvas 和 SVG
   private drawRoundedSector(
     renderer: any,
@@ -2696,6 +3462,13 @@ export class Chart extends BaseChart<ChartOptions> {
       return
     }
 
+    // 检查是否有雷达图系列
+    const radarSeries = (this.options.series || []).filter(s => s.type === 'radar')
+    if (radarSeries.length > 0) {
+      this.handleRadarMouseMove(x, y, e)
+      return
+    }
+
     const xAxisConfig = this.getAxisConfig(this.options.xAxis, 0)
     const labels = xAxisConfig.data || []
     const { horizontal } = this.options
@@ -2847,6 +3620,72 @@ export class Chart extends BaseChart<ChartOptions> {
       <div style="font-weight:bold;margin-bottom:4px">${item.name}</div>
       <div>数值: ${item.value}</div>
       <div>占比: ${percent}%</div>
+    `
+    this.tooltipEl.style.left = `${e.clientX + 10}px`
+    this.tooltipEl.style.top = `${e.clientY + 10}px`
+    this.tooltipEl.style.display = 'block'
+  }
+
+  private handleRadarMouseMove(x: number, y: number, e: MouseEvent): void {
+    if (!this.radarState) return
+
+    const { dataPoints, indicators, series } = this.radarState
+
+    // 查找最近的数据点
+    let closestPoint: typeof dataPoints[0] | null = null
+    let minDist = 20 // 最大检测距离
+
+    for (const point of dataPoints) {
+      const dist = Math.sqrt(Math.pow(x - point.x, 2) + Math.pow(y - point.y, 2))
+      if (dist < minDist) {
+        minDist = dist
+        closestPoint = point
+      }
+    }
+
+    if (closestPoint) {
+      const { seriesIndex, pointIndex, value } = closestPoint
+
+      if (seriesIndex !== this.hoverSeriesIndex || pointIndex !== this.hoverIndex) {
+        this.hoverSeriesIndex = seriesIndex
+        this.hoverIndex = pointIndex
+        this.render()
+
+        // 显示 tooltip
+        const s = series[seriesIndex]
+        const indicator = indicators[pointIndex]
+        if (s && indicator) {
+          this.showRadarTooltip(e, s.name || `系列${seriesIndex + 1}`, indicator.name, value, indicator.max)
+        }
+      }
+    } else {
+      if (this.hoverSeriesIndex !== -1 || this.hoverIndex !== -1) {
+        this.hoverSeriesIndex = -1
+        this.hoverIndex = -1
+        this.hideTooltip()
+        this.render()
+      }
+    }
+  }
+
+  private showRadarTooltip(e: MouseEvent, seriesName: string, indicatorName: string, value: number, max?: number): void {
+    if (this.options.tooltip?.show === false) return
+
+    if (!this.tooltipEl) {
+      this.tooltipEl = document.createElement('div')
+      this.tooltipEl.style.cssText = `
+        position: fixed; padding: 8px 12px; border-radius: 6px; font-size: 12px;
+        pointer-events: none; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        background: ${this.colors.tooltipBg}; color: ${this.colors.text};
+      `
+      document.body.appendChild(this.tooltipEl)
+    }
+
+    const percent = max ? ((value / max) * 100).toFixed(1) : '-'
+    this.tooltipEl.innerHTML = `
+      <div style="font-weight:bold;margin-bottom:4px">${seriesName}</div>
+      <div>${indicatorName}: ${value}</div>
+      ${max ? `<div>占比: ${percent}%</div>` : ''}
     `
     this.tooltipEl.style.left = `${e.clientX + 10}px`
     this.tooltipEl.style.top = `${e.clientY + 10}px`

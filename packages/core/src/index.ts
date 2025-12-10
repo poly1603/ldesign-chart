@@ -92,7 +92,7 @@ export type {
 
 // ============== 向后兼容：旧图表类 ==============
 export { Chart } from './charts'
-export type { ChartOptions, SeriesData, SeriesType, XAxisConfig, YAxisConfig, LineStyle as ChartLineStyle, AreaStyle, AnimationType, PieDataItem as ChartPieDataItem, PieAnimationType, ScatterAnimationType, SymbolType, CandlestickDataPoint, CandlestickAnimationType, DataZoomConfig } from './charts'
+export type { ChartOptions, SeriesData, SeriesType, XAxisConfig, YAxisConfig, LineStyle as ChartLineStyle, AreaStyle, AnimationType, PieDataItem as ChartPieDataItem, PieAnimationType, ScatterAnimationType, SymbolType, CandlestickDataPoint, CandlestickAnimationType, DataZoomConfig, RadarAnimationType, RadarIndicator as ChartRadarIndicator, RadarConfig } from './charts'
 
 // ============== 向后兼容：基础类 ==============
 export { BaseChart } from './charts'

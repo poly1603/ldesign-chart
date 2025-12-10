@@ -36,6 +36,18 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/CandlestickChart.vue'),
     meta: { title: 'K线图', icon: 'candlestick' },
   },
+  {
+    path: '/radar',
+    name: 'Radar',
+    component: () => import('@/views/RadarChart.vue'),
+    meta: { title: '雷达图', icon: 'radar' },
+  },
+  {
+    path: '/heatmap',
+    name: 'Heatmap',
+    component: () => import('@/views/HeatmapChart.vue'),
+    meta: { title: '热力图', icon: 'heatmap' },
+  },
 ]
 
 const router = createRouter({

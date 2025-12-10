@@ -81,6 +81,26 @@ provide('rendererType', rendererType)
               <line x1="18" y1="4" x2="18" y2="20"/>
               <rect x="15" y="10" width="6" height="8" fill="none"/>
             </template>
+            <template v-else-if="r.meta?.icon === 'radar'">
+              <polygon points="12,2 22,9 19,21 5,21 2,9" fill="none"/>
+              <polygon points="12,6 17,10 15,17 9,17 7,10" fill="none"/>
+              <line x1="12" y1="2" x2="12" y2="12"/>
+              <line x1="22" y1="9" x2="12" y2="12"/>
+              <line x1="19" y1="21" x2="12" y2="12"/>
+              <line x1="5" y1="21" x2="12" y2="12"/>
+              <line x1="2" y1="9" x2="12" y2="12"/>
+            </template>
+            <template v-else-if="r.meta?.icon === 'heatmap'">
+              <rect x="3" y="3" width="5" height="5" fill="currentColor" opacity="0.3"/>
+              <rect x="9" y="3" width="5" height="5" fill="currentColor" opacity="0.5"/>
+              <rect x="15" y="3" width="5" height="5" fill="currentColor" opacity="0.8"/>
+              <rect x="3" y="9" width="5" height="5" fill="currentColor" opacity="0.6"/>
+              <rect x="9" y="9" width="5" height="5" fill="currentColor" opacity="1"/>
+              <rect x="15" y="9" width="5" height="5" fill="currentColor" opacity="0.7"/>
+              <rect x="3" y="15" width="5" height="5" fill="currentColor" opacity="0.4"/>
+              <rect x="9" y="15" width="5" height="5" fill="currentColor" opacity="0.6"/>
+              <rect x="15" y="15" width="5" height="5" fill="currentColor" opacity="0.9"/>
+            </template>
           </svg>
           <span>{{ r.meta?.title }}</span>
         </router-link>
