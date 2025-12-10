@@ -18,13 +18,13 @@
 
 // ============== 核心图表类（推荐使用）==============
 export { Chart } from './charts'
-export type { ChartOptions, SeriesData, SeriesType, XAxisConfig, YAxisConfig, LineStyle as ChartLineStyle, AreaStyle } from './charts'
+export type { ChartOptions, SeriesData, SeriesType, XAxisConfig, YAxisConfig, LineStyle as ChartLineStyle, AreaStyle, AnimationType, PieDataItem as ChartPieDataItem, PieAnimationType } from './charts'
 
 // ============== 基础类 ==============
 export { BaseChart } from './charts'
 export type { BaseChartOptions } from './charts'
 
-// ============== 饼图（推荐使用）==============
+// ============== 饼图（向后兼容，推荐使用 Chart 类）==============
 export { PieChart } from './charts'
 export type { PieChartOptions, PieDataItem as PieChartDataItem, PieLabelLineOptions } from './charts'
 

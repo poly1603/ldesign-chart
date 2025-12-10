@@ -26,6 +26,9 @@ export interface PieLabelLineOptions {
   type?: 'solid' | 'dashed' | 'dotted'
 }
 
+/** 饼图动画类型 */
+export type PieAnimationType = 'expand' | 'scale' | 'fade' | 'bounce' | 'none'
+
 export interface PieChartOptions extends BaseChartOptions {
   data?: PieDataItem[]
   radius?: number | [number, number] // 外半径 或 [内半径, 外半径]
@@ -37,6 +40,10 @@ export interface PieChartOptions extends BaseChartOptions {
   roseType?: boolean | 'radius' | 'area' // 南丁格尔玫瑰图
   /** 选中扇形外移距离 */
   selectedOffset?: number
+  /** 动画类型 */
+  animationType?: PieAnimationType
+  /** 起始角度（弧度），默认 -Math.PI/2（12点钟方向） */
+  startAngle?: number
 }
 
 function getCurrentTheme(): 'light' | 'dark' {
@@ -106,23 +113,71 @@ export class PieChart extends BaseChart<PieChartOptions> {
     const colors = this.colors
     const data = options.data || []
     const total = this.getTotal()
+    const animationType = options.animationType || 'expand'
 
     if (!data.length || total === 0) return
 
     // 绘制背景
     this.drawBackground()
 
+    // 缓动函数
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    const easeOutBounce = (t: number) => {
+      const n1 = 7.5625, d1 = 2.75
+      if (t < 1 / d1) return n1 * t * t
+      if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75
+      if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375
+      return n1 * (t -= 2.625 / d1) * t + 0.984375
+    }
+    // 应用缓动的进度
+    const easedProgress = easeOutCubic(this.animationProgress)
+
     // 绘制扇形（应用动画进度）
-    let startAngle = -Math.PI / 2
+    const baseStartAngle = options.startAngle ?? -Math.PI / 2
+    let startAngle = baseStartAngle
+
     data.forEach((item, i) => {
       const fullSliceAngle = (item.value / total) * Math.PI * 2
-      const sliceAngle = fullSliceAngle * this.animationProgress
-      const endAngle = startAngle + sliceAngle
       const isHover = i === this.hoverIndex
       const color = this.getSeriesColor(i, item.color)
 
-      // 悬停时扇形外移
+      // 根据动画类型计算参数
+      let sliceAngle = fullSliceAngle
+      let opacity = 1
+      let radiusScale = 1
+      let innerRadiusScale = 1
       let cx = this.centerX, cy = this.centerY
+
+      switch (animationType) {
+        case 'expand':
+          // 扇形展开动画
+          sliceAngle = fullSliceAngle * easedProgress
+          break
+        case 'scale':
+          // 从中心缩放动画
+          sliceAngle = fullSliceAngle
+          radiusScale = easedProgress
+          innerRadiusScale = easedProgress
+          break
+        case 'fade':
+          // 淡入动画
+          sliceAngle = fullSliceAngle
+          opacity = easedProgress
+          break
+        case 'bounce':
+          // 弹性缩放动画
+          sliceAngle = fullSliceAngle
+          radiusScale = easeOutBounce(this.animationProgress)
+          innerRadiusScale = easeOutBounce(this.animationProgress)
+          break
+        case 'none':
+          sliceAngle = fullSliceAngle
+          break
+      }
+
+      const endAngle = startAngle + sliceAngle
+
+      // 悬停时扇形外移
       if (isHover) {
         const midAngle = startAngle + sliceAngle / 2
         cx += Math.cos(midAngle) * 8
@@ -130,20 +185,21 @@ export class PieChart extends BaseChart<PieChartOptions> {
       }
 
       // 南丁格尔玫瑰图
-      let radius = this.outerRadius
+      let radius = this.outerRadius * radiusScale
+      let innerRadius = this.innerRadius * innerRadiusScale
       if (options.roseType) {
         const maxVal = Math.max(...data.map(d => d.value))
-        radius = this.innerRadius + (this.outerRadius - this.innerRadius) * (item.value / maxVal)
+        radius = (this.innerRadius + (this.outerRadius - this.innerRadius) * (item.value / maxVal)) * radiusScale
       }
 
       // 使用 drawSector 方法绘制扇形
       renderer.drawSector(
         cx, cy,
-        this.innerRadius,
+        innerRadius,
         radius,
         startAngle,
         endAngle,
-        { fill: isHover ? this.lightenColor(color) : color }
+        { fill: isHover ? this.lightenColor(color) : color, opacity }
       )
 
       // 标签和引导线
@@ -338,6 +394,20 @@ export class PieChart extends BaseChart<PieChartOptions> {
   }
 
   // ============== 公共方法 ==============
+
+  setOption(options: Partial<PieChartOptions>): void {
+    this.pieOptions = { ...this.pieOptions, ...options }
+    this.options = { ...this.options, ...options }
+    if (options.radius !== undefined) {
+      this.calculateDimensions()
+    }
+    // 如果改变了动画类型，重新播放动画
+    if (options.animationType !== undefined) {
+      this.startAnimation()
+    } else {
+      this.render()
+    }
+  }
 
   setData(data: PieDataItem[]): void {
     this.pieOptions.data = data

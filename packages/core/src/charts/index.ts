@@ -38,7 +38,7 @@
 
 // ============== 核心图表类（推荐使用）==============
 export { Chart } from './Chart'
-export type { ChartOptions, SeriesData, SeriesType, XAxisConfig, YAxisConfig, LineStyle, AreaStyle } from './Chart'
+export type { ChartOptions, SeriesData, SeriesType, XAxisConfig, YAxisConfig, LineStyle, AreaStyle, AnimationType, PieDataItem, PieAnimationType } from './Chart'
 
 // ============== 基础类和工具 ==============
 export { BaseChart, getThemeColors, SERIES_COLORS, Easings } from './BaseChart'
@@ -52,8 +52,10 @@ export type { BaseChartOptions, ChartRect } from './BaseChart'
 // export { BarChart } from './BarChart'
 // export type { BarChartOptions, BarSeriesData } from './BarChart'
 
+// PieChart 保留向后兼容，但推荐使用 Chart 类的 series[].type = 'pie'
 export { PieChart } from './PieChart'
-export type { PieChartOptions, PieDataItem, PieLabelLineOptions } from './PieChart'
+export type { PieChartOptions, PieLabelLineOptions } from './PieChart'
+// PieDataItem 和 PieAnimationType 已从 Chart 导出
 
 // export { ScatterChart } from './ScatterChart'
 // export type { ScatterChartOptions, ScatterSeriesData, ScatterDataPoint } from './ScatterChart'

@@ -27,6 +27,14 @@ import type { BaseChartOptions } from './BaseChart'
 /** 系列类型 */
 export type SeriesType = 'line' | 'bar' | 'scatter' | 'pie'
 
+/** 动画类型 */
+export type AnimationType =
+  | 'rise'    // 从下往上升起（默认）
+  | 'expand'  // 从左到右展开（揭示效果）
+  | 'grow'    // 点依次出现（生长效果）
+  | 'fade'    // 淡入
+  | 'none'    // 无动画
+
 /** 线条样式 */
 export interface LineStyle {
   width?: number
@@ -43,12 +51,23 @@ export interface AreaStyle {
 /** 散点图数据点 */
 export type ScatterDataPoint = [number, number] | { x: number; y: number; value?: number }
 
+/** 饼图数据点 */
+export interface PieDataItem {
+  name: string
+  value: number
+  color?: string
+  selected?: boolean
+}
+
+/** 饼图动画类型 */
+export type PieAnimationType = 'expand' | 'scale' | 'fade' | 'bounce' | 'none'
+
 /** 通用系列数据 */
 export interface SeriesData {
   type: SeriesType
   name?: string
-  /** 数据数组：折线/柱状图用 number[], 散点图用 [x,y][] 或 {x,y}[] */
-  data: (number | null)[] | ScatterDataPoint[]
+  /** 数据数组：折线/柱状图用 number[], 散点图用 [x,y][], 饼图用 PieDataItem[] */
+  data: (number | null)[] | ScatterDataPoint[] | PieDataItem[]
   color?: string
 
   // 折线图特有
@@ -60,12 +79,28 @@ export interface SeriesData {
   symbolSize?: number
   showSymbol?: boolean
   connectNulls?: boolean
+  /** 动画类型（覆盖全局设置） */
+  animationType?: AnimationType
 
   // 柱状图特有
   stack?: string
   barWidth?: number | string
   barGap?: string
   borderRadius?: number
+
+  // 饼图特有
+  /** 饼图半径 [内半径, 外半径]，值为 0-1 的比例 */
+  radius?: number | [number, number]
+  /** 南丁格尔玫瑰图 */
+  roseType?: boolean | 'radius' | 'area'
+  /** 饼图动画类型 */
+  pieAnimationType?: PieAnimationType
+  /** 起始角度（弧度），默认 -Math.PI/2 (12点钟方向) */
+  startAngle?: number
+  /** 扇形总角度（弧度），默认 Math.PI*2 (完整圆)，设为 Math.PI 为半圆 */
+  sweepAngle?: number
+  /** 标签配置 */
+  label?: { show?: boolean; position?: 'inside' | 'outside' }
 
   // 多轴支持
   yAxisIndex?: number
@@ -115,18 +150,22 @@ export interface ChartOptions extends BaseChartOptions {
   tooltip?: { show?: boolean }
   /** 网格配置 */
   grid?: { show?: boolean }
-  /** 坐标系翻转：交换 X/Y 轴（用于横向柱状图） */
+  /** 坐标系翻转：交换 X/Y 轴（用于横向图表），X轴显示值，Y轴显示类目 */
   horizontal?: boolean
+  /** 全局动画类型（可被系列配置覆盖） */
+  animationType?: AnimationType
 }
 
 // ============== 辅助函数 ==============
 
 /** 从数据中提取数值（用于折线图/柱状图） */
-function getNumericValue(value: number | null | ScatterDataPoint): number | null {
+function getNumericValue(value: number | null | ScatterDataPoint | PieDataItem): number | null {
   if (value === null) return null
   if (typeof value === 'number') return value
   // 对于散点图数据，返回 y 值
   if (Array.isArray(value)) return value[1]
+  // 对于饼图数据，返回 value
+  if ('value' in value && 'name' in value) return value.value
   return value.y
 }
 
@@ -162,23 +201,63 @@ export class Chart extends BaseChart<ChartOptions> {
     // 绑定事件
     this.bindEvents()
 
-    // 启动动画
-    if (this.getAnimationConfig().enabled) {
-      this.startEntryAnimation()
-    } else {
-      this.render()
-    }
+    // 延迟渲染，等待 DOM 完全就绪（避免刷新时抖动）
+    requestAnimationFrame(() => {
+      if (this.disposed) return
+
+      // 检查并更新尺寸（确保容器已有正确尺寸）
+      const actualWidth = this.container.clientWidth
+      const actualHeight = this.container.clientHeight
+      if (actualWidth > 0 && actualHeight > 0) {
+        if (actualWidth !== this.width || actualHeight !== this.height) {
+          // 直接设置尺寸并重新初始化
+          ; (this.options as any).width = actualWidth
+            ; (this.options as any).height = actualHeight
+          const padding = this.getPadding()
+          this.chartRect = {
+            x: padding.left,
+            y: padding.top,
+            width: actualWidth - padding.left - padding.right,
+            height: actualHeight - padding.top - padding.bottom,
+          }
+          this.renderer.resize(actualWidth, actualHeight)
+        }
+      }
+
+      // 启动动画
+      if (this.getAnimationConfig().enabled) {
+        this.startEntryAnimation()
+      } else {
+        this.render()
+      }
+    })
   }
 
   // ============== 抽象方法实现 ==============
 
   protected getPadding(): { top: number; right: number; bottom: number; left: number } {
     const p = this.options.padding || {}
+    const { horizontal, xAxis } = this.options
+
+    // 水平模式下，Y轴显示类目标签，需要更大的左边距
+    let defaultLeft = 50
+    if (horizontal) {
+      // 根据标签长度动态计算左边距
+      const labels = Array.isArray(xAxis) ? xAxis[0]?.data : xAxis?.data
+      if (labels && labels.length > 0) {
+        const maxLabelLength = Math.max(...labels.map(l => l.length))
+        // 每个字符约8px，加上一些边距
+        defaultLeft = Math.max(60, Math.min(120, maxLabelLength * 8 + 20))
+      } else {
+        defaultLeft = 80
+      }
+    }
+
     return {
       top: p.top ?? 40,
       right: p.right ?? 20,
       bottom: p.bottom ?? 40,
-      left: p.left ?? 50,
+      left: p.left ?? defaultLeft,
     }
   }
 
@@ -222,53 +301,58 @@ export class Chart extends BaseChart<ChartOptions> {
     const { options } = this
     const { horizontal } = options
 
-    // 获取轴配置
-    const xAxisConfig = this.getAxisConfig(options.xAxis, 0)
-    const yAxisConfigs = this.getAxisConfigs(options.yAxis)
-
-    // 获取标签和启用的系列
-    const labels = horizontal
-      ? [] // 横向模式下标签在 Y 轴
-      : (xAxisConfig.data || [])
-
     const enabledSeries = (options.series || []).filter(s => this.enabledSeries.has(s.name || ''))
-
-    // 计算 Y 轴范围
-    const yRanges = this.calculateYRanges(enabledSeries, yAxisConfigs)
-
-    // 绘制背景
-    this.drawBackground()
-
-    // 绘制网格
-    if (options.grid?.show !== false) {
-      this.drawGrid(5)
-    }
-
-    // 绘制坐标轴
-    this.drawXAxis(labels, xAxisConfig)
-    this.drawYAxis(yRanges, yAxisConfigs)
 
     // 按类型分组系列
     const barSeries = enabledSeries.filter(s => s.type === 'bar')
     const lineSeries = enabledSeries.filter(s => s.type === 'line')
     const scatterSeries = enabledSeries.filter(s => s.type === 'scatter')
+    const pieSeries = enabledSeries.filter(s => s.type === 'pie')
 
-    // 绘制各类型系列
-    if (barSeries.length > 0) {
-      this.drawBarSeries(barSeries, yRanges, labels, horizontal)
-    }
-    if (lineSeries.length > 0) {
-      this.drawLineSeries(lineSeries, yRanges, labels, horizontal)
-    }
-    if (scatterSeries.length > 0) {
-      this.drawScatterSeries(scatterSeries, yRanges, labels)
-    }
+    // 判断是否只有饼图（饼图不需要坐标轴和网格）
+    const isPieOnly = pieSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0
 
-    // 绘制悬停参考线
-    this.drawHoverLine(labels)
+    // 绘制背景
+    this.drawBackground()
+
+    if (isPieOnly) {
+      // 纯饼图模式：只绘制饼图
+      this.drawPieSeries(pieSeries)
+    } else {
+      // 获取轴配置
+      const xAxisConfig = this.getAxisConfig(options.xAxis, 0)
+      const yAxisConfigs = this.getAxisConfigs(options.yAxis)
+      const labels = xAxisConfig.data || []
+
+      // 计算 Y 轴范围
+      const yRanges = this.calculateYRanges(enabledSeries, yAxisConfigs)
+
+      // 绘制网格
+      if (options.grid?.show !== false) {
+        this.drawGrid(5)
+      }
+
+      // 绘制坐标轴
+      this.drawXAxis(labels, xAxisConfig, yRanges, horizontal)
+      this.drawYAxis(yRanges, yAxisConfigs, labels, horizontal)
+
+      // 绘制各类型系列
+      if (barSeries.length > 0) {
+        this.drawBarSeries(barSeries, yRanges, labels, horizontal)
+      }
+      if (lineSeries.length > 0) {
+        this.drawLineSeries(lineSeries, yRanges, labels, horizontal)
+      }
+      if (scatterSeries.length > 0) {
+        this.drawScatterSeries(scatterSeries, yRanges, labels)
+      }
+
+      // 绘制悬停参考线
+      this.drawHoverLine(labels)
+    }
 
     // 绘制图例
-    if (options.legend?.show !== false) {
+    if (options.legend?.show !== false && !isPieOnly) {
       this.drawLegend()
     }
   }
@@ -335,14 +419,20 @@ export class Chart extends BaseChart<ChartOptions> {
       if (!isFinite(range.min)) range.min = 0
       if (!isFinite(range.max)) range.max = 100
 
+      // 确保范围包含0
+      if (range.min > 0) range.min = 0
+      if (range.max < 0) range.max = 0
+
       // 添加边距
       const padding = (range.max - range.min) * 0.1 || 10
-      range.max = Math.ceil((range.max + padding) / 10) * 10
 
-      // 处理最小值：如果数据都是正数，从0开始；否则添加下边距
-      if (range.min >= 0) {
-        range.min = 0
-      } else {
+      // 处理最大值
+      if (range.max > 0) {
+        range.max = Math.ceil((range.max + padding) / 10) * 10
+      }
+
+      // 处理最小值
+      if (range.min < 0) {
         range.min = Math.floor((range.min - padding) / 10) * 10
       }
     })
@@ -350,16 +440,40 @@ export class Chart extends BaseChart<ChartOptions> {
     return ranges
   }
 
-  private drawXAxis(labels: string[], config: XAxisConfig): void {
+  private drawXAxis(
+    labels: string[],
+    config: XAxisConfig,
+    yRanges: { min: number; max: number }[],
+    horizontal?: boolean
+  ): void {
     const { renderer, chartRect, colors } = this
     const { inverse, interval } = config
 
+    if (horizontal) {
+      // 水平模式：X轴显示数值（底部）
+      const yTicks = 5
+      const range = yRanges[0] || { min: 0, max: 100 }
+
+      for (let i = 0; i <= yTicks; i++) {
+        const tickIndex = inverse ? (yTicks - i) : i
+        const value = range.min + (range.max - range.min) * (tickIndex / yTicks)
+        const x = chartRect.x + (i / yTicks) * chartRect.width
+        const y = chartRect.y + chartRect.height + 20
+
+        renderer.drawText(
+          { x, y, text: Math.round(value).toString() },
+          { fill: colors.textSecondary, fontSize: 11, textAlign: 'center' }
+        )
+      }
+      return
+    }
+
+    // 垂直模式（默认）：X轴显示类目
     const barGroupWidth = chartRect.width / Math.max(labels.length, 1)
 
     // 计算标签间隔，避免重叠
     let labelInterval = 1
     if (interval === 'auto' || labels.length > 20) {
-      // 估算每个标签需要的宽度（假设平均8个字符 * 7像素）
       const avgLabelWidth = 50
       const maxLabels = Math.floor(chartRect.width / avgLabelWidth)
       labelInterval = Math.max(1, Math.ceil(labels.length / maxLabels))
@@ -367,11 +481,9 @@ export class Chart extends BaseChart<ChartOptions> {
       labelInterval = interval
     }
 
-    // 处理反转
     const displayLabels = inverse ? [...labels].reverse() : labels
 
     displayLabels.forEach((label, i) => {
-      // 只显示符合间隔的标签
       if (i % labelInterval !== 0 && i !== displayLabels.length - 1) return
 
       const x = chartRect.x + barGroupWidth * i + barGroupWidth / 2
@@ -384,8 +496,35 @@ export class Chart extends BaseChart<ChartOptions> {
     })
   }
 
-  private drawYAxis(yRanges: { min: number; max: number }[], configs: YAxisConfig[]): void {
+  private drawYAxis(
+    yRanges: { min: number; max: number }[],
+    configs: YAxisConfig[],
+    labels: string[],
+    horizontal?: boolean
+  ): void {
     const { renderer, chartRect, colors } = this
+
+    if (horizontal) {
+      // 水平模式：Y轴显示类目（左侧）
+      const barGroupWidth = chartRect.height / Math.max(labels.length, 1)
+      const config = configs[0] || {}
+      const inverse = config.inverse
+
+      const displayLabels = inverse ? [...labels].reverse() : labels
+
+      displayLabels.forEach((label, i) => {
+        const x = chartRect.x - 8
+        const y = chartRect.y + barGroupWidth * i + barGroupWidth / 2
+
+        renderer.drawText(
+          { x, y, text: label },
+          { fill: colors.textSecondary, fontSize: 11, textAlign: 'right', textBaseline: 'middle' }
+        )
+      })
+      return
+    }
+
+    // 垂直模式（默认）：Y轴显示数值
     const yTicks = 5
 
     configs.forEach((config, axisIndex) => {
@@ -396,7 +535,6 @@ export class Chart extends BaseChart<ChartOptions> {
       const { inverse } = config
 
       for (let i = 0; i <= yTicks; i++) {
-        // 支持反转
         const tickIndex = inverse ? (yTicks - i) : i
         const value = range.min + (range.max - range.min) * (1 - tickIndex / yTicks)
         const y = chartRect.y + (i / yTicks) * chartRect.height
@@ -420,39 +558,238 @@ export class Chart extends BaseChart<ChartOptions> {
     labels: string[],
     horizontal?: boolean
   ): void {
-    const { renderer, chartRect, animationProgress } = this
+    const { renderer, chartRect, animationProgress, options } = this
+    const globalAnimationType = options.animationType || 'rise'
 
     if (horizontal) {
       this.drawHorizontalBars(series, yRanges, labels)
       return
     }
 
-    const barGroupWidth = chartRect.width / Math.max(labels.length, 1)
-    const barWidth = (barGroupWidth * 0.6) / series.length
-    const totalBarsWidth = barWidth * series.length
+    const totalBars = labels.length
+    const barGroupWidth = chartRect.width / Math.max(totalBars, 1)
+
+    // 分离堆叠和非堆叠系列
+    const stackGroups = new Map<string, SeriesData[]>()
+    const nonStackSeries: SeriesData[] = []
+
+    series.forEach(s => {
+      if (s.stack) {
+        if (!stackGroups.has(s.stack)) stackGroups.set(s.stack, [])
+        stackGroups.get(s.stack)!.push(s)
+      } else {
+        nonStackSeries.push(s)
+      }
+    })
+
+    // 计算柱子宽度：非堆叠系列 + 堆叠组数
+    const totalBarGroups = nonStackSeries.length + stackGroups.size
+    const barWidth = totalBarGroups > 0 ? (barGroupWidth * 0.7) / totalBarGroups : barGroupWidth * 0.7
+    const totalBarsWidth = barWidth * totalBarGroups
     const startOffset = (barGroupWidth - totalBarsWidth) / 2
 
-    series.forEach((s, seriesIndex) => {
-      const color = s.color || SERIES_COLORS[seriesIndex % SERIES_COLORS.length]
-      const yRange = yRanges[s.yAxisIndex || 0] || yRanges[0]!
+    // 获取 Y 轴范围和零点位置
+    const yRange = yRanges[0] || { min: 0, max: 100 }
+    const zeroY = chartRect.y + chartRect.height -
+      ((0 - yRange.min) / (yRange.max - yRange.min)) * chartRect.height
+
+    // 绘制非堆叠系列
+    nonStackSeries.forEach((s, seriesIndex) => {
+      const color = s.color || SERIES_COLORS[series.indexOf(s) % SERIES_COLORS.length]
       const radius = s.borderRadius ?? 4
+      const animationType = s.animationType || globalAnimationType
 
       s.data.forEach((value, dataIndex) => {
         const numValue = getNumericValue(value)
         if (numValue === null) return
 
         const x = chartRect.x + barGroupWidth * dataIndex + startOffset + barWidth * seriesIndex
-        const normalizedValue = (numValue - yRange.min) / (yRange.max - yRange.min)
-        const barHeight = chartRect.height * normalizedValue * animationProgress
-        const y = chartRect.y + chartRect.height - barHeight
         const isHovered = this.hoverIndex === dataIndex
 
-        renderer.drawRect(
-          { x, y, width: barWidth - 2, height: barHeight },
-          { fill: color, opacity: isHovered ? 1 : 0.85, radius }
+        // 计算柱子高度和位置（支持负值）
+        const normalizedValue = (numValue - yRange.min) / (yRange.max - yRange.min)
+        const barY = chartRect.y + chartRect.height - normalizedValue * chartRect.height
+        const targetHeight = Math.abs(barY - zeroY)
+
+        // 应用动画
+        const { height: barHeight, opacity } = this.applyBarAnimation(
+          targetHeight, animationType, animationProgress, dataIndex, totalBars, isHovered
         )
+
+        if (barHeight > 0) {
+          const y = numValue >= 0 ? zeroY - barHeight : zeroY
+          renderer.drawRect(
+            { x, y, width: barWidth - 2, height: barHeight },
+            { fill: color, opacity, radius: numValue >= 0 ? radius : 0 }
+          )
+        }
       })
     })
+
+    // 绘制堆叠系列
+    let stackIndex = nonStackSeries.length
+    stackGroups.forEach((stackSeries) => {
+      // 正值和负值分别累加
+      const positiveStack = new Array(totalBars).fill(0)
+      const negativeStack = new Array(totalBars).fill(0)
+      const totalStackLayers = stackSeries.length
+
+      stackSeries.forEach((s, sIdx) => {
+        const color = s.color || SERIES_COLORS[series.indexOf(s) % SERIES_COLORS.length]
+        const radius = s.borderRadius ?? 4
+        const animationType = s.animationType || globalAnimationType
+
+        s.data.forEach((value, dataIndex) => {
+          const numValue = getNumericValue(value)
+          if (numValue === null) return
+
+          const x = chartRect.x + barGroupWidth * dataIndex + startOffset + barWidth * stackIndex
+          const isHovered = this.hoverIndex === dataIndex
+
+          // 计算堆叠位置
+          let baseValue: number, targetValue: number
+          if (numValue >= 0) {
+            baseValue = positiveStack[dataIndex]!
+            targetValue = baseValue + numValue
+            positiveStack[dataIndex] = targetValue
+          } else {
+            baseValue = negativeStack[dataIndex]!
+            targetValue = baseValue + numValue
+            negativeStack[dataIndex] = targetValue
+          }
+
+          const baseY = chartRect.y + chartRect.height -
+            ((baseValue - yRange.min) / (yRange.max - yRange.min)) * chartRect.height
+          const targetY = chartRect.y + chartRect.height -
+            ((targetValue - yRange.min) / (yRange.max - yRange.min)) * chartRect.height
+          const targetHeight = Math.abs(targetY - baseY)
+
+          // 堆叠动画：每层依次出现
+          const { height: barHeight, opacity } = this.applyStackedBarAnimation(
+            targetHeight, animationType, animationProgress, dataIndex, totalBars,
+            sIdx, totalStackLayers, isHovered
+          )
+
+          if (barHeight > 0) {
+            const y = numValue >= 0 ? baseY - barHeight : baseY
+            // 只有最上层的堆叠才有圆角
+            const isTop = sIdx === stackSeries.length - 1
+            renderer.drawRect(
+              { x, y, width: barWidth - 2, height: barHeight },
+              { fill: color, opacity, radius: isTop ? radius : 0 }
+            )
+          }
+        })
+      })
+      stackIndex++
+    })
+  }
+
+  // 柱状图动画计算辅助方法
+  private applyBarAnimation(
+    targetHeight: number,
+    animationType: AnimationType,
+    progress: number,
+    dataIndex: number,
+    totalBars: number,
+    isHovered: boolean
+  ): { height: number; opacity: number } {
+    let height = targetHeight
+    let opacity = isHovered ? 1 : 0.85
+
+    // 使用缓动函数使动画更流畅
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4)
+
+    switch (animationType) {
+      case 'rise':
+        // 从底部升起，使用缓动
+        height = targetHeight * easeOutCubic(progress)
+        break
+      case 'expand':
+        // 从左到右依次展开，每个柱子有重叠
+        const expandDelay = dataIndex / (totalBars + 2)
+        const expandDuration = 1 - expandDelay
+        const expandProgress = Math.max(0, Math.min(1, (progress - expandDelay) / expandDuration))
+        height = targetHeight * easeOutQuart(expandProgress)
+        break
+      case 'grow':
+        // 依次出现，更平滑的延迟
+        const growDelay = (dataIndex / totalBars) * 0.6
+        const growDuration = 1 - growDelay
+        const growProgress = Math.max(0, Math.min(1, (progress - growDelay) / growDuration))
+        height = targetHeight * easeOutCubic(growProgress)
+        break
+      case 'fade':
+        // 淡入效果
+        height = targetHeight
+        opacity = (isHovered ? 1 : 0.85) * easeOutCubic(progress)
+        break
+      case 'none':
+        height = targetHeight
+        break
+    }
+
+    return { height, opacity }
+  }
+
+  // 堆叠柱状图动画：每层依次出现
+  private applyStackedBarAnimation(
+    targetHeight: number,
+    animationType: AnimationType,
+    progress: number,
+    dataIndex: number,
+    totalBars: number,
+    stackLayerIndex: number,
+    totalStackLayers: number,
+    isHovered: boolean
+  ): { height: number; opacity: number } {
+    let height = targetHeight
+    let opacity = isHovered ? 1 : 0.85
+
+    // 缓动函数
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4)
+
+    // 堆叠动画：每层依次出现
+    // 每层占用的动画时间段
+    const layerDuration = 1 / totalStackLayers
+    const layerStart = stackLayerIndex * layerDuration * 0.7 // 0.7 让层之间有重叠
+    const layerEnd = layerStart + layerDuration + 0.3 // 延长结束时间让动画更平滑
+
+    // 计算当前层的进度
+    const layerProgress = Math.max(0, Math.min(1, (progress - layerStart) / (layerEnd - layerStart)))
+
+    switch (animationType) {
+      case 'rise':
+        // 从底部升起，每层依次
+        height = targetHeight * easeOutCubic(layerProgress)
+        break
+      case 'expand':
+        // 从左到右依次展开，同时每层依次
+        const expandDelay = dataIndex / (totalBars + 2)
+        const expandDuration = 1 - expandDelay
+        const expandProgress = Math.max(0, Math.min(1, (layerProgress - expandDelay) / expandDuration))
+        height = targetHeight * easeOutQuart(expandProgress)
+        break
+      case 'grow':
+        // 依次出现
+        const growDelay = (dataIndex / totalBars) * 0.4
+        const growDuration = 1 - growDelay
+        const growProgress = Math.max(0, Math.min(1, (layerProgress - growDelay) / growDuration))
+        height = targetHeight * easeOutCubic(growProgress)
+        break
+      case 'fade':
+        // 淡入效果
+        height = targetHeight * easeOutCubic(layerProgress)
+        opacity = (isHovered ? 1 : 0.85) * easeOutCubic(layerProgress)
+        break
+      case 'none':
+        height = targetHeight
+        break
+    }
+
+    return { height, opacity }
   }
 
   private drawHorizontalBars(
@@ -460,44 +797,154 @@ export class Chart extends BaseChart<ChartOptions> {
     yRanges: { min: number; max: number }[],
     labels: string[]
   ): void {
-    const { renderer, chartRect, animationProgress, colors } = this
+    const { renderer, chartRect, animationProgress, options } = this
+    const globalAnimationType = options.animationType || 'rise'
 
-    // 横向柱状图：Y轴显示分类，X轴显示数值
-    const barGroupHeight = chartRect.height / Math.max(labels.length, 1)
-    const barHeight = (barGroupHeight * 0.6) / series.length
-    const totalBarsHeight = barHeight * series.length
-    const startOffset = (barGroupHeight - totalBarsHeight) / 2
+    const totalBars = labels.length
+    const barGroupHeight = chartRect.height / Math.max(totalBars, 1)
 
-    // 绘制 Y 轴分类标签
-    labels.forEach((label, i) => {
-      const y = chartRect.y + barGroupHeight * i + barGroupHeight / 2
-      renderer.drawText(
-        { x: chartRect.x - 8, y, text: label },
-        { fill: colors.textSecondary, fontSize: 11, textAlign: 'right', textBaseline: 'middle' }
-      )
+    // 分离堆叠和非堆叠系列
+    const stackGroups = new Map<string, SeriesData[]>()
+    const nonStackSeries: SeriesData[] = []
+
+    series.forEach(s => {
+      if (s.stack) {
+        if (!stackGroups.has(s.stack)) stackGroups.set(s.stack, [])
+        stackGroups.get(s.stack)!.push(s)
+      } else {
+        nonStackSeries.push(s)
+      }
     })
 
-    // 绘制横向柱子
-    series.forEach((s, seriesIndex) => {
-      const color = s.color || SERIES_COLORS[seriesIndex % SERIES_COLORS.length]
-      const yRange = yRanges[s.yAxisIndex || 0] || yRanges[0]!
+    // 计算柱子高度
+    const totalBarGroups = nonStackSeries.length + stackGroups.size
+    const barHeight = totalBarGroups > 0 ? (barGroupHeight * 0.7) / totalBarGroups : barGroupHeight * 0.7
+    const totalBarsHeight = barHeight * totalBarGroups
+    const startOffset = (barGroupHeight - totalBarsHeight) / 2
+
+    // 获取 X 轴范围和零点位置
+    const xRange = yRanges[0] || { min: 0, max: 100 }
+    const zeroX = chartRect.x + ((0 - xRange.min) / (xRange.max - xRange.min)) * chartRect.width
+
+    // 缓动函数
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    const easeOutQuart = (t: number) => 1 - Math.pow(1 - t, 4)
+
+    // 应用水平柱状图动画
+    const applyHorizontalAnimation = (
+      targetWidth: number, animationType: AnimationType, dataIndex: number, isHovered: boolean
+    ): { width: number; opacity: number } => {
+      let width = targetWidth
+      let opacity = isHovered ? 1 : 0.85
+
+      switch (animationType) {
+        case 'rise':
+          width = targetWidth * easeOutCubic(animationProgress)
+          break
+        case 'expand':
+          const expandDelay = dataIndex / (totalBars + 2)
+          const expandDuration = 1 - expandDelay
+          const expandProgress = Math.max(0, Math.min(1, (animationProgress - expandDelay) / expandDuration))
+          width = targetWidth * easeOutQuart(expandProgress)
+          break
+        case 'grow':
+          const growDelay = (dataIndex / totalBars) * 0.6
+          const growDuration = 1 - growDelay
+          const growProgress = Math.max(0, Math.min(1, (animationProgress - growDelay) / growDuration))
+          width = targetWidth * easeOutCubic(growProgress)
+          break
+        case 'fade':
+          width = targetWidth
+          opacity = (isHovered ? 1 : 0.85) * easeOutCubic(animationProgress)
+          break
+        case 'none':
+          width = targetWidth
+          break
+      }
+      return { width, opacity }
+    }
+
+    // 绘制非堆叠系列
+    nonStackSeries.forEach((s, seriesIndex) => {
+      const color = s.color || SERIES_COLORS[series.indexOf(s) % SERIES_COLORS.length]
       const radius = s.borderRadius ?? 4
+      const animationType = s.animationType || globalAnimationType
 
       s.data.forEach((value, dataIndex) => {
         const numValue = getNumericValue(value)
         if (numValue === null) return
 
         const y = chartRect.y + barGroupHeight * dataIndex + startOffset + barHeight * seriesIndex
-        const normalizedValue = (numValue - yRange.min) / (yRange.max - yRange.min)
-        const barWidth = chartRect.width * normalizedValue * animationProgress
-        const x = chartRect.x
         const isHovered = this.hoverIndex === dataIndex
 
-        renderer.drawRect(
-          { x, y, width: barWidth, height: barHeight - 2 },
-          { fill: color, opacity: isHovered ? 1 : 0.85, radius }
+        // 计算柱子宽度和位置（支持负值）
+        const normalizedValue = (numValue - xRange.min) / (xRange.max - xRange.min)
+        const barX = chartRect.x + normalizedValue * chartRect.width
+        const targetWidth = Math.abs(barX - zeroX)
+
+        const { width: barWidth, opacity } = applyHorizontalAnimation(
+          targetWidth, animationType, dataIndex, isHovered
         )
+
+        if (barWidth > 0) {
+          const x = numValue >= 0 ? zeroX : zeroX - barWidth
+          renderer.drawRect(
+            { x, y, width: barWidth, height: barHeight - 2 },
+            { fill: color, opacity, radius: numValue >= 0 ? radius : 0 }
+          )
+        }
       })
+    })
+
+    // 绘制堆叠系列
+    let stackIndex = nonStackSeries.length
+    stackGroups.forEach((stackSeries) => {
+      const positiveStack = new Array(totalBars).fill(0)
+      const negativeStack = new Array(totalBars).fill(0)
+
+      stackSeries.forEach((s, sIdx) => {
+        const color = s.color || SERIES_COLORS[series.indexOf(s) % SERIES_COLORS.length]
+        const radius = s.borderRadius ?? 4
+        const animationType = s.animationType || globalAnimationType
+
+        s.data.forEach((value, dataIndex) => {
+          const numValue = getNumericValue(value)
+          if (numValue === null) return
+
+          const y = chartRect.y + barGroupHeight * dataIndex + startOffset + barHeight * stackIndex
+          const isHovered = this.hoverIndex === dataIndex
+
+          // 计算堆叠位置
+          let baseValue: number, targetValue: number
+          if (numValue >= 0) {
+            baseValue = positiveStack[dataIndex]!
+            targetValue = baseValue + numValue
+            positiveStack[dataIndex] = targetValue
+          } else {
+            baseValue = negativeStack[dataIndex]!
+            targetValue = baseValue + numValue
+            negativeStack[dataIndex] = targetValue
+          }
+
+          const baseX = chartRect.x + ((baseValue - xRange.min) / (xRange.max - xRange.min)) * chartRect.width
+          const targetX = chartRect.x + ((targetValue - xRange.min) / (xRange.max - xRange.min)) * chartRect.width
+          const targetWidth = Math.abs(targetX - baseX)
+
+          const { width: barWidth, opacity } = applyHorizontalAnimation(
+            targetWidth, animationType, dataIndex, isHovered
+          )
+
+          if (barWidth > 0) {
+            const x = numValue >= 0 ? baseX : baseX - barWidth
+            const isLast = sIdx === stackSeries.length - 1
+            renderer.drawRect(
+              { x, y, width: barWidth, height: barHeight - 2 },
+              { fill: color, opacity, radius: isLast ? radius : 0 }
+            )
+          }
+        })
+      })
+      stackIndex++
     })
   }
 
@@ -505,11 +952,19 @@ export class Chart extends BaseChart<ChartOptions> {
     series: SeriesData[],
     yRanges: { min: number; max: number }[],
     labels: string[],
-    _horizontal?: boolean
+    horizontal?: boolean
   ): void {
-    const { renderer, chartRect, animationProgress, colors } = this
-    const barGroupWidth = chartRect.width / Math.max(labels.length, 1)
+    const { renderer, chartRect, animationProgress, colors, options } = this
+    const globalAnimationType = options.animationType || 'rise'
+    const barGroupWidth = horizontal
+      ? chartRect.height / Math.max(labels.length, 1)
+      : chartRect.width / Math.max(labels.length, 1)
     const baseY = chartRect.y + chartRect.height // 底部基线
+    const baseX = chartRect.x // 左侧基线（水平模式用）
+
+    // 缓动函数使动画更流畅
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    const easedProgress = easeOutCubic(animationProgress)
 
     // 计算堆叠数据：按 stack 属性分组
     const stackGroups: Map<string, { seriesIndex: number; data: number[] }[]> = new Map()
@@ -528,14 +983,17 @@ export class Chart extends BaseChart<ChartOptions> {
       }
     })
 
-    // 存储每个系列的实际 Y 坐标（堆叠后）
+    // 存储每个系列的目标点位置和动画后的点位置
     const seriesPointsMap: Map<number, { x: number; y: number }[]> = new Map()
+    const seriesTargetPointsMap: Map<number, { x: number; y: number }[]> = new Map()
 
     series.forEach((s, seriesIndex) => {
       const yRange = yRanges[s.yAxisIndex || 0] || yRanges[0]!
+      const animationType = s.animationType || globalAnimationType
 
-      // 计算所有点位置（考虑堆叠）
-      const allPoints: { x: number; y: number }[] = []
+      // 计算所有目标点位置（考虑堆叠）
+      const targetPoints: { x: number; y: number }[] = []
+      const animatedPoints: { x: number; y: number }[] = []
 
       s.data.forEach((value, dataIndex) => {
         const numValue = getNumericValue(value)
@@ -550,28 +1008,86 @@ export class Chart extends BaseChart<ChartOptions> {
           stackedArr[dataIndex] = actualValue
         }
 
-        const x = chartRect.x + barGroupWidth * dataIndex + barGroupWidth / 2
         const normalizedValue = (actualValue - yRange.min) / (yRange.max - yRange.min)
-        const targetY = chartRect.y + chartRect.height - chartRect.height * normalizedValue
-        // 动画：从底部升起到目标位置
-        const y = baseY + (targetY - baseY) * animationProgress
-        allPoints.push({ x, y })
+
+        let targetX: number, targetY: number
+        if (horizontal) {
+          // 水平模式：Y轴显示类目，X轴显示值
+          targetX = chartRect.x + chartRect.width * normalizedValue
+          targetY = chartRect.y + barGroupWidth * dataIndex + barGroupWidth / 2
+        } else {
+          // 垂直模式（默认）
+          targetX = chartRect.x + barGroupWidth * dataIndex + barGroupWidth / 2
+          targetY = chartRect.y + chartRect.height - chartRect.height * normalizedValue
+        }
+        targetPoints.push({ x: targetX, y: targetY })
+
+        // 根据动画类型计算动画后的点位置
+        let animatedX = targetX
+        let animatedY = targetY
+
+        switch (animationType) {
+          case 'rise':
+            // 从底部/左侧升起，使用缓动
+            if (horizontal) {
+              animatedX = baseX + (targetX - baseX) * easedProgress
+            } else {
+              animatedY = baseY + (targetY - baseY) * easedProgress
+            }
+            break
+          case 'expand':
+            // 展开效果：点位置不变，通过裁剪实现
+            break
+          case 'grow':
+            // 生长效果：根据进度决定显示哪些点
+            break
+          case 'fade':
+            // 淡入效果：点位置不变
+            break
+          case 'none':
+            // 无动画：点位置不变
+            break
+        }
+
+        animatedPoints.push({ x: animatedX, y: animatedY })
       })
 
-      if (allPoints.length === 0) return
+      if (targetPoints.length === 0) return
 
-      seriesPointsMap.set(seriesIndex, allPoints)
+      seriesTargetPointsMap.set(seriesIndex, targetPoints)
+      seriesPointsMap.set(seriesIndex, animatedPoints)
     })
 
     // 绘制区域填充（从后往前绘制，确保正确的层叠顺序）
     const reversedSeries = [...series].reverse()
     reversedSeries.forEach((s, reversedIndex) => {
       const seriesIndex = series.length - 1 - reversedIndex
+      const animationType = s.animationType || globalAnimationType
       const points = seriesPointsMap.get(seriesIndex)
+      const targetPoints = seriesTargetPointsMap.get(seriesIndex)
       if (!points || points.length < 2 || !s.areaStyle) return
 
       const color = s.color || SERIES_COLORS[seriesIndex % SERIES_COLORS.length]
-      const opacity = (typeof s.areaStyle === 'object' ? (s.areaStyle.opacity || 0.3) : 0.3) * animationProgress
+
+      // 根据动画类型计算透明度（使用缓动）
+      let opacityMultiplier = 1
+      if (animationType === 'fade') {
+        opacityMultiplier = easedProgress
+      } else if (animationType !== 'none') {
+        opacityMultiplier = easedProgress
+      }
+      const opacity = (typeof s.areaStyle === 'object' ? (s.areaStyle.opacity || 0.3) : 0.3) * opacityMultiplier
+
+      // 根据动画类型选择要绘制的点
+      let drawPoints = points
+      if (animationType === 'expand' && targetPoints) {
+        // 展开效果：使用目标点，通过裁剪实现
+        drawPoints = targetPoints
+      } else if (animationType === 'grow' && targetPoints) {
+        // 生长效果：只绘制部分点（使用缓动）
+        const visibleCount = Math.ceil(targetPoints.length * easedProgress)
+        drawPoints = targetPoints.slice(0, Math.max(2, visibleCount))
+      }
 
       // 找到同一 stack 组中的前一个系列
       let bottomPoints: { x: number; y: number }[] | null = null
@@ -584,47 +1100,132 @@ export class Chart extends BaseChart<ChartOptions> {
         }
       }
 
-      // 使用正确的绘制方法：顶部曲线平滑，底部保持直线或跟随前一系列
-      const r = renderer as any // 类型断言以访问扩展方法
+      // 使用正确的绘制方法
+      const r = renderer as any
+
+      // 展开动画：先设置裁剪区域
+      if (animationType === 'expand') {
+        renderer.save()
+        const clipWidth = horizontal
+          ? chartRect.height * animationProgress
+          : chartRect.width * animationProgress
+        const clipHeight = horizontal
+          ? chartRect.width
+          : chartRect.height
+        if (horizontal) {
+          renderer.clip({ x: chartRect.x, y: chartRect.y, width: chartRect.width, height: clipWidth })
+        } else {
+          renderer.clip({ x: chartRect.x, y: chartRect.y, width: clipWidth, height: clipHeight })
+        }
+      }
+
+      const drawBaseY = horizontal ? chartRect.x : baseY
 
       if (bottomPoints && bottomPoints.length > 0) {
-        // 堆叠模式：顶部和底部都可能是曲线
-        r.drawStackedArea(points, bottomPoints, { fill: color, opacity }, s.smooth)
+        r.drawStackedArea(drawPoints, bottomPoints, { fill: color, opacity }, s.smooth)
       } else {
-        // 非堆叠模式：使用 drawArea 方法（顶部平滑，底部直线到 baseY）
-        r.drawArea(points, baseY, color, s.smooth, opacity)
+        r.drawArea(drawPoints, drawBaseY, color, s.smooth, opacity)
+      }
+
+      if (animationType === 'expand') {
+        renderer.restore()
       }
     })
 
     // 绘制线条和数据点
     series.forEach((s, seriesIndex) => {
+      const animationType = s.animationType || globalAnimationType
       const points = seriesPointsMap.get(seriesIndex)
+      const targetPoints = seriesTargetPointsMap.get(seriesIndex)
       if (!points || points.length < 2) return
 
       const color = s.color || SERIES_COLORS[seriesIndex % SERIES_COLORS.length]
 
+      // 根据动画类型计算线条透明度（使用缓动）
+      let lineOpacity = 1
+      if (animationType === 'fade') {
+        lineOpacity = easedProgress
+      } else if (animationType === 'rise') {
+        lineOpacity = 0.3 + 0.7 * easedProgress
+      } else if (animationType !== 'none') {
+        lineOpacity = 0.3 + 0.7 * easedProgress
+      }
+
+      // 根据动画类型选择要绘制的点
+      let drawPoints = points
+      if (animationType === 'expand' && targetPoints) {
+        drawPoints = targetPoints
+      } else if (animationType === 'grow' && targetPoints) {
+        const visibleCount = Math.ceil(targetPoints.length * easedProgress)
+        drawPoints = targetPoints.slice(0, Math.max(2, visibleCount))
+      }
+
       // 绘制线条
       const lineDash = s.lineStyle?.type === 'dashed' ? [6, 4] :
         s.lineStyle?.type === 'dotted' ? [2, 2] : undefined
-      renderer.drawLine(points, {
+
+      // 展开动画：先设置裁剪区域
+      if (animationType === 'expand') {
+        renderer.save()
+        const clipWidth = horizontal
+          ? chartRect.height * animationProgress
+          : chartRect.width * animationProgress
+        if (horizontal) {
+          renderer.clip({ x: chartRect.x, y: chartRect.y, width: chartRect.width, height: clipWidth })
+        } else {
+          renderer.clip({ x: chartRect.x, y: chartRect.y, width: clipWidth, height: chartRect.height })
+        }
+      }
+
+      renderer.drawLine(drawPoints, {
         stroke: color,
         lineWidth: s.lineStyle?.width || 2,
         lineDash,
-        opacity: 0.3 + 0.7 * animationProgress,
+        opacity: lineOpacity,
       }, s.smooth)
 
-      // 绘制数据点（延迟出现）
-      if (s.showSymbol !== false && animationProgress > 0.5) {
-        const symbolProgress = (animationProgress - 0.5) * 2
-        points.forEach((point) => {
-          const radius = (s.symbolSize || 4) * symbolProgress
-          if (radius > 0.5) {
-            renderer.drawCircle(
-              { x: point.x, y: point.y, radius },
-              { fill: colors.background, stroke: color, lineWidth: 2 }
-            )
+      if (animationType === 'expand') {
+        renderer.restore()
+      }
+
+      // 绘制数据点
+      if (s.showSymbol !== false) {
+        let symbolOpacity = 1
+        let symbolScale = 1
+
+        if (animationType === 'rise' || animationType === 'expand') {
+          // 延迟出现
+          if (animationProgress > 0.5) {
+            symbolOpacity = (animationProgress - 0.5) * 2
+            symbolScale = symbolOpacity
+          } else {
+            symbolOpacity = 0
           }
-        })
+        } else if (animationType === 'fade') {
+          symbolOpacity = animationProgress
+          symbolScale = 1
+        } else if (animationType === 'grow') {
+          symbolScale = 1
+        }
+
+        if (symbolOpacity > 0) {
+          const pointsToDraw = animationType === 'grow' ? drawPoints : points
+          pointsToDraw.forEach((point, idx) => {
+            // grow 动画：点依次出现
+            if (animationType === 'grow' && targetPoints) {
+              const pointProgress = (idx / targetPoints.length)
+              if (pointProgress > animationProgress) return
+            }
+
+            const radius = (s.symbolSize || 4) * symbolScale
+            if (radius > 0.5) {
+              renderer.drawCircle(
+                { x: point.x, y: point.y, radius },
+                { fill: colors.background, stroke: color, lineWidth: 2 }
+              )
+            }
+          })
+        }
       }
     })
   }
@@ -657,23 +1258,272 @@ export class Chart extends BaseChart<ChartOptions> {
     })
   }
 
+  // ============== 饼图绑制 ==============
+
+  private drawPieSeries(series: SeriesData[]): void {
+    const { renderer, animationProgress, options, width, height } = this
+
+    // 缓动函数
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    const easeOutBounce = (t: number) => {
+      const n1 = 7.5625, d1 = 2.75
+      if (t < 1 / d1) return n1 * t * t
+      if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75
+      if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375
+      return n1 * (t -= 2.625 / d1) * t + 0.984375
+    }
+
+    series.forEach((s, seriesIndex) => {
+      const pieData = s.data as PieDataItem[]
+      if (!pieData || pieData.length === 0) return
+
+      // 计算饼图中心和半径
+      // 留出标签空间：左右各留 80px，上下各留 40px
+      const labelPadding = { left: 80, right: 80, top: 40, bottom: 40 }
+      const availableWidth = width - labelPadding.left - labelPadding.right
+      const availableHeight = height - labelPadding.top - labelPadding.bottom
+      const centerX = labelPadding.left + availableWidth / 2
+      const centerY = labelPadding.top + availableHeight / 2
+      const maxRadius = Math.min(availableWidth, availableHeight) / 2 * 0.85
+
+      // 解析半径配置
+      let innerRadius = 0
+      let outerRadius = maxRadius
+      if (s.radius !== undefined) {
+        if (Array.isArray(s.radius)) {
+          innerRadius = s.radius[0] * maxRadius
+          outerRadius = s.radius[1] * maxRadius
+        } else {
+          outerRadius = s.radius * maxRadius
+        }
+      }
+
+      // 计算总值
+      const total = pieData.reduce((sum, item) => sum + item.value, 0)
+      if (total === 0) return
+
+      // 动画类型
+      const pieAnimationType = s.pieAnimationType || 'expand'
+      const easedProgress = easeOutCubic(animationProgress)
+
+      // 起始角度和总角度
+      const baseStartAngle = s.startAngle ?? -Math.PI / 2
+      const sweepAngle = s.sweepAngle ?? Math.PI * 2  // 默认完整圆，Math.PI 为半圆
+      let startAngle = baseStartAngle
+
+      pieData.forEach((item, i) => {
+        const fullSliceAngle = (item.value / total) * sweepAngle
+        const isHover = i === this.hoverIndex
+        const color = item.color || s.color || SERIES_COLORS[(seriesIndex * pieData.length + i) % SERIES_COLORS.length]
+
+        // 根据动画类型计算参数
+        let sliceAngle = fullSliceAngle
+        let opacity = 1
+        let radiusScale = 1
+
+        switch (pieAnimationType) {
+          case 'expand':
+            sliceAngle = fullSliceAngle * easedProgress
+            break
+          case 'scale':
+            sliceAngle = fullSliceAngle
+            radiusScale = easedProgress
+            break
+          case 'fade':
+            sliceAngle = fullSliceAngle
+            opacity = easedProgress
+            break
+          case 'bounce':
+            sliceAngle = fullSliceAngle
+            radiusScale = easeOutBounce(animationProgress)
+            break
+          case 'none':
+            sliceAngle = fullSliceAngle
+            break
+        }
+
+        const endAngle = startAngle + sliceAngle
+
+        // 悬停时扇形外移（带平滑动画效果）
+        let cx = centerX, cy = centerY
+        let hoverOffset = 0
+        if (isHover) {
+          hoverOffset = 10  // hover 时偏移距离
+        }
+        const midAngleForOffset = startAngle + fullSliceAngle / 2
+        cx += Math.cos(midAngleForOffset) * hoverOffset
+        cy += Math.sin(midAngleForOffset) * hoverOffset
+
+        // 南丁格尔玫瑰图
+        let finalOuterRadius = outerRadius * radiusScale
+        let finalInnerRadius = innerRadius * radiusScale
+        if (s.roseType) {
+          const maxVal = Math.max(...pieData.map(d => d.value))
+          finalOuterRadius = (innerRadius + (outerRadius - innerRadius) * (item.value / maxVal)) * radiusScale
+        }
+
+        // 绘制扇形
+        const fillColor = isHover && color ? this.lightenColor(color) : color
+        renderer.drawSector(
+          cx, cy,
+          finalInnerRadius,
+          finalOuterRadius,
+          startAngle,
+          endAngle,
+          { fill: fillColor, opacity }
+        )
+
+        // 标签和引导线（带动画效果，hover 时跟随扇形移动）
+        if (s.label?.show !== false && animationProgress > 0.6) {
+          // 标签动画进度（从0.6开始到1结束）
+          const labelProgress = Math.min(1, (animationProgress - 0.6) / 0.4)
+          const labelOpacity = easeOutCubic(labelProgress)
+
+          // 使用当前扇形的中心角度
+          const midAngle = startAngle + fullSliceAngle / 2
+          const percent = ((item.value / total) * 100).toFixed(1)
+          const labelText = `${item.name}: ${percent}%`
+
+          // 玫瑰图使用实际的外半径，普通饼图使用固定外半径
+          const actualOuterRadius = s.roseType ? finalOuterRadius : outerRadius
+
+          // 标签中心点跟随 hover 偏移
+          const labelCenterX = cx
+          const labelCenterY = cy
+
+          if (s.label?.position === 'inside') {
+            const labelRadius = actualOuterRadius * 0.6
+            const lx = labelCenterX + Math.cos(midAngle) * labelRadius
+            const ly = labelCenterY + Math.sin(midAngle) * labelRadius
+            renderer.drawText(
+              { x: lx, y: ly, text: item.name },
+              { fill: '#fff', fontSize: 11, textAlign: 'center', textBaseline: 'middle', opacity: labelOpacity }
+            )
+          } else {
+            // 外部标签 + 引导线（跟随 hover 偏移）
+            const direction = Math.cos(midAngle) >= 0 ? 1 : -1
+            const length1 = 15
+            const length2 = 25
+
+            // 引导线起点（扇形边缘，跟随偏移）
+            const lineStartX = labelCenterX + Math.cos(midAngle) * actualOuterRadius
+            const lineStartY = labelCenterY + Math.sin(midAngle) * actualOuterRadius
+
+            // 引导线中点（带动画，跟随偏移）
+            const animatedLength1 = length1 * labelProgress
+            const lineMidX = labelCenterX + Math.cos(midAngle) * (actualOuterRadius + animatedLength1)
+            const lineMidY = labelCenterY + Math.sin(midAngle) * (actualOuterRadius + animatedLength1)
+
+            // 引导线终点（水平延伸，带动画）
+            const animatedLength2 = length2 * labelProgress
+            const lineEndX = lineMidX + direction * animatedLength2
+            const lineEndY = lineMidY
+
+            // 绘制引导线
+            const lineColor = options.theme === 'dark' ? '#94a3b8' : '#64748b'
+            renderer.drawLine(
+              [
+                { x: lineStartX, y: lineStartY },
+                { x: lineMidX, y: lineMidY },
+                { x: lineEndX, y: lineEndY },
+              ],
+              { stroke: lineColor, lineWidth: 1, opacity: labelOpacity }
+            )
+
+            // 绘制标签文本（动画完成后显示）
+            if (labelProgress > 0.5) {
+              const textOpacity = (labelProgress - 0.5) * 2
+              renderer.drawText(
+                { x: lineEndX + direction * 4, y: lineEndY, text: labelText },
+                {
+                  fill: options.theme === 'dark' ? '#e2e8f0' : '#1e293b',
+                  fontSize: 11,
+                  textAlign: direction > 0 ? 'left' : 'right',
+                  textBaseline: 'middle',
+                  opacity: textOpacity
+                }
+              )
+            }
+          }
+        }
+
+        // 更新起始角度（始终使用完整角度，动画只影响绘制的扇形大小）
+        startAngle += fullSliceAngle
+      })
+    })
+  }
+
+  private lightenColor(hex: string): string {
+    if (!hex.startsWith('#')) return hex
+    const num = parseInt(hex.slice(1), 16)
+    const r = Math.min(255, (num >> 16) + 40)
+    const g = Math.min(255, ((num >> 8) & 0xff) + 40)
+    const b = Math.min(255, (num & 0xff) + 40)
+    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
+  }
+
   // ============== 辅助绑制方法 ==============
 
   private drawHoverLine(labels: string[]): void {
     if (this.hoverIndex < 0) return
 
-    const { chartRect, options } = this
-    const barGroupWidth = chartRect.width / Math.max(labels.length, 1)
+    const { chartRect, options, renderer } = this
+    const { horizontal } = options
+    const series = options.series || []
 
+    // 检测图表类型
+    const hasBarSeries = series.some(s => s.type === 'bar')
+    const hasLineSeries = series.some(s => s.type === 'line')
+
+    // 背景色（用于柱状图）
+    const hoverBgColor = options.theme === 'dark'
+      ? 'rgba(255, 255, 255, 0.08)'
+      : 'rgba(0, 0, 0, 0.04)'
+
+    // 指示线颜色（用于折线图）
     const hoverLineColor = options.theme === 'dark'
-      ? 'rgba(99, 102, 241, 0.6)'
-      : 'rgba(99, 102, 241, 0.5)'
+      ? 'rgba(255, 255, 255, 0.3)'
+      : 'rgba(0, 0, 0, 0.2)'
 
-    const hoverX = chartRect.x + barGroupWidth * this.hoverIndex + barGroupWidth / 2
-    this.renderer.drawLine(
-      [{ x: hoverX, y: chartRect.y }, { x: hoverX, y: chartRect.y + chartRect.height }],
-      { stroke: hoverLineColor, lineWidth: 2 }
-    )
+    if (horizontal) {
+      const barGroupHeight = chartRect.height / Math.max(labels.length, 1)
+      const hoverY = chartRect.y + barGroupHeight * this.hoverIndex + barGroupHeight / 2
+
+      // 柱状图：绘制背景
+      if (hasBarSeries) {
+        renderer.drawRect(
+          { x: chartRect.x, y: chartRect.y + barGroupHeight * this.hoverIndex, width: chartRect.width, height: barGroupHeight },
+          { fill: hoverBgColor }
+        )
+      }
+
+      // 折线图：绘制水平指示线
+      if (hasLineSeries) {
+        renderer.drawLine(
+          [{ x: chartRect.x, y: hoverY }, { x: chartRect.x + chartRect.width, y: hoverY }],
+          { stroke: hoverLineColor, lineWidth: 1, lineDash: [4, 4] }
+        )
+      }
+    } else {
+      const barGroupWidth = chartRect.width / Math.max(labels.length, 1)
+      const hoverX = chartRect.x + barGroupWidth * this.hoverIndex + barGroupWidth / 2
+
+      // 柱状图：绘制背景
+      if (hasBarSeries) {
+        renderer.drawRect(
+          { x: chartRect.x + barGroupWidth * this.hoverIndex, y: chartRect.y, width: barGroupWidth, height: chartRect.height },
+          { fill: hoverBgColor }
+        )
+      }
+
+      // 折线图：绘制垂直指示线
+      if (hasLineSeries) {
+        renderer.drawLine(
+          [{ x: hoverX, y: chartRect.y }, { x: hoverX, y: chartRect.y + chartRect.height }],
+          { stroke: hoverLineColor, lineWidth: 1, lineDash: [4, 4] }
+        )
+      }
+    }
   }
 
   private drawLegend(): void {
@@ -739,6 +1589,14 @@ export class Chart extends BaseChart<ChartOptions> {
 
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
+
+    // 检查是否有饼图系列
+    const pieSeries = (this.options.series || []).filter(s => s.type === 'pie')
+    if (pieSeries.length > 0) {
+      this.handlePieMouseMove(x, y, e)
+      return
+    }
+
     const xAxisConfig = this.getAxisConfig(this.options.xAxis, 0)
     const labels = xAxisConfig.data || []
     const { horizontal } = this.options
@@ -757,6 +1615,110 @@ export class Chart extends BaseChart<ChartOptions> {
       this.render()
       this.showTooltip(e, newIndex)
     }
+  }
+
+  private handlePieMouseMove(x: number, y: number, e: MouseEvent): void {
+    const pieSeries = (this.options.series || []).filter(s => s.type === 'pie')
+    if (pieSeries.length === 0) return
+
+    const s = pieSeries[0]!
+    const pieData = s.data as PieDataItem[]
+    if (!pieData || pieData.length === 0) return
+
+    // 计算饼图中心和半径（与绑制时一致）
+    const labelPadding = { left: 80, right: 80, top: 40, bottom: 40 }
+    const availableWidth = this.width - labelPadding.left - labelPadding.right
+    const availableHeight = this.height - labelPadding.top - labelPadding.bottom
+    const centerX = labelPadding.left + availableWidth / 2
+    const centerY = labelPadding.top + availableHeight / 2
+    const maxRadius = Math.min(availableWidth, availableHeight) / 2 * 0.85
+
+    let outerRadius = maxRadius
+    let innerRadius = 0
+    if (s.radius !== undefined) {
+      if (Array.isArray(s.radius)) {
+        innerRadius = s.radius[0] * maxRadius
+        outerRadius = s.radius[1] * maxRadius
+      } else {
+        outerRadius = s.radius * maxRadius
+      }
+    }
+
+    // 计算鼠标相对于圆心的位置
+    const dx = x - centerX
+    const dy = y - centerY
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    let angle = Math.atan2(dy, dx)
+
+    // 检查是否在饼图范围内
+    if (dist < innerRadius || dist > outerRadius) {
+      if (this.hoverIndex !== -1) {
+        this.hoverIndex = -1
+        this.hideTooltip()
+        this.render()
+      }
+      return
+    }
+
+    // 计算总值和起始角度
+    const total = pieData.reduce((sum, item) => sum + item.value, 0)
+    const baseStartAngle = s.startAngle ?? -Math.PI / 2
+
+    // 将角度调整到与饼图起始角度一致
+    if (angle < baseStartAngle) {
+      angle += Math.PI * 2
+    }
+
+    // 找到鼠标所在的扇形
+    let startAngle = baseStartAngle
+    let found = -1
+    for (let i = 0; i < pieData.length; i++) {
+      const sliceAngle = (pieData[i]!.value / total) * Math.PI * 2
+      const endAngle = startAngle + sliceAngle
+
+      let checkAngle = angle
+      if (checkAngle < startAngle) checkAngle += Math.PI * 2
+
+      if (checkAngle >= startAngle && checkAngle < endAngle) {
+        found = i
+        break
+      }
+      startAngle = endAngle
+    }
+
+    if (found !== this.hoverIndex) {
+      this.hoverIndex = found
+      this.render()
+      if (found >= 0) {
+        this.showPieTooltip(e, pieData[found]!, total)
+      } else {
+        this.hideTooltip()
+      }
+    }
+  }
+
+  private showPieTooltip(e: MouseEvent, item: PieDataItem, total: number): void {
+    if (this.options.tooltip?.show === false) return
+
+    if (!this.tooltipEl) {
+      this.tooltipEl = document.createElement('div')
+      this.tooltipEl.style.cssText = `
+        position: fixed; padding: 8px 12px; border-radius: 6px; font-size: 12px;
+        pointer-events: none; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        background: ${this.colors.tooltipBg}; color: ${this.colors.text};
+      `
+      document.body.appendChild(this.tooltipEl)
+    }
+
+    const percent = ((item.value / total) * 100).toFixed(1)
+    this.tooltipEl.innerHTML = `
+      <div style="font-weight:bold;margin-bottom:4px">${item.name}</div>
+      <div>数值: ${item.value}</div>
+      <div>占比: ${percent}%</div>
+    `
+    this.tooltipEl.style.left = `${e.clientX + 10}px`
+    this.tooltipEl.style.top = `${e.clientY + 10}px`
+    this.tooltipEl.style.display = 'block'
   }
 
   private handleMouseLeave(): void {

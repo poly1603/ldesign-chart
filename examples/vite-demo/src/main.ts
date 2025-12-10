@@ -100,6 +100,9 @@ import {
   initForecastChart,
   initHealthMetricChart,
   initCompetitorChart,
+  initExpandAnimationChart,
+  initGrowAnimationChart,
+  initHorizontalLineChart,
   disposeAllLineCharts,
   // 柱状图
   initBarChart,
@@ -129,6 +132,33 @@ import {
   initYearlyTrendBarChart,
   initUserDistBarChart,
   initOrderStatusBarChart,
+  // 动画示例柱状图
+  initExpandAnimationBarChart,
+  initGrowAnimationBarChart,
+  initFadeAnimationBarChart,
+  initLargeDataBarChart,
+  initTemperatureBarChart,
+  initRatingBarChart,
+  initInventoryBarChart,
+  initEnergyBarChart,
+  initProjectProgressBarChart,
+  // 更多柱状图
+  initHorizontalStackedBarChart,
+  initPopulationPyramidChart,
+  initMixedStackBarChart,
+  initComparisonBarChart,
+  initWaterfallDetailChart,
+  initGroupedStackBarChart,
+  initRoundedBarChart,
+  initThinBarChart,
+  initQuarterlyBarChart,
+  initBalanceBarChart,
+  initHorizontalGroupedBarChart,
+  initMarkedBarChart,
+  initGradientColorBarChart,
+  initMultiLayerStackBarChart,
+  initDepartmentBarChart,
+  initWeeklyDataBarChart,
   disposeAllBarCharts,
   // 饼图
   initPieChart,
@@ -154,6 +184,16 @@ import {
   initAreaBarMixedChart,
   disposeAllMixedCharts,
 } from './charts'
+
+import type { AnimationType } from '@ldesign/chart-core'
+
+// 存储每个图表的动画类型
+const chartAnimationTypes = new Map<string, AnimationType>()
+
+// 获取图表的动画类型
+export function getChartAnimationType(chartId: string): AnimationType {
+  return chartAnimationTypes.get(chartId) || 'rise'
+}
 
 // 类型定义
 interface ChartConfig {
@@ -279,6 +319,9 @@ const chartConfigs: ChartConfig[] = [
   { id: 'forecast-chart', title: '预测区间图', subtitle: '预测上下界', icon: LineChart, type: 'line', init: initForecastChart },
   { id: 'health-metric-chart', title: '健康指标图', subtitle: '步数追踪', icon: LineChart, type: 'line', init: initHealthMetricChart },
   { id: 'competitor-chart', title: '竞品对比图', subtitle: '市场份额对比', icon: LineChart, type: 'line', init: initCompetitorChart },
+  { id: 'expand-animation-chart', title: '展开动画图', subtitle: '从左到右展开', icon: LineChart, type: 'line', init: initExpandAnimationChart },
+  { id: 'grow-animation-chart', title: '生长动画图', subtitle: '点依次出现', icon: LineChart, type: 'line', init: initGrowAnimationChart },
+  { id: 'horizontal-line-chart', title: '水平折线图', subtitle: 'X轴显示值', icon: LineChart, type: 'line', init: initHorizontalLineChart },
 
   // 柱状图系列 (26种)
   { id: 'bar-chart', title: '基础柱状图', subtitle: '圆角柱形展示', icon: BarChart3, type: 'bar', init: initBarChart },
@@ -308,6 +351,33 @@ const chartConfigs: ChartConfig[] = [
   { id: 'yearly-trend-bar-chart', title: '年度趋势图', subtitle: '多年营收', icon: BarChart3, type: 'bar', init: initYearlyTrendBarChart },
   { id: 'user-dist-bar-chart', title: '用户分布图', subtitle: '年龄性别分布', icon: BarChart3, type: 'bar', init: initUserDistBarChart },
   { id: 'order-status-bar-chart', title: '订单状态图', subtitle: '订单分类统计', icon: BarChart3, type: 'bar', init: initOrderStatusBarChart },
+  // 动画示例柱状图
+  { id: 'expand-animation-bar-chart', title: '展开动画柱状图', subtitle: '从左到右展开', icon: BarChart3, type: 'bar', init: initExpandAnimationBarChart },
+  { id: 'grow-animation-bar-chart', title: '生长动画柱状图', subtitle: '依次生长', icon: BarChart3, type: 'bar', init: initGrowAnimationBarChart },
+  { id: 'fade-animation-bar-chart', title: '淡入动画柱状图', subtitle: '渐显效果', icon: BarChart3, type: 'bar', init: initFadeAnimationBarChart },
+  { id: 'large-data-bar-chart', title: '大数据量柱状图', subtitle: '50个数据点', icon: BarChart3, type: 'bar', init: initLargeDataBarChart },
+  { id: 'temperature-bar-chart', title: '温度柱状图', subtitle: '高低温对比', icon: BarChart3, type: 'bar', init: initTemperatureBarChart },
+  { id: 'rating-bar-chart', title: '评分柱状图', subtitle: '星级评价分布', icon: BarChart3, type: 'bar', init: initRatingBarChart },
+  { id: 'inventory-bar-chart', title: '库存柱状图', subtitle: '出入库统计', icon: BarChart3, type: 'bar', init: initInventoryBarChart },
+  { id: 'energy-bar-chart', title: '能耗柱状图', subtitle: '能源消耗堆叠', icon: BarChart3, type: 'bar', init: initEnergyBarChart },
+  { id: 'project-progress-bar-chart', title: '项目进度图', subtitle: '完成度展示', icon: BarChart3, type: 'bar', init: initProjectProgressBarChart },
+  // 更多柱状图
+  { id: 'horizontal-stacked-bar-chart', title: '水平堆叠图', subtitle: '横向堆叠展示', icon: BarChart3, type: 'bar', init: initHorizontalStackedBarChart },
+  { id: 'population-pyramid-chart', title: '人口金字塔', subtitle: '双向水平柱状', icon: BarChart3, type: 'bar', init: initPopulationPyramidChart },
+  { id: 'mixed-stack-bar-chart', title: '正负堆叠图', subtitle: '收支堆叠展示', icon: BarChart3, type: 'bar', init: initMixedStackBarChart },
+  { id: 'comparison-bar-chart', title: '对比柱状图', subtitle: '今年vs去年', icon: BarChart3, type: 'bar', init: initComparisonBarChart },
+  { id: 'waterfall-detail-chart', title: '详细瀑布图', subtitle: '累计变化展示', icon: BarChart3, type: 'bar', init: initWaterfallDetailChart },
+  { id: 'grouped-stack-bar-chart', title: '分组堆叠图', subtitle: '多组堆叠对比', icon: BarChart3, type: 'bar', init: initGroupedStackBarChart },
+  { id: 'rounded-bar-chart', title: '圆角柱状图', subtitle: '大圆角样式', icon: BarChart3, type: 'bar', init: initRoundedBarChart },
+  { id: 'thin-bar-chart', title: '细柱状图', subtitle: '密集数据展示', icon: BarChart3, type: 'bar', init: initThinBarChart },
+  { id: 'quarterly-bar-chart', title: '季度对比图', subtitle: '四季度对比', icon: BarChart3, type: 'bar', init: initQuarterlyBarChart },
+  { id: 'balance-bar-chart', title: '收支平衡图', subtitle: '正负值展示', icon: BarChart3, type: 'bar', init: initBalanceBarChart },
+  { id: 'horizontal-grouped-bar-chart', title: '水平分组图', subtitle: '横向分组对比', icon: BarChart3, type: 'bar', init: initHorizontalGroupedBarChart },
+  { id: 'marked-bar-chart', title: '带标记柱状图', subtitle: '数据标记展示', icon: BarChart3, type: 'bar', init: initMarkedBarChart },
+  { id: 'gradient-color-bar-chart', title: '渐变色柱状图', subtitle: '单色渐变', icon: BarChart3, type: 'bar', init: initGradientColorBarChart },
+  { id: 'multi-layer-stack-bar-chart', title: '多层堆叠图', subtitle: '五层堆叠', icon: BarChart3, type: 'bar', init: initMultiLayerStackBarChart },
+  { id: 'department-bar-chart', title: '部门业绩图', subtitle: '目标vs实际', icon: BarChart3, type: 'bar', init: initDepartmentBarChart },
+  { id: 'weekly-data-bar-chart', title: '周数据图', subtitle: '多指标对比', icon: BarChart3, type: 'bar', init: initWeeklyDataBarChart },
 
   // 饼图系列 (5种)
   { id: 'pie-chart', title: '饼图', subtitle: '数据占比分析', icon: PieChart, type: 'pie', init: initPieChart },
@@ -379,6 +449,17 @@ function initUI(): void {
       card.className = 'chart-card'
       card.setAttribute('data-type', config.type)
       card.setAttribute('data-chart-id', config.id)
+      // 折线图和柱状图显示动画选择器
+      const animationSelector = (config.type === 'line' || config.type === 'bar') ? `
+            <select class="animation-select" data-chart-id="${config.id}" title="动画类型">
+              <option value="rise">升起</option>
+              <option value="expand">展开</option>
+              <option value="grow">生长</option>
+              <option value="fade">淡入</option>
+              <option value="none">无</option>
+            </select>
+      ` : ''
+
       card.innerHTML = `
         <div class="chart-header">
           <div class="chart-header-left">
@@ -389,6 +470,7 @@ function initUI(): void {
             </div>
           </div>
           <div class="chart-header-right">
+            ${animationSelector}
             <button class="chart-action-btn" data-action="refresh" title="刷新图表">
               <span class="action-icon refresh-icon"></span>
             </button>
@@ -413,6 +495,16 @@ function initUI(): void {
       codeBtn?.addEventListener('click', () => {
         showChartCode(config.id, config.title)
       })
+
+      // 绑定动画选择器事件
+      const animationSelect = card.querySelector('.animation-select') as HTMLSelectElement | null
+      if (animationSelect) {
+        animationSelect.addEventListener('change', () => {
+          const animationType = animationSelect.value as 'rise' | 'expand' | 'grow' | 'fade' | 'none'
+          chartAnimationTypes.set(config.id, animationType)
+          refreshSingleChart(config.id)
+        })
+      }
 
       chartsGrid.appendChild(card)
     })
