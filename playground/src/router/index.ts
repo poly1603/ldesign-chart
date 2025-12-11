@@ -84,6 +84,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/GaugeChart.vue'),
     meta: { title: '仪表盘', icon: 'gauge' },
   },
+  {
+    path: '/wordcloud',
+    name: 'WordCloud',
+    component: () => import('@/views/WordCloudChart.vue'),
+    meta: { title: '词云', icon: 'wordcloud' },
+  },
 ]
 
 const router = createRouter({

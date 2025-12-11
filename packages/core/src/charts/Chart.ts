@@ -25,7 +25,7 @@ import type { BaseChartOptions } from './BaseChart'
 // ============== 类型定义 ==============
 
 /** 系列类型 */
-export type SeriesType = 'line' | 'bar' | 'scatter' | 'pie' | 'candlestick' | 'radar' | 'heatmap' | 'graph' | 'tree' | 'sunburst' | 'sankey' | 'funnel' | 'gauge'
+export type SeriesType = 'line' | 'bar' | 'scatter' | 'pie' | 'candlestick' | 'radar' | 'heatmap' | 'graph' | 'tree' | 'sunburst' | 'sankey' | 'funnel' | 'gauge' | 'wordcloud'
 
 /** 动画类型 */
 export type AnimationType =
@@ -335,6 +335,23 @@ export interface GaugeDataItem {
   itemStyle?: { color?: string }
 }
 
+/** 词云形状类型 */
+export type WordCloudShape = 'circle' | 'rect' | 'diamond' | 'triangle' | 'star' | 'heart'
+
+/** 词云数据项 */
+export interface WordCloudDataItem {
+  /** 词语文本 */
+  name: string
+  /** 权重值（决定字体大小）*/
+  value: number
+  /** 自定义颜色 */
+  color?: string
+  /** 自定义字体 */
+  fontFamily?: string
+  /** 自定义字重 */
+  fontWeight?: string | number
+}
+
 /** 通用系列数据 */
 export interface SeriesData {
   type: SeriesType
@@ -578,6 +595,34 @@ export interface SeriesData {
   gaugeShowTitle?: boolean
   /** 标题偏移 [x, y] */
   gaugeTitleOffset?: [number, number]
+
+  // ============== 词云配置 ==============
+  /** 词云数据 */
+  wordCloudData?: WordCloudDataItem[]
+  /** 词云形状，默认 'circle' */
+  wordCloudShape?: WordCloudShape
+  /** 最小字体大小，默认 12 */
+  wordCloudMinFontSize?: number
+  /** 最大字体大小，默认 60 */
+  wordCloudMaxFontSize?: number
+  /** 文字间距，默认 2 */
+  wordCloudGridSize?: number
+  /** 文字旋转角度范围 [min, max]，默认 [-90, 90] */
+  wordCloudRotationRange?: [number, number]
+  /** 旋转步长，默认 45 */
+  wordCloudRotationStep?: number
+  /** 是否随机颜色，默认 true */
+  wordCloudRandomColor?: boolean
+  /** 自定义颜色列表 */
+  wordCloudColors?: string[]
+  /** 字体，默认 'sans-serif' */
+  wordCloudFontFamily?: string
+  /** 字重，默认 'normal' */
+  wordCloudFontWeight?: string | number
+  /** 是否绘制形状边框，默认 false */
+  wordCloudDrawMask?: boolean
+  /** 形状边框颜色 */
+  wordCloudMaskColor?: string
 
   // 多轴支持
   yAxisIndex?: number
@@ -903,9 +948,10 @@ export class Chart extends BaseChart<ChartOptions> {
     const sankeySeries = enabledSeries.filter(s => s.type === 'sankey')
     const funnelSeries = enabledSeries.filter(s => s.type === 'funnel')
     const gaugeSeries = enabledSeries.filter(s => s.type === 'gauge')
+    const wordCloudSeries = enabledSeries.filter(s => s.type === 'wordcloud')
 
     // 判断是否只有特殊图表（不需要标准坐标轴和网格）
-    const specialChartCount = pieSeries.length + radarSeries.length + heatmapSeries.length + graphSeries.length + treeSeries.length + sunburstSeries.length + sankeySeries.length + funnelSeries.length + gaugeSeries.length
+    const specialChartCount = pieSeries.length + radarSeries.length + heatmapSeries.length + graphSeries.length + treeSeries.length + sunburstSeries.length + sankeySeries.length + funnelSeries.length + gaugeSeries.length + wordCloudSeries.length
     const standardChartCount = barSeries.length + lineSeries.length + scatterSeries.length + candlestickSeries.length
     const isPieOnly = pieSeries.length > 0 && standardChartCount === 0 && specialChartCount === pieSeries.length
     const isRadarOnly = radarSeries.length > 0 && standardChartCount === 0 && specialChartCount === radarSeries.length
@@ -916,6 +962,7 @@ export class Chart extends BaseChart<ChartOptions> {
     const isSankeyOnly = sankeySeries.length > 0 && standardChartCount === 0 && specialChartCount === sankeySeries.length
     const isFunnelOnly = funnelSeries.length > 0 && standardChartCount === 0 && specialChartCount === funnelSeries.length
     const isGaugeOnly = gaugeSeries.length > 0 && standardChartCount === 0 && specialChartCount === gaugeSeries.length
+    const isWordCloudOnly = wordCloudSeries.length > 0 && standardChartCount === 0 && specialChartCount === wordCloudSeries.length
 
     // 绘制背景
     this.drawBackground()
@@ -947,6 +994,9 @@ export class Chart extends BaseChart<ChartOptions> {
     } else if (isGaugeOnly) {
       // 纯仪表盘模式
       this.drawGaugeSeries(gaugeSeries)
+    } else if (isWordCloudOnly) {
+      // 纯词云模式
+      this.drawWordCloudSeries(wordCloudSeries)
     } else {
       // 获取轴配置
       const xAxisConfig = this.getAxisConfig(options.xAxis, 0)
@@ -6659,5 +6709,343 @@ export class Chart extends BaseChart<ChartOptions> {
     const b = Math.round(b1 + (b2 - b1) * ratio)
 
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+  }
+
+  // ============== 词云绑制 ==============
+
+  private drawWordCloudSeries(series: SeriesData[]): void {
+    const { renderer, animationProgress, width, height } = this
+    const colors = this.colors
+    const padding = 20
+
+    // 缓动函数
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+
+    // 可用区域
+    const areaWidth = width - padding * 2
+    const areaHeight = height - padding * 2
+    const centerX = width / 2
+    const centerY = height / 2
+
+    series.forEach((s) => {
+      const wordData = s.wordCloudData || []
+      if (wordData.length === 0) return
+
+      // 配置项
+      const shape = s.wordCloudShape ?? 'circle'
+      const minFontSize = s.wordCloudMinFontSize ?? 12
+      const maxFontSize = s.wordCloudMaxFontSize ?? 60
+      const gridSize = s.wordCloudGridSize ?? 2
+      const rotationRange = s.wordCloudRotationRange ?? [0, 90]
+      const rotationStep = s.wordCloudRotationStep ?? 90
+      const randomColor = s.wordCloudRandomColor !== false
+      const customColors = s.wordCloudColors ?? SERIES_COLORS
+      const fontFamily = s.wordCloudFontFamily ?? 'Microsoft YaHei, sans-serif'
+      const fontWeight = s.wordCloudFontWeight ?? 'bold'
+      const drawMask = s.wordCloudDrawMask === true
+      const maskColor = s.wordCloudMaskColor ?? colors.grid
+
+      // 计算字体大小范围
+      const values = wordData.map(d => d.value)
+      const minValue = Math.min(...values)
+      const maxValue = Math.max(...values)
+      const valueRange = maxValue - minValue || 1
+
+      // 按权重排序（大的先放置）
+      const sortedData = [...wordData].sort((a, b) => b.value - a.value)
+
+      // 已放置的文字边界框
+      const placedBoxes: { minX: number; maxX: number; minY: number; maxY: number }[] = []
+
+      // 生成旋转角度选项
+      const rotations: number[] = []
+      for (let angle = rotationRange[0]; angle <= rotationRange[1]; angle += rotationStep) {
+        rotations.push(angle)
+      }
+      if (rotations.length === 0) rotations.push(0)
+
+      // 使用固定随机种子保证一致性
+      const seededRandom = (seed: number) => {
+        const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453
+        return x - Math.floor(x)
+      }
+
+      // 绘制形状遮罩（可选）
+      if (drawMask) {
+        this.drawWordCloudMask(centerX, centerY, areaWidth, areaHeight, shape, maskColor)
+      }
+
+      // 放置每个词
+      sortedData.forEach((item, index) => {
+        // 计算字体大小（使用平方根让大小差异更明显）
+        const normalized = Math.sqrt((item.value - minValue) / valueRange)
+        const fontSize = minFontSize + (maxFontSize - minFontSize) * normalized
+
+        // 选择颜色
+        let color = item.color
+        if (!color) {
+          color = randomColor
+            ? customColors[index % customColors.length]
+            : customColors[0]
+        }
+
+        // 选择旋转角度（使用种子随机）
+        const rotationIndex = Math.floor(seededRandom(index * 7) * rotations.length)
+        const rotation = rotations[rotationIndex]
+
+        // 计算文字宽度和高度（考虑中文和英文）
+        const charWidth = /[\u4e00-\u9fa5]/.test(item.name) ? fontSize : fontSize * 0.6
+        const textWidth = item.name.length * charWidth
+        const textHeight = fontSize * 1.2
+
+        // 根据旋转调整边界框
+        const isVertical = rotation !== undefined && Math.abs(rotation) === 90
+        const boxW = isVertical ? textHeight : textWidth
+        const boxH = isVertical ? textWidth : textHeight
+
+        // 查找放置位置（阿基米德螺旋搜索）
+        const position = this.findWordPositionSpiral(
+          centerX, centerY, boxW, boxH,
+          areaWidth, areaHeight, shape, placedBoxes, gridSize, index
+        )
+
+        if (position) {
+          // 记录边界框
+          placedBoxes.push({
+            minX: position.x - boxW / 2 - gridSize,
+            maxX: position.x + boxW / 2 + gridSize,
+            minY: position.y - boxH / 2 - gridSize,
+            maxY: position.y + boxH / 2 + gridSize
+          })
+
+          // 动画效果
+          const itemProgress = Math.min(1, animationProgress * 1.5 - index / sortedData.length * 0.5)
+          if (itemProgress <= 0) return
+
+          const eased = easeOutCubic(Math.max(0, itemProgress))
+          const opacity = eased
+
+          // 绘制文字
+          const displayFontSize = fontSize * (0.7 + 0.3 * eased)
+
+          // 如果需要垂直显示，将文字逐字竖排
+          if (isVertical) {
+            const chars = item.name.split('')
+            const startY = position.y - (chars.length - 1) * displayFontSize * 0.5
+            chars.forEach((char, charIndex) => {
+              renderer.drawText(
+                { x: position.x, y: startY + charIndex * displayFontSize, text: char },
+                {
+                  fill: color,
+                  fontSize: displayFontSize,
+                  fontFamily: item.fontFamily ?? fontFamily,
+                  fontWeight: item.fontWeight ?? fontWeight,
+                  textAlign: 'center',
+                  textBaseline: 'middle',
+                  opacity
+                }
+              )
+            })
+          } else {
+            renderer.drawText(
+              { x: position.x, y: position.y, text: item.name },
+              {
+                fill: color,
+                fontSize: displayFontSize,
+                fontFamily: item.fontFamily ?? fontFamily,
+                fontWeight: item.fontWeight ?? fontWeight,
+                textAlign: 'center',
+                textBaseline: 'middle',
+                opacity
+              }
+            )
+          }
+        }
+      })
+    })
+  }
+
+  // 阿基米德螺旋搜索放置位置
+  private findWordPositionSpiral(
+    centerX: number, centerY: number,
+    boxW: number, boxH: number,
+    areaWidth: number, areaHeight: number,
+    shape: WordCloudShape,
+    placedBoxes: { minX: number; maxX: number; minY: number; maxY: number }[],
+    gridSize: number,
+    seed: number
+  ): { x: number; y: number } | null {
+    const maxRadius = Math.min(areaWidth, areaHeight) * 0.45
+    const spiralB = gridSize * 0.5 // 螺旋参数
+
+    // 从中心开始螺旋搜索
+    for (let t = 0; t < 2000; t++) {
+      const angle = t * 0.1
+      const r = spiralB * angle
+
+      if (r > maxRadius) break
+
+      // 添加一些随机偏移让布局更自然
+      const jitter = (Math.sin(seed * 12.9898 + t * 0.1) * 0.5 + 0.5) * gridSize * 2
+      const x = centerX + (r + jitter) * Math.cos(angle)
+      const y = centerY + (r + jitter) * Math.sin(angle)
+
+      // 检查是否在形状内
+      const hw = boxW / 2
+      const hh = boxH / 2
+      if (!this.isPointInShape(x - hw, y - hh, centerX, centerY, areaWidth, areaHeight, shape)) continue
+      if (!this.isPointInShape(x + hw, y - hh, centerX, centerY, areaWidth, areaHeight, shape)) continue
+      if (!this.isPointInShape(x - hw, y + hh, centerX, centerY, areaWidth, areaHeight, shape)) continue
+      if (!this.isPointInShape(x + hw, y + hh, centerX, centerY, areaWidth, areaHeight, shape)) continue
+
+      // 检查是否与已放置的文字重叠
+      const newBox = { minX: x - hw, maxX: x + hw, minY: y - hh, maxY: y + hh }
+      let overlap = false
+      for (const placed of placedBoxes) {
+        if (this.boxesOverlap(newBox, placed, 0)) {
+          overlap = true
+          break
+        }
+      }
+
+      if (!overlap) {
+        return { x, y }
+      }
+    }
+
+    return null
+  }
+
+  // 检查点是否在形状内
+  private isPointInShape(
+    x: number, y: number,
+    centerX: number, centerY: number,
+    width: number, height: number,
+    shape: WordCloudShape
+  ): boolean {
+    const dx = x - centerX
+    const dy = y - centerY
+    const hw = width / 2
+    const hh = height / 2
+
+    switch (shape) {
+      case 'rect':
+        return Math.abs(dx) <= hw && Math.abs(dy) <= hh
+
+      case 'circle':
+        return (dx * dx) / (hw * hw) + (dy * dy) / (hh * hh) <= 1
+
+      case 'diamond':
+        return Math.abs(dx) / hw + Math.abs(dy) / hh <= 1
+
+      case 'triangle':
+        // 等边三角形（顶点在上）
+        const ty = dy + hh * 0.3
+        if (ty < -hh * 0.7) return false
+        const maxX = hw * (1 - (ty + hh * 0.7) / (hh * 1.4))
+        return Math.abs(dx) <= maxX
+
+      case 'star':
+        // 五角星（简化判断）
+        const angle = Math.atan2(dy, dx)
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        const starR = hw * (0.4 + 0.3 * Math.abs(Math.cos(angle * 2.5)))
+        return dist <= starR
+
+      case 'heart':
+        // 心形（简化判断）
+        const nx = dx / hw
+        const ny = -dy / hh + 0.3
+        const heartEq = nx * nx + (ny - Math.sqrt(Math.abs(nx))) ** 2
+        return heartEq <= 1
+
+      default:
+        return (dx * dx) / (hw * hw) + (dy * dy) / (hh * hh) <= 1
+    }
+  }
+
+  // 检查两个边界框是否重叠
+  private boxesOverlap(
+    a: { minX: number; maxX: number; minY: number; maxY: number },
+    b: { minX: number; maxX: number; minY: number; maxY: number },
+    padding: number
+  ): boolean {
+    return !(
+      a.maxX + padding < b.minX ||
+      a.minX - padding > b.maxX ||
+      a.maxY + padding < b.minY ||
+      a.minY - padding > b.maxY
+    )
+  }
+
+  // 绘制词云形状遮罩
+  private drawWordCloudMask(
+    centerX: number, centerY: number,
+    width: number, height: number,
+    shape: WordCloudShape, color: string
+  ): void {
+    const { renderer } = this
+    const hw = width / 2
+    const hh = height / 2
+
+    switch (shape) {
+      case 'rect':
+        renderer.drawRect(
+          { x: centerX - hw, y: centerY - hh, width, height },
+          { stroke: color, lineWidth: 1, opacity: 0.3 }
+        )
+        break
+
+      case 'circle':
+        renderer.drawCircle(
+          { x: centerX, y: centerY, radius: Math.min(hw, hh) },
+          { stroke: color, lineWidth: 1, opacity: 0.3 }
+        )
+        break
+
+      case 'diamond':
+        const diamondPath = `M ${centerX} ${centerY - hh} L ${centerX + hw} ${centerY} L ${centerX} ${centerY + hh} L ${centerX - hw} ${centerY} Z`
+        renderer.drawPath(
+          { commands: this.parsePath(diamondPath) as any },
+          { stroke: color, lineWidth: 1, opacity: 0.3 }
+        )
+        break
+
+      case 'triangle':
+        const trianglePath = `M ${centerX} ${centerY - hh * 0.7} L ${centerX + hw} ${centerY + hh * 0.7} L ${centerX - hw} ${centerY + hh * 0.7} Z`
+        renderer.drawPath(
+          { commands: this.parsePath(trianglePath) as any },
+          { stroke: color, lineWidth: 1, opacity: 0.3 }
+        )
+        break
+
+      case 'star':
+        // 五角星
+        const starPoints: string[] = []
+        for (let i = 0; i < 10; i++) {
+          const angle = (Math.PI / 2) + (i * Math.PI / 5)
+          const r = i % 2 === 0 ? hw : hw * 0.4
+          const px = centerX + r * Math.cos(angle)
+          const py = centerY - r * Math.sin(angle)
+          starPoints.push(`${i === 0 ? 'M' : 'L'} ${px} ${py}`)
+        }
+        starPoints.push('Z')
+        renderer.drawPath(
+          { commands: this.parsePath(starPoints.join(' ')) as any },
+          { stroke: color, lineWidth: 1, opacity: 0.3 }
+        )
+        break
+
+      case 'heart':
+        // 心形（简化）
+        const heartPath = `M ${centerX} ${centerY + hh * 0.4} 
+          C ${centerX - hw} ${centerY - hh * 0.2} ${centerX - hw * 0.5} ${centerY - hh * 0.8} ${centerX} ${centerY - hh * 0.3}
+          C ${centerX + hw * 0.5} ${centerY - hh * 0.8} ${centerX + hw} ${centerY - hh * 0.2} ${centerX} ${centerY + hh * 0.4} Z`
+        renderer.drawPath(
+          { commands: this.parsePath(heartPath) as any },
+          { stroke: color, lineWidth: 1, opacity: 0.3 }
+        )
+        break
+    }
   }
 }

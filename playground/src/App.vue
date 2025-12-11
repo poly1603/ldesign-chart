@@ -155,6 +155,14 @@ provide('rendererType', rendererType)
               <line x1="12" y1="12" x2="16" y2="8" stroke="currentColor" stroke-width="2"/>
               <circle cx="12" cy="12" r="2" fill="currentColor"/>
             </template>
+            <template v-else-if="r.meta?.icon === 'wordcloud'">
+              <text x="3" y="10" font-size="7" fill="currentColor" font-weight="bold">词</text>
+              <text x="11" y="8" font-size="5" fill="currentColor" opacity="0.8">云</text>
+              <text x="16" y="12" font-size="4" fill="currentColor" opacity="0.6">A</text>
+              <text x="6" y="17" font-size="6" fill="currentColor" opacity="0.7">B</text>
+              <text x="13" y="19" font-size="5" fill="currentColor" opacity="0.5">C</text>
+              <text x="19" y="16" font-size="3" fill="currentColor" opacity="0.4">D</text>
+            </template>
           </svg>
           <span>{{ r.meta?.title }}</span>
         </router-link>
