@@ -38,7 +38,7 @@
 
 // ============== 核心图表类（推荐使用）==============
 export { Chart } from './Chart'
-export type { ChartOptions, SeriesData, SeriesType, XAxisConfig, YAxisConfig, LineStyle, AreaStyle, AnimationType, PieDataItem, PieAnimationType, ScatterAnimationType, SymbolType, CandlestickDataPoint, CandlestickAnimationType, DataZoomConfig, RadarAnimationType, RadarIndicator, RadarConfig, HeatmapAnimationType, HeatmapDataItem, HeatmapRenderMode, GraphAnimationType, GraphLayout, GraphNode, GraphLink, GraphCategory, GraphData } from './Chart'
+export type { ChartOptions, SeriesData, SeriesType, XAxisConfig, YAxisConfig, LineStyle, AreaStyle, AnimationType, PieDataItem, PieAnimationType, ScatterAnimationType, SymbolType, CandlestickDataPoint, CandlestickAnimationType, DataZoomConfig, RadarAnimationType, RadarIndicator, RadarConfig, HeatmapAnimationType, HeatmapDataItem, HeatmapRenderMode, GraphAnimationType, GraphLayout, GraphNode, GraphLink, GraphCategory, GraphData, TreeLayout, TreeEdgeShape, TreeAnimationType, TreeNode, TreeData, SunburstAnimationType, SunburstNode, SunburstData, SankeyAnimationType, SankeyNode, SankeyLink, SankeyData, FunnelAnimationType, FunnelDataItem, GaugeAnimationType, GaugePointerStyle, GaugeAxisLineColor, GaugeSplitLine, GaugeAxisTick, GaugeDataItem } from './Chart'
 
 // ============== 基础类和工具 ==============
 export { BaseChart, getThemeColors, SERIES_COLORS, Easings } from './BaseChart'

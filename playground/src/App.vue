@@ -112,6 +112,49 @@ provide('rendererType', rendererType)
               <line x1="17" y1="6" x2="17" y2="17" stroke="currentColor" stroke-width="1.5"/>
               <line x1="6" y1="6" x2="17" y2="17" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
             </template>
+            <template v-else-if="r.meta?.icon === 'tree'">
+              <circle cx="12" cy="4" r="2.5" fill="currentColor"/>
+              <circle cx="6" cy="12" r="2.5" fill="currentColor"/>
+              <circle cx="18" cy="12" r="2.5" fill="currentColor"/>
+              <circle cx="4" cy="20" r="2" fill="currentColor"/>
+              <circle cx="9" cy="20" r="2" fill="currentColor"/>
+              <circle cx="15" cy="20" r="2" fill="currentColor"/>
+              <circle cx="20" cy="20" r="2" fill="currentColor"/>
+              <line x1="12" y1="6" x2="6" y2="10" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="12" y1="6" x2="18" y2="10" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="6" y1="14" x2="4" y2="18" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="6" y1="14" x2="9" y2="18" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="18" y1="14" x2="15" y2="18" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="18" y1="14" x2="20" y2="18" stroke="currentColor" stroke-width="1.5"/>
+            </template>
+            <template v-else-if="r.meta?.icon === 'sunburst'">
+              <circle cx="12" cy="12" r="3" fill="currentColor"/>
+              <path d="M12 5 A7 7 0 0 1 19 12" fill="none" stroke="currentColor" stroke-width="3"/>
+              <path d="M12 5 A7 7 0 0 0 5 12" fill="none" stroke="currentColor" stroke-width="3" opacity="0.7"/>
+              <path d="M5 12 A7 7 0 0 0 12 19" fill="none" stroke="currentColor" stroke-width="3" opacity="0.5"/>
+              <path d="M12 19 A7 7 0 0 0 19 12" fill="none" stroke="currentColor" stroke-width="3" opacity="0.3"/>
+            </template>
+            <template v-else-if="r.meta?.icon === 'sankey'">
+              <rect x="2" y="4" width="4" height="6" fill="currentColor"/>
+              <rect x="2" y="14" width="4" height="6" fill="currentColor"/>
+              <rect x="18" y="6" width="4" height="5" fill="currentColor" opacity="0.8"/>
+              <rect x="18" y="13" width="4" height="5" fill="currentColor" opacity="0.6"/>
+              <path d="M6 7 C 12 7, 12 8, 18 8.5" fill="none" stroke="currentColor" stroke-width="2" opacity="0.5"/>
+              <path d="M6 17 C 12 17, 12 15, 18 15.5" fill="none" stroke="currentColor" stroke-width="2" opacity="0.5"/>
+            </template>
+            <template v-else-if="r.meta?.icon === 'funnel'">
+              <path d="M3 4 L21 4 L15 12 L15 18 L9 20 L9 12 Z" fill="currentColor" opacity="0.8"/>
+              <line x1="5" y1="7" x2="19" y2="7" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+              <line x1="7" y1="10" x2="17" y2="10" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+            </template>
+            <template v-else-if="r.meta?.icon === 'gauge'">
+              <path d="M12 3 A9 9 0 0 1 21 12" fill="none" stroke="currentColor" stroke-width="3" opacity="0.3"/>
+              <path d="M12 3 A9 9 0 0 0 3 12" fill="none" stroke="currentColor" stroke-width="3" opacity="0.5"/>
+              <path d="M3 12 A9 9 0 0 0 7 18" fill="none" stroke="currentColor" stroke-width="3" opacity="0.7"/>
+              <path d="M7 18 A9 9 0 0 0 12 21" fill="none" stroke="currentColor" stroke-width="3" opacity="0.9"/>
+              <line x1="12" y1="12" x2="16" y2="8" stroke="currentColor" stroke-width="2"/>
+              <circle cx="12" cy="12" r="2" fill="currentColor"/>
+            </template>
           </svg>
           <span>{{ r.meta?.title }}</span>
         </router-link>

@@ -54,6 +54,36 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/GraphChart.vue'),
     meta: { title: '关系图', icon: 'graph' },
   },
+  {
+    path: '/tree',
+    name: 'Tree',
+    component: () => import('@/views/TreeChart.vue'),
+    meta: { title: '树图', icon: 'tree' },
+  },
+  {
+    path: '/sunburst',
+    name: 'Sunburst',
+    component: () => import('@/views/SunburstChart.vue'),
+    meta: { title: '旭日图', icon: 'sunburst' },
+  },
+  {
+    path: '/sankey',
+    name: 'Sankey',
+    component: () => import('@/views/SankeyChart.vue'),
+    meta: { title: '桑基图', icon: 'sankey' },
+  },
+  {
+    path: '/funnel',
+    name: 'Funnel',
+    component: () => import('@/views/FunnelChart.vue'),
+    meta: { title: '漏斗图', icon: 'funnel' },
+  },
+  {
+    path: '/gauge',
+    name: 'Gauge',
+    component: () => import('@/views/GaugeChart.vue'),
+    meta: { title: '仪表盘', icon: 'gauge' },
+  },
 ]
 
 const router = createRouter({

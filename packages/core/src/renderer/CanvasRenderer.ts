@@ -114,6 +114,11 @@ export class CanvasRenderer implements IRenderer {
   drawPath(path: PathData, style: PathStyle): void {
     if (!this.ctx) return
 
+    // 保存状态，确保样式不会影响后续绘制
+    this.ctx.save()
+    // 重置 lineDash 避免被之前的设置影响
+    this.ctx.setLineDash([])
+
     this.ctx.beginPath()
 
     for (const command of path.commands) {
@@ -137,9 +142,13 @@ export class CanvasRenderer implements IRenderer {
             command.x,
             command.y
           )
+          this.lastX = command.x
+          this.lastY = command.y
           break
         case 'Q':
           this.ctx.quadraticCurveTo(command.x1, command.y1, command.x, command.y)
+          this.lastX = command.x
+          this.lastY = command.y
           break
         case 'A':
           // SVG 弧线命令转换为 Canvas 弧线
@@ -153,6 +162,9 @@ export class CanvasRenderer implements IRenderer {
     }
 
     this.applyPathStyle(style)
+
+    // 恢复状态
+    this.ctx.restore()
   }
 
   /**
@@ -230,6 +242,8 @@ export class CanvasRenderer implements IRenderer {
   drawCircle(circle: Circle, style: CircleStyle): void {
     if (!this.ctx) return
 
+    this.ctx.save()
+
     this.ctx.beginPath()
     this.ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2)
 
@@ -248,7 +262,7 @@ export class CanvasRenderer implements IRenderer {
       this.ctx.stroke()
     }
 
-    this.ctx.globalAlpha = 1
+    this.ctx.restore()
   }
 
   /**
@@ -307,12 +321,12 @@ export class CanvasRenderer implements IRenderer {
       this.ctx.setLineDash(style.lineDash)
     }
 
-    if (style.fill) {
+    if (style.fill && style.fill !== 'none' && style.fill !== 'transparent') {
       this.ctx.fillStyle = style.fill
       this.ctx.fill()
     }
 
-    if (style.stroke && style.lineWidth) {
+    if (style.stroke && style.stroke !== 'none' && style.stroke !== 'transparent' && style.lineWidth) {
       this.ctx.strokeStyle = style.stroke
       this.ctx.lineWidth = style.lineWidth
       this.ctx.stroke()

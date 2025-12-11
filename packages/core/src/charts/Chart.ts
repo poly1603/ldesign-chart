@@ -25,7 +25,7 @@ import type { BaseChartOptions } from './BaseChart'
 // ============== 类型定义 ==============
 
 /** 系列类型 */
-export type SeriesType = 'line' | 'bar' | 'scatter' | 'pie' | 'candlestick' | 'radar' | 'heatmap' | 'graph'
+export type SeriesType = 'line' | 'bar' | 'scatter' | 'pie' | 'candlestick' | 'radar' | 'heatmap' | 'graph' | 'tree' | 'sunburst' | 'sankey' | 'funnel' | 'gauge'
 
 /** 动画类型 */
 export type AnimationType =
@@ -182,6 +182,159 @@ export interface GraphData {
   categories?: GraphCategory[]
 }
 
+/** 树图布局方向 */
+export type TreeLayout = 'TB' | 'BT' | 'LR' | 'RL' | 'radial'
+
+/** 树图边类型 */
+export type TreeEdgeShape = 'curve' | 'polyline' | 'step'
+
+/** 树图动画类型 */
+export type TreeAnimationType =
+  | 'fade'      // 淡入（默认）
+  | 'expand'    // 逐层展开
+  | 'grow'      // 从根节点生长
+  | 'none'      // 无动画
+
+/** 树图节点 */
+export interface TreeNode {
+  name: string
+  value?: number
+  children?: TreeNode[]
+  collapsed?: boolean
+  itemStyle?: { color?: string; borderColor?: string }
+  label?: { show?: boolean; position?: string; color?: string; fontSize?: number }
+}
+
+/** 树图数据 */
+export interface TreeData {
+  root: TreeNode
+}
+
+/** 旭日图动画类型 */
+export type SunburstAnimationType =
+  | 'expand'    // 扇形展开（默认）
+  | 'scale'     // 从中心缩放
+  | 'fade'      // 淡入
+  | 'rotate'    // 旋转展开
+  | 'none'      // 无动画
+
+/** 旭日图节点 */
+export interface SunburstNode {
+  /** 节点名称 */
+  name: string
+  /** 节点值（叶子节点必须，非叶子节点可选，会自动计算） */
+  value?: number
+  /** 子节点 */
+  children?: SunburstNode[]
+  /** 节点颜色 */
+  itemStyle?: { color?: string; borderColor?: string; borderWidth?: number }
+  /** 标签配置 */
+  label?: { show?: boolean; rotate?: 'radial' | 'tangential' | number; color?: string; fontSize?: number }
+}
+
+/** 旭日图数据 */
+export interface SunburstData {
+  /** 根节点（可以是单个或多个顶级节点） */
+  children: SunburstNode[]
+}
+
+/** 桑基图动画类型 */
+export type SankeyAnimationType =
+  | 'flow'      // 流动动画（默认）
+  | 'fade'      // 淡入
+  | 'grow'      // 生长动画
+  | 'none'      // 无动画
+
+/** 桑基图节点 */
+export interface SankeyNode {
+  /** 节点名称（唯一标识） */
+  name: string
+  /** 节点颜色 */
+  itemStyle?: { color?: string; borderColor?: string; borderWidth?: number }
+  /** 节点深度（可选，自动计算） */
+  depth?: number
+}
+
+/** 桑基图连接 */
+export interface SankeyLink {
+  /** 源节点名称 */
+  source: string
+  /** 目标节点名称 */
+  target: string
+  /** 流量值 */
+  value: number
+  /** 连接线颜色 */
+  lineStyle?: { color?: string; opacity?: number }
+}
+
+/** 桑基图数据 */
+export interface SankeyData {
+  /** 节点列表 */
+  nodes: SankeyNode[]
+  /** 连接列表 */
+  links: SankeyLink[]
+}
+
+/** 漏斗图动画类型 */
+export type FunnelAnimationType =
+  | 'drop'      // 从上到下依次落下（默认）
+  | 'scale'     // 从中心缩放
+  | 'fade'      // 淡入
+  | 'slide'     // 从一侧滑入
+  | 'none'      // 无动画
+
+/** 漏斗图数据项 */
+export interface FunnelDataItem {
+  /** 名称 */
+  name: string
+  /** 值 */
+  value: number
+  /** 颜色 */
+  itemStyle?: { color?: string; borderColor?: string; borderWidth?: number }
+}
+
+/** 仪表盘动画类型 */
+export type GaugeAnimationType =
+  | 'sweep'     // 指针扫过（默认）
+  | 'grow'      // 数值增长
+  | 'fade'      // 淡入
+  | 'bounce'    // 弹性效果
+  | 'none'      // 无动画
+
+/** 仪表盘指针样式 */
+export type GaugePointerStyle = 'default' | 'arrow' | 'triangle' | 'rect' | 'circle'
+
+/** 仪表盘进度条颜色段 */
+export interface GaugeAxisLineColor {
+  offset: number  // 0-1 的位置
+  color: string   // 颜色
+}
+
+/** 仪表盘分割线配置 */
+export interface GaugeSplitLine {
+  show?: boolean
+  length?: number
+  lineStyle?: { color?: string; width?: number }
+}
+
+/** 仪表盘刻度配置 */
+export interface GaugeAxisTick {
+  show?: boolean
+  splitNumber?: number
+  length?: number
+  lineStyle?: { color?: string; width?: number }
+}
+
+/** 仪表盘数据项 */
+export interface GaugeDataItem {
+  /** 数值 */
+  value: number
+  /** 名称（显示在数值下方）*/
+  name?: string
+  /** 自定义颜色 */
+  itemStyle?: { color?: string }
+}
+
 /** 通用系列数据 */
 export interface SeriesData {
   type: SeriesType
@@ -281,6 +434,150 @@ export interface SeriesData {
   showNodeLabel?: boolean
   /** 是否显示箭头 */
   showArrow?: boolean
+
+  // 树图特有
+  /** 树图数据 */
+  treeData?: TreeData
+  /** 树图布局方向 */
+  treeLayout?: TreeLayout
+  /** 树图边类型 */
+  treeEdgeShape?: TreeEdgeShape
+  /** 树图动画类型 */
+  treeAnimationType?: TreeAnimationType
+  /** 节点水平间距 */
+  nodeGapH?: number
+  /** 节点垂直间距 */
+  nodeGapV?: number
+
+  // 旭日图特有
+  /** 旭日图数据 */
+  sunburstData?: SunburstData
+  /** 旭日图动画类型 */
+  sunburstAnimationType?: SunburstAnimationType
+  /** 旭日图内半径（0-1的比例或像素值） */
+  sunburstInnerRadius?: number
+  /** 旭日图外半径（0-1的比例或像素值） */
+  sunburstOuterRadius?: number
+  /** 是否显示标签 */
+  sunburstShowLabel?: boolean
+  /** 标签旋转模式: radial（沿半径方向）, tangential（切线方向）*/
+  sunburstLabelRotate?: 'radial' | 'tangential' | number
+  /** 层级间隙 */
+  sunburstLevelGap?: number
+  /** 扇形圆角 */
+  sunburstCornerRadius?: number
+  /** 起始角度（弧度） */
+  sunburstStartAngle?: number
+  /** 排序方式: null不排序, 'desc'降序, 'asc'升序 */
+  sunburstSort?: null | 'desc' | 'asc'
+
+  // 桑基图特有
+  /** 桑基图数据 */
+  sankeyData?: SankeyData
+  /** 桑基图动画类型 */
+  sankeyAnimationType?: SankeyAnimationType
+  /** 节点宽度 */
+  sankeyNodeWidth?: number
+  /** 节点间距 */
+  sankeyNodeGap?: number
+  /** 节点对齐方式 */
+  sankeyNodeAlign?: 'left' | 'right' | 'justify'
+  /** 是否显示标签 */
+  sankeyShowLabel?: boolean
+  /** 标签位置 */
+  sankeyLabelPosition?: 'left' | 'right' | 'inside'
+  /** 布局方向 */
+  sankeyOrient?: 'horizontal' | 'vertical'
+  /** 连接线曲率 (0-1) */
+  sankeyCurveness?: number
+
+  // 漏斗图特有
+  /** 漏斗图数据 */
+  funnelData?: FunnelDataItem[]
+  /** 漏斗图动画类型 */
+  funnelAnimationType?: FunnelAnimationType
+  /** 漏斗排序: ascending（升序，小在上）, descending（降序，大在上）, none（按数据顺序）*/
+  funnelSort?: 'ascending' | 'descending' | 'none'
+  /** 漏斗对齐: left, center, right */
+  funnelAlign?: 'left' | 'center' | 'right'
+  /** 漏斗间隙 */
+  funnelGap?: number
+  /** 最小尺寸百分比（0-100）*/
+  funnelMinSize?: number
+  /** 最大尺寸百分比（0-100）*/
+  funnelMaxSize?: number
+  /** 是否显示标签 */
+  funnelShowLabel?: boolean
+  /** 标签位置 */
+  funnelLabelPosition?: 'left' | 'right' | 'inside' | 'outside'
+  /** 漏斗方向: vertical（垂直）, horizontal（水平） */
+  funnelOrient?: 'vertical' | 'horizontal'
+
+  // 仪表盘特有
+  /** 仪表盘数据 */
+  gaugeData?: GaugeDataItem[]
+  /** 仪表盘动画类型 */
+  gaugeAnimationType?: GaugeAnimationType
+  /** 最小值，默认 0 */
+  gaugeMin?: number
+  /** 最大值，默认 100 */
+  gaugeMax?: number
+  /** 起始角度（度），默认 225（左下角）*/
+  gaugeStartAngle?: number
+  /** 结束角度（度），默认 -45（右下角）*/
+  gaugeEndAngle?: number
+  /** 是否顺时针，默认 true */
+  gaugeClockwise?: boolean
+  /** 分割段数，默认 10 */
+  gaugeSplitNumber?: number
+  /** 仪表盘半径，默认 0.75（相对容器）*/
+  gaugeRadius?: number
+  /** 进度条宽度，默认 20 */
+  gaugeAxisLineWidth?: number
+  /** 进度条颜色（渐变色段）*/
+  gaugeAxisLineColors?: GaugeAxisLineColor[]
+  /** 是否显示渐变色轨道，默认 true */
+  gaugeShowGradient?: boolean
+  /** 是否显示进度条，默认 true */
+  gaugeShowProgress?: boolean
+  /** 进度条颜色 */
+  gaugeProgressColor?: string
+  /** 进度条宽度 */
+  gaugeProgressWidth?: number
+  /** 分割线配置 */
+  gaugeSplitLine?: GaugeSplitLine
+  /** 刻度配置 */
+  gaugeAxisTick?: GaugeAxisTick
+  /** 是否显示刻度标签，默认 true */
+  gaugeShowAxisLabel?: boolean
+  /** 刻度标签距离 */
+  gaugeAxisLabelDistance?: number
+  /** 指针样式 */
+  gaugePointerStyle?: GaugePointerStyle
+  /** 指针长度（相对半径），默认 0.6 */
+  gaugePointerLength?: number
+  /** 指针宽度，默认 6 */
+  gaugePointerWidth?: number
+  /** 指针颜色 */
+  gaugePointerColor?: string
+  /** 指针颜色跟随轨道渐变色，默认 false */
+  gaugePointerAutoColor?: boolean
+  /** 是否显示指针，默认 true */
+  gaugeShowPointer?: boolean
+  /** 中心圆大小，默认 10 */
+  gaugeCenterSize?: number
+  /** 是否显示数值，默认 true */
+  gaugeShowDetail?: boolean
+  /** 数值字体大小，默认 30 */
+  gaugeDetailFontSize?: number
+  /** 数值偏移 [x, y] */
+  gaugeDetailOffset?: [number, number]
+  /** 数值格式化 */
+  gaugeDetailFormatter?: string | ((value: number) => string)
+  /** 是否显示标题（数据名称），默认 true */
+  gaugeShowTitle?: boolean
+  /** 标题偏移 [x, y] */
+  gaugeTitleOffset?: [number, number]
 
   // 多轴支持
   yAxisIndex?: number
@@ -423,6 +720,38 @@ export class Chart extends BaseChart<ChartOptions> {
   // 关系图状态
   private graphNodePositions: Map<string, { x: number; y: number; node: GraphNode }> = new Map()
   private hoverGraphNode: string | null = null
+
+  // 树图状态
+  private treeNodePositions: Map<string, { x: number; y: number; node: TreeNode; depth: number }> = new Map()
+  private hoverTreeNode: string | null = null
+
+  // 旭日图状态
+  private sunburstSectorPositions: Map<string, {
+    node: SunburstNode; depth: number; startAngle: number; endAngle: number;
+    innerRadius: number; outerRadius: number; centerX: number; centerY: number;
+    value: number; color: string;
+  }> = new Map()
+  private hoverSunburstSector: string | null = null
+
+  // 桑基图状态
+  private sankeyNodePositions: Map<string, {
+    node: SankeyNode; x: number; y: number; width: number; height: number;
+    inValue: number; outValue: number; color: string;
+  }> = new Map()
+  private sankeyLinkPositions: Map<string, {
+    link: SankeyLink; sourceNode: string; targetNode: string;
+    sourceY: number; targetY: number; thickness: number; color: string;
+  }> = new Map()
+  private hoverSankeyNode: string | null = null
+  private hoverSankeyLink: string | null = null
+
+  // 漏斗图状态
+  private funnelItemPositions: Map<string, {
+    item: FunnelDataItem; index: number;
+    x: number; y: number; topWidth: number; bottomWidth: number; height: number;
+    color: string;
+  }> = new Map()
+  private hoverFunnelItem: string | null = null
 
   constructor(container: string | HTMLElement, options: ChartOptions = {}) {
     // 自动检测主题
@@ -569,12 +898,24 @@ export class Chart extends BaseChart<ChartOptions> {
     const radarSeries = enabledSeries.filter(s => s.type === 'radar')
     const heatmapSeries = enabledSeries.filter(s => s.type === 'heatmap')
     const graphSeries = enabledSeries.filter(s => s.type === 'graph')
+    const treeSeries = enabledSeries.filter(s => s.type === 'tree')
+    const sunburstSeries = enabledSeries.filter(s => s.type === 'sunburst')
+    const sankeySeries = enabledSeries.filter(s => s.type === 'sankey')
+    const funnelSeries = enabledSeries.filter(s => s.type === 'funnel')
+    const gaugeSeries = enabledSeries.filter(s => s.type === 'gauge')
 
     // 判断是否只有特殊图表（不需要标准坐标轴和网格）
-    const isPieOnly = pieSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0 && radarSeries.length === 0 && heatmapSeries.length === 0 && graphSeries.length === 0
-    const isRadarOnly = radarSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0 && pieSeries.length === 0 && heatmapSeries.length === 0 && graphSeries.length === 0
-    const isHeatmapOnly = heatmapSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0 && pieSeries.length === 0 && radarSeries.length === 0 && graphSeries.length === 0
-    const isGraphOnly = graphSeries.length > 0 && barSeries.length === 0 && lineSeries.length === 0 && scatterSeries.length === 0 && candlestickSeries.length === 0 && pieSeries.length === 0 && radarSeries.length === 0 && heatmapSeries.length === 0
+    const specialChartCount = pieSeries.length + radarSeries.length + heatmapSeries.length + graphSeries.length + treeSeries.length + sunburstSeries.length + sankeySeries.length + funnelSeries.length + gaugeSeries.length
+    const standardChartCount = barSeries.length + lineSeries.length + scatterSeries.length + candlestickSeries.length
+    const isPieOnly = pieSeries.length > 0 && standardChartCount === 0 && specialChartCount === pieSeries.length
+    const isRadarOnly = radarSeries.length > 0 && standardChartCount === 0 && specialChartCount === radarSeries.length
+    const isHeatmapOnly = heatmapSeries.length > 0 && standardChartCount === 0 && specialChartCount === heatmapSeries.length
+    const isGraphOnly = graphSeries.length > 0 && standardChartCount === 0 && specialChartCount === graphSeries.length
+    const isTreeOnly = treeSeries.length > 0 && standardChartCount === 0 && specialChartCount === treeSeries.length
+    const isSunburstOnly = sunburstSeries.length > 0 && standardChartCount === 0 && specialChartCount === sunburstSeries.length
+    const isSankeyOnly = sankeySeries.length > 0 && standardChartCount === 0 && specialChartCount === sankeySeries.length
+    const isFunnelOnly = funnelSeries.length > 0 && standardChartCount === 0 && specialChartCount === funnelSeries.length
+    const isGaugeOnly = gaugeSeries.length > 0 && standardChartCount === 0 && specialChartCount === gaugeSeries.length
 
     // 绘制背景
     this.drawBackground()
@@ -591,6 +932,21 @@ export class Chart extends BaseChart<ChartOptions> {
     } else if (isGraphOnly) {
       // 纯关系图模式
       this.drawGraphSeries(graphSeries)
+    } else if (isTreeOnly) {
+      // 纯树图模式
+      this.drawTreeSeries(treeSeries)
+    } else if (isSunburstOnly) {
+      // 纯旭日图模式
+      this.drawSunburstSeries(sunburstSeries)
+    } else if (isSankeyOnly) {
+      // 纯桑基图模式
+      this.drawSankeySeries(sankeySeries)
+    } else if (isFunnelOnly) {
+      // 纯漏斗图模式
+      this.drawFunnelSeries(funnelSeries)
+    } else if (isGaugeOnly) {
+      // 纯仪表盘模式
+      this.drawGaugeSeries(gaugeSeries)
     } else {
       // 获取轴配置
       const xAxisConfig = this.getAxisConfig(options.xAxis, 0)
@@ -3371,6 +3727,15 @@ export class Chart extends BaseChart<ChartOptions> {
     return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
   }
 
+  private darkenColor(hex: string): string {
+    if (!hex.startsWith('#')) return hex
+    const num = parseInt(hex.slice(1), 16)
+    const r = Math.max(0, (num >> 16) - 30)
+    const g = Math.max(0, ((num >> 8) & 0xff) - 30)
+    const b = Math.max(0, (num & 0xff) - 30)
+    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
+  }
+
   // 调度 hover 动画
   private scheduleHoverAnimation(): void {
     if (this.hoverAnimationFrame) return;
@@ -3541,6 +3906,34 @@ export class Chart extends BaseChart<ChartOptions> {
     const graphSeries = (this.options.series || []).filter(s => s.type === 'graph')
     if (graphSeries.length > 0) {
       this.handleGraphMouseMove(x, y, e)
+      return
+    }
+
+    // 检查是否有树图系列
+    const treeSeries = (this.options.series || []).filter(s => s.type === 'tree')
+    if (treeSeries.length > 0) {
+      this.handleTreeMouseMove(x, y, e)
+      return
+    }
+
+    // 检查是否有旭日图系列
+    const sunburstSeries = (this.options.series || []).filter(s => s.type === 'sunburst')
+    if (sunburstSeries.length > 0) {
+      this.handleSunburstMouseMove(x, y, e)
+      return
+    }
+
+    // 检查是否有桑基图系列
+    const sankeySeries = (this.options.series || []).filter(s => s.type === 'sankey')
+    if (sankeySeries.length > 0) {
+      this.handleSankeyMouseMove(x, y, e)
+      return
+    }
+
+    // 检查是否有漏斗图系列
+    const funnelSeries = (this.options.series || []).filter(s => s.type === 'funnel')
+    if (funnelSeries.length > 0) {
+      this.handleFunnelMouseMove(x, y, e)
       return
     }
 
@@ -4236,5 +4629,2035 @@ export class Chart extends BaseChart<ChartOptions> {
     const g = (num >> 8) & 0xff
     const b = num & 0xff
     return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+
+  // ============== 树图绑制 ==============
+
+  private drawTreeSeries(series: SeriesData[]): void {
+    const { renderer, animationProgress, width, height, colors } = this
+
+    // 缓动函数
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+
+    // 计算绘图区域 - 增大边距避免超出
+    const padding = { top: 40, right: 50, bottom: 40, left: 50 }
+    const chartWidth = width - padding.left - padding.right
+    const chartHeight = height - padding.top - padding.bottom
+
+    // 清空节点位置缓存
+    this.treeNodePositions.clear()
+
+    series.forEach((s) => {
+      const treeData = s.treeData
+      if (!treeData || !treeData.root) return
+
+      const layout = s.treeLayout || 'TB'
+      const edgeShape = s.treeEdgeShape || 'curve'
+      const animType = s.treeAnimationType || 'fade'
+      const nodeSize = s.nodeSize ?? 10
+      const showLabel = s.showNodeLabel ?? true
+
+      // 计算树的层级信息
+      interface LayoutNode {
+        node: TreeNode
+        x: number
+        y: number
+        leafIdx: number  // 叶子索引（用于布局计算）
+        depth: number
+        children: LayoutNode[]
+        parent?: LayoutNode
+        id: string
+      }
+
+      // 生成唯一 ID
+      let nodeIdCounter = 0
+      const generateId = () => `tree-node-${nodeIdCounter++}`
+
+      // 遍历树计算深度和节点数量
+      const countNodes = (node: TreeNode): { maxDepth: number; leafCount: number; totalCount: number } => {
+        if (!node.children || node.children.length === 0) {
+          return { maxDepth: 0, leafCount: 1, totalCount: 1 }
+        }
+        let maxDepth = 0
+        let leafCount = 0
+        let totalCount = 1
+        for (const child of node.children) {
+          const result = countNodes(child)
+          maxDepth = Math.max(maxDepth, result.maxDepth + 1)
+          leafCount += result.leafCount
+          totalCount += result.totalCount
+        }
+        return { maxDepth, leafCount, totalCount }
+      }
+
+      const { maxDepth, leafCount } = countNodes(treeData.root)
+
+      // 构建布局树
+      const layoutTree = (node: TreeNode, depth: number, parent?: LayoutNode): LayoutNode => {
+        const layoutNode: LayoutNode = {
+          node,
+          x: 0,
+          y: 0,
+          leafIdx: 0,
+          depth,
+          children: [],
+          parent,
+          id: generateId()
+        }
+
+        if (node.children && node.children.length > 0) {
+          layoutNode.children = node.children.map(child => layoutTree(child, depth + 1, layoutNode))
+        }
+
+        return layoutNode
+      }
+
+      const root = layoutTree(treeData.root, 0)
+
+      // 计算实际坐标
+      const isHorizontal = layout === 'LR' || layout === 'RL'
+      const isReversed = layout === 'BT' || layout === 'RL'
+      const isRadial = layout === 'radial'
+
+      // 计算标签需要的额外空间
+      const labelPadding = showLabel ? 25 : 10
+
+      if (isRadial) {
+        // 径向布局：递归分配角度范围
+        const centerX = padding.left + chartWidth / 2
+        const centerY = padding.top + chartHeight / 2
+        const maxRadius = Math.min(chartWidth, chartHeight) / 2 - nodeSize - labelPadding
+
+        const assignRadialPositions = (node: LayoutNode, startAngle: number, endAngle: number) => {
+          const angle = (startAngle + endAngle) / 2
+          if (node.depth === 0) {
+            node.x = centerX
+            node.y = centerY
+          } else {
+            const radius = (node.depth / Math.max(maxDepth, 1)) * maxRadius
+            node.x = centerX + Math.cos(angle) * radius
+            node.y = centerY + Math.sin(angle) * radius
+          }
+
+          if (node.children.length > 0) {
+            const childAngleStep = (endAngle - startAngle) / node.children.length
+            node.children.forEach((child, i) => {
+              assignRadialPositions(child, startAngle + i * childAngleStep, startAngle + (i + 1) * childAngleStep)
+            })
+          }
+        }
+        assignRadialPositions(root, -Math.PI / 2, Math.PI * 1.5)
+      } else {
+        // 非径向布局：先计算叶子索引
+        let leafIndex = 0
+        const assignLeafIndices = (node: LayoutNode) => {
+          if (node.children.length === 0) {
+            node.leafIdx = leafIndex++
+          } else {
+            for (const child of node.children) {
+              assignLeafIndices(child)
+            }
+            // 父节点位于子节点中间
+            const first = node.children[0]!
+            const last = node.children[node.children.length - 1]!
+            node.leafIdx = (first.leafIdx + last.leafIdx) / 2
+          }
+        }
+        assignLeafIndices(root)
+
+        // 计算所有节点的实际坐标
+        const allNodes: LayoutNode[] = []
+        const collectNodes = (node: LayoutNode) => {
+          allNodes.push(node)
+          node.children.forEach(collectNodes)
+        }
+        collectNodes(root)
+
+        // 统一计算坐标
+        if (isHorizontal) {
+          const usableWidth = chartWidth - labelPadding * 2
+          const usableHeight = chartHeight - nodeSize
+          const levelWidth = maxDepth > 0 ? usableWidth / maxDepth : usableWidth
+          const nodeSpacing = leafCount > 1 ? usableHeight / (leafCount - 1) : 0
+
+          for (const node of allNodes) {
+            node.x = isReversed
+              ? padding.left + usableWidth - node.depth * levelWidth + labelPadding
+              : padding.left + node.depth * levelWidth + labelPadding
+            node.y = leafCount === 1
+              ? padding.top + chartHeight / 2
+              : padding.top + node.leafIdx * nodeSpacing + nodeSize / 2
+          }
+        } else {
+          const usableWidth = chartWidth - nodeSize
+          const usableHeight = chartHeight - labelPadding * 2
+          const levelHeight = maxDepth > 0 ? usableHeight / maxDepth : usableHeight
+          const nodeSpacing = leafCount > 1 ? usableWidth / (leafCount - 1) : 0
+
+          for (const node of allNodes) {
+            node.x = leafCount === 1
+              ? padding.left + chartWidth / 2
+              : padding.left + node.leafIdx * nodeSpacing + nodeSize / 2
+            node.y = isReversed
+              ? padding.top + usableHeight - node.depth * levelHeight + labelPadding
+              : padding.top + node.depth * levelHeight + labelPadding
+          }
+        }
+      }
+
+      // 计算动画进度
+      const easedProgress = easeOutCubic(animationProgress)
+
+      // 绘制边
+      const drawEdges = (node: LayoutNode, depth: number = 0) => {
+        for (const child of node.children) {
+          let edgeOpacity = 1
+          if (animType === 'fade') {
+            edgeOpacity = easedProgress
+          } else if (animType === 'expand') {
+            const progress = Math.max(0, (animationProgress - depth * 0.15) / 0.7)
+            edgeOpacity = Math.min(1, progress)
+          } else if (animType === 'grow') {
+            const totalNodes = maxDepth + 1
+            const nodeProgress = Math.max(0, (animationProgress * totalNodes - depth) / 1)
+            edgeOpacity = Math.min(1, nodeProgress)
+          }
+
+          // Hover 高亮边
+          const isHoverEdge = this.hoverTreeNode === node.id || this.hoverTreeNode === child.id
+          const baseEdgeColor = this.fadeColor(colors.text, isHoverEdge ? 0.6 : 0.25)
+          const lineWidth = isHoverEdge ? 2.5 : 1.5
+
+          if (isRadial) {
+            // 径向布局：使用二次曲线或直线
+            if (edgeShape === 'curve') {
+              renderer.drawPath(
+                {
+                  commands: [
+                    { type: 'M', x: node.x, y: node.y },
+                    { type: 'Q', x1: (node.x + child.x) / 2, y1: (node.y + child.y) / 2, x: child.x, y: child.y }
+                  ]
+                },
+                { stroke: baseEdgeColor, lineWidth, fill: 'none', opacity: edgeOpacity }
+              )
+            } else {
+              // polyline 和 step 在径向布局中都用直线
+              renderer.drawPath(
+                {
+                  commands: [
+                    { type: 'M', x: node.x, y: node.y },
+                    { type: 'L', x: child.x, y: child.y }
+                  ]
+                },
+                { stroke: baseEdgeColor, lineWidth, fill: 'none', opacity: edgeOpacity }
+              )
+            }
+          } else if (edgeShape === 'curve') {
+            if (isHorizontal) {
+              const midX = (node.x + child.x) / 2
+              renderer.drawPath(
+                {
+                  commands: [
+                    { type: 'M', x: node.x, y: node.y },
+                    { type: 'C', x1: midX, y1: node.y, x2: midX, y2: child.y, x: child.x, y: child.y }
+                  ]
+                },
+                { stroke: baseEdgeColor, lineWidth, fill: 'none', opacity: edgeOpacity }
+              )
+            } else {
+              const midY = (node.y + child.y) / 2
+              renderer.drawPath(
+                {
+                  commands: [
+                    { type: 'M', x: node.x, y: node.y },
+                    { type: 'C', x1: node.x, y1: midY, x2: child.x, y2: midY, x: child.x, y: child.y }
+                  ]
+                },
+                { stroke: baseEdgeColor, lineWidth, fill: 'none', opacity: edgeOpacity }
+              )
+            }
+          } else if (edgeShape === 'polyline') {
+            if (isHorizontal) {
+              const midX = (node.x + child.x) / 2
+              renderer.drawPath(
+                {
+                  commands: [
+                    { type: 'M', x: node.x, y: node.y },
+                    { type: 'L', x: midX, y: node.y },
+                    { type: 'L', x: midX, y: child.y },
+                    { type: 'L', x: child.x, y: child.y }
+                  ]
+                },
+                { stroke: baseEdgeColor, lineWidth, fill: 'none', opacity: edgeOpacity }
+              )
+            } else {
+              const midY = (node.y + child.y) / 2
+              renderer.drawPath(
+                {
+                  commands: [
+                    { type: 'M', x: node.x, y: node.y },
+                    { type: 'L', x: node.x, y: midY },
+                    { type: 'L', x: child.x, y: midY },
+                    { type: 'L', x: child.x, y: child.y }
+                  ]
+                },
+                { stroke: baseEdgeColor, lineWidth, fill: 'none', opacity: edgeOpacity }
+              )
+            }
+          } else {
+            // step 边类型
+            if (isHorizontal) {
+              renderer.drawPath(
+                {
+                  commands: [
+                    { type: 'M', x: node.x, y: node.y },
+                    { type: 'L', x: child.x, y: node.y },
+                    { type: 'L', x: child.x, y: child.y }
+                  ]
+                },
+                { stroke: baseEdgeColor, lineWidth, fill: 'none', opacity: edgeOpacity }
+              )
+            } else {
+              renderer.drawPath(
+                {
+                  commands: [
+                    { type: 'M', x: node.x, y: node.y },
+                    { type: 'L', x: node.x, y: child.y },
+                    { type: 'L', x: child.x, y: child.y }
+                  ]
+                },
+                { stroke: baseEdgeColor, lineWidth, fill: 'none', opacity: edgeOpacity }
+              )
+            }
+          }
+
+          drawEdges(child, depth + 1)
+        }
+      }
+      drawEdges(root)
+
+      // 存储节点位置并绘制节点
+      const drawNodes = (node: LayoutNode, depth: number = 0) => {
+        let nodeOpacity = 1
+        let scale = 1
+
+        if (animType === 'fade') {
+          nodeOpacity = easedProgress
+        } else if (animType === 'expand') {
+          const progress = Math.max(0, (animationProgress - depth * 0.15) / 0.7)
+          nodeOpacity = Math.min(1, progress)
+          scale = nodeOpacity
+        } else if (animType === 'grow') {
+          const totalNodes = maxDepth + 1
+          const nodeProgress = Math.max(0, (animationProgress * totalNodes - depth) / 1)
+          nodeOpacity = Math.min(1, nodeProgress)
+          scale = nodeOpacity
+        }
+
+        const isHovered = this.hoverTreeNode === node.id
+        if (isHovered) scale *= 1.3
+        const actualSize = nodeSize * scale
+        const nodeColor = node.node.itemStyle?.color || SERIES_COLORS[depth % SERIES_COLORS.length]
+
+        // 存储节点位置用于 hover 检测
+        this.treeNodePositions.set(node.id, { x: node.x, y: node.y, node: node.node, depth })
+
+        // 绘制节点圆 - 添加阴影效果
+        if (isHovered) {
+          renderer.drawCircle(
+            { x: node.x, y: node.y, radius: actualSize / 2 + 3 },
+            { fill: this.fadeColor(nodeColor || '#999', 0.3), opacity: nodeOpacity }
+          )
+        }
+
+        renderer.drawCircle(
+          { x: node.x, y: node.y, radius: actualSize / 2 },
+          {
+            fill: isHovered ? this.lightenColor(nodeColor || '#999') : nodeColor,
+            opacity: nodeOpacity,
+            stroke: isHovered ? nodeColor : colors.background,
+            lineWidth: isHovered ? 2.5 : 2
+          }
+        )
+
+        // 绘制标签
+        if (showLabel && nodeOpacity > 0.3) {
+          let labelX = node.x
+          let labelY = node.y
+          let textAlign: 'left' | 'right' | 'center' = 'center'
+
+          if (isRadial) {
+            labelY = node.y + actualSize / 2 + 10
+          } else if (isHorizontal) {
+            if (node.children.length === 0) {
+              labelX = layout === 'LR' ? node.x + actualSize / 2 + 5 : node.x - actualSize / 2 - 5
+              textAlign = layout === 'LR' ? 'left' : 'right'
+            } else {
+              labelY = node.y - actualSize / 2 - 5
+            }
+          } else {
+            if (node.children.length === 0) {
+              labelY = layout === 'TB' ? node.y + actualSize / 2 + 10 : node.y - actualSize / 2 - 5
+            } else {
+              labelY = layout === 'TB' ? node.y - actualSize / 2 - 5 : node.y + actualSize / 2 + 10
+            }
+          }
+
+          renderer.drawText(
+            { x: labelX, y: labelY, text: node.node.name },
+            {
+              fill: isHovered ? (nodeColor || colors.text) : colors.text,
+              fontSize: isHovered ? 11 : 10,
+              textAlign,
+              opacity: nodeOpacity,
+              fontWeight: isHovered ? 'bold' : undefined
+            }
+          )
+        }
+
+        for (const child of node.children) {
+          drawNodes(child, depth + 1)
+        }
+      }
+      drawNodes(root)
+    })
+  }
+
+  private handleTreeMouseMove(x: number, y: number, e: MouseEvent): void {
+    let hoveredNode: string | null = null
+    const treeSeries = (this.options.series || []).find(s => s.type === 'tree')
+    const nodeSize = treeSeries?.nodeSize ?? 10
+
+    for (const [nodeId, nodeData] of this.treeNodePositions) {
+      const dist = Math.sqrt(Math.pow(x - nodeData.x, 2) + Math.pow(y - nodeData.y, 2))
+      if (dist <= nodeSize / 2 + 8) {
+        hoveredNode = nodeId
+        break
+      }
+    }
+
+    if (hoveredNode !== this.hoverTreeNode) {
+      this.hoverTreeNode = hoveredNode
+      this.render()
+
+      if (hoveredNode) {
+        const nodeData = this.treeNodePositions.get(hoveredNode)
+        if (nodeData) {
+          this.showTreeTooltip(e, nodeData.node, nodeData.depth)
+        }
+      } else {
+        this.hideTooltip()
+      }
+    }
+  }
+
+  private showTreeTooltip(e: MouseEvent, node: TreeNode, depth: number): void {
+    if (!this.tooltipEl) {
+      this.tooltipEl = document.createElement('div')
+      this.tooltipEl.className = 'chart-tooltip'
+      document.body.appendChild(this.tooltipEl)
+    }
+
+    this.tooltipEl.style.cssText = `
+      position: fixed; padding: 8px 12px; background: ${this.colors.tooltipBg}; color: ${this.colors.text};
+      border-radius: 6px; font-size: 12px; pointer-events: none; z-index: 9999;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15); max-width: 200px; line-height: 1.5;
+    `
+
+    let content = `<div style="font-weight:bold;margin-bottom:4px;">${node.name}</div>`
+    content += `<div>层级: ${depth + 1}</div>`
+    if (node.value !== undefined) content += `<div>值: ${node.value}</div>`
+    if (node.children && node.children.length > 0) {
+      content += `<div>子节点: ${node.children.length}</div>`
+    }
+
+    this.tooltipEl.innerHTML = content
+    this.tooltipEl.style.display = 'block'
+
+    const tooltipRect = this.tooltipEl.getBoundingClientRect()
+    let left = e.clientX + 15
+    let top = e.clientY - tooltipRect.height / 2
+
+    if (left + tooltipRect.width > window.innerWidth) left = e.clientX - tooltipRect.width - 15
+    if (top < 0) top = 5
+    if (top + tooltipRect.height > window.innerHeight) top = window.innerHeight - tooltipRect.height - 5
+
+    this.tooltipEl.style.left = `${left}px`
+    this.tooltipEl.style.top = `${top}px`
+  }
+
+  // ============== 旭日图绑制 ==============
+
+  private drawSunburstSeries(series: SeriesData[]): void {
+    const { renderer, animationProgress, width, height, options } = this
+    const colors = this.colors
+
+    // 缓动函数
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    const easeOutBack = (t: number) => {
+      const c1 = 1.70158
+      const c3 = c1 + 1
+      return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2)
+    }
+
+    // 颜色处理：根据深度调整颜色亮度（类似 ECharts）
+    const adjustColorByDepth = (baseColor: string, depth: number): string => {
+      if (!baseColor.startsWith('#') || depth === 0) return baseColor
+
+      const hex = baseColor.slice(1)
+      const r = parseInt(hex.slice(0, 2), 16)
+      const g = parseInt(hex.slice(2, 4), 16)
+      const b = parseInt(hex.slice(4, 6), 16)
+
+      // 随着深度增加，颜色变浅（混合更多白色）
+      const factor = 0.15 * depth // 每层增加15%的亮度
+      const newR = Math.min(255, Math.round(r + (255 - r) * factor))
+      const newG = Math.min(255, Math.round(g + (255 - g) * factor))
+      const newB = Math.min(255, Math.round(b + (255 - b) * factor))
+
+      return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`
+    }
+
+    // 清空之前的扇形位置信息
+    this.sunburstSectorPositions.clear()
+    let sectorIndex = 0
+
+    series.forEach((s) => {
+      const sunburstData = s.sunburstData
+      if (!sunburstData || !sunburstData.children || sunburstData.children.length === 0) return
+
+      // 计算旭日图中心和半径
+      const padding = 40
+      const centerX = width / 2
+      const centerY = height / 2
+      const maxRadius = Math.min(width, height) / 2 - padding
+
+      // 配置（调整默认值更接近 ECharts）
+      const innerRadius = (s.sunburstInnerRadius ?? 0) * maxRadius  // 默认无内半径
+      const outerRadius = (s.sunburstOuterRadius ?? 0.9) * maxRadius
+      const showLabel = s.sunburstShowLabel !== false
+      const labelRotate = s.sunburstLabelRotate ?? 'radial'
+      const levelGap = s.sunburstLevelGap ?? 1  // 减小层级间隙
+      const cornerRadius = s.sunburstCornerRadius ?? 0
+      const startAngle = s.sunburstStartAngle ?? -Math.PI / 2
+      const animationType = s.sunburstAnimationType ?? 'expand'
+      const sortType = s.sunburstSort ?? null
+      const borderWidth = 1  // 边框宽度
+      const borderColor = colors.background  // 边框颜色（使用背景色分隔）
+
+      // 计算节点的值（递归计算非叶子节点的值）
+      const calculateNodeValue = (node: SunburstNode): number => {
+        if (node.value !== undefined) return node.value
+        if (!node.children || node.children.length === 0) return 0
+        return node.children.reduce((sum, child) => sum + calculateNodeValue(child), 0)
+      }
+
+      // 计算最大深度
+      const calculateMaxDepth = (nodes: SunburstNode[], depth: number = 0): number => {
+        let maxDepth = depth
+        for (const node of nodes) {
+          if (node.children && node.children.length > 0) {
+            maxDepth = Math.max(maxDepth, calculateMaxDepth(node.children, depth + 1))
+          }
+        }
+        return maxDepth
+      }
+
+      const maxDepth = calculateMaxDepth(sunburstData.children) + 1
+      const radiusPerLevel = (outerRadius - innerRadius) / maxDepth
+
+      // 动画计算
+      const easedProgress = easeOutCubic(animationProgress)
+      let animatedScale = 1
+      let animatedOpacity = 1
+      let animatedRotation = 0
+
+      switch (animationType) {
+        case 'expand':
+          // 扇形从中心展开
+          break
+        case 'scale':
+          animatedScale = easeOutBack(animationProgress)
+          break
+        case 'fade':
+          animatedOpacity = easedProgress
+          break
+        case 'rotate':
+          animatedRotation = (1 - easedProgress) * Math.PI * 2
+          break
+        case 'none':
+          break
+      }
+
+      // 递归绘制扇形（传递父节点颜色实现颜色继承）
+      const drawNode = (
+        node: SunburstNode,
+        depth: number,
+        nodeStartAngle: number,
+        nodeEndAngle: number,
+        colorIndex: number,
+        parentColor: string | null
+      ) => {
+        const nodeValue = calculateNodeValue(node)
+        if (nodeValue <= 0) return
+
+        // 计算当前层的内外半径（减小间隙）
+        const levelInnerRadius = (innerRadius + depth * radiusPerLevel + levelGap / 2) * animatedScale
+        const levelOuterRadius = (innerRadius + (depth + 1) * radiusPerLevel - levelGap / 2) * animatedScale
+
+        // 应用动画
+        let animatedStartAngle = nodeStartAngle + animatedRotation
+        let animatedEndAngle = nodeEndAngle + animatedRotation
+
+        if (animationType === 'expand') {
+          const angleRange = nodeEndAngle - nodeStartAngle
+          const animatedAngleRange = angleRange * easedProgress
+          const midAngle = (nodeStartAngle + nodeEndAngle) / 2
+          animatedStartAngle = midAngle - animatedAngleRange / 2 + animatedRotation
+          animatedEndAngle = midAngle + animatedAngleRange / 2 + animatedRotation
+        }
+
+        // 获取颜色（实现颜色继承：子节点继承父节点颜色并变浅）
+        let baseColor: string
+        if (node.itemStyle?.color) {
+          // 节点自定义颜色
+          baseColor = node.itemStyle.color
+        } else if (parentColor && depth > 0) {
+          // 继承父节点颜色
+          baseColor = parentColor
+        } else {
+          // 顶层节点使用系列颜色
+          baseColor = SERIES_COLORS[colorIndex % SERIES_COLORS.length] || '#5470c6'
+        }
+
+        // 根据深度调整颜色亮度
+        const color = adjustColorByDepth(baseColor, depth)
+
+        // 绘制扇形
+        const isHovered = this.hoverSunburstSector === `sector_${sectorIndex}`
+        const displayColor = isHovered ? this.lightenColor(color) : color
+
+        if (animatedOpacity > 0 && levelOuterRadius > levelInnerRadius) {
+          if (cornerRadius > 0 && levelInnerRadius > 0) {
+            this.drawRoundedSector(
+              renderer, centerX, centerY,
+              levelInnerRadius, levelOuterRadius,
+              animatedStartAngle, animatedEndAngle,
+              cornerRadius, displayColor, animatedOpacity
+            )
+          } else {
+            // 使用带边框的扇形绘制
+            renderer.drawSector(
+              centerX, centerY,
+              levelInnerRadius, levelOuterRadius,
+              animatedStartAngle, animatedEndAngle,
+              {
+                fill: displayColor,
+                opacity: animatedOpacity,
+                stroke: isHovered ? color : borderColor,
+                lineWidth: isHovered ? 2 : borderWidth
+              }
+            )
+          }
+
+          // 保存扇形位置信息（用于鼠标交互）
+          this.sunburstSectorPositions.set(`sector_${sectorIndex}`, {
+            node,
+            depth,
+            startAngle: animatedStartAngle,
+            endAngle: animatedEndAngle,
+            innerRadius: levelInnerRadius,
+            outerRadius: levelOuterRadius,
+            centerX,
+            centerY,
+            value: nodeValue,
+            color: baseColor
+          })
+          sectorIndex++
+
+          // 绘制标签
+          if (showLabel && animationProgress > 0.5 && (animatedEndAngle - animatedStartAngle) > 0.1) {
+            const labelProgress = Math.min(1, (animationProgress - 0.5) / 0.5)
+            const labelOpacity = easeOutCubic(labelProgress) * animatedOpacity
+            const midAngle = (animatedStartAngle + animatedEndAngle) / 2
+            const labelRadius = (levelInnerRadius + levelOuterRadius) / 2
+
+            const lx = centerX + Math.cos(midAngle) * labelRadius
+            const ly = centerY + Math.sin(midAngle) * labelRadius
+
+            // 计算标签旋转角度
+            let textRotation = 0
+            if (labelRotate === 'radial') {
+              textRotation = midAngle + Math.PI / 2
+              // 翻转下半部分的文字，使其易读
+              if (midAngle > Math.PI / 2 && midAngle < Math.PI * 1.5) {
+                textRotation += Math.PI
+              }
+            } else if (labelRotate === 'tangential') {
+              textRotation = midAngle
+              if (midAngle > Math.PI / 2 && midAngle < Math.PI * 1.5) {
+                textRotation += Math.PI
+              }
+            } else if (typeof labelRotate === 'number') {
+              textRotation = labelRotate * Math.PI / 180
+            }
+
+            // 只在角度足够大时显示标签
+            const angleRange = animatedEndAngle - animatedStartAngle
+            const arcLength = angleRange * labelRadius
+            if (angleRange > 0.12 && arcLength > 20) {
+              renderer.save()
+              renderer.translate(lx, ly)
+              renderer.rotate(textRotation)
+              renderer.drawText(
+                { x: 0, y: 0, text: node.name },
+                {
+                  fill: options.theme === 'dark' ? '#e2e8f0' : '#1e293b',
+                  fontSize: Math.max(9, Math.min(12, arcLength / node.name.length * 0.8)),
+                  textAlign: 'center',
+                  textBaseline: 'middle',
+                  opacity: labelOpacity
+                }
+              )
+              renderer.restore()
+            }
+          }
+        }
+
+        // 递归绘制子节点（传递当前节点的基础颜色给子节点继承）
+        if (node.children && node.children.length > 0) {
+          // 可选：排序子节点
+          let sortedChildren = [...node.children]
+          if (sortType === 'desc') {
+            sortedChildren.sort((a, b) => calculateNodeValue(b) - calculateNodeValue(a))
+          } else if (sortType === 'asc') {
+            sortedChildren.sort((a, b) => calculateNodeValue(a) - calculateNodeValue(b))
+          }
+
+          let childStartAngle = nodeStartAngle
+          const totalChildValue = sortedChildren.reduce((sum, child) => sum + calculateNodeValue(child), 0)
+
+          sortedChildren.forEach((child) => {
+            const childValue = calculateNodeValue(child)
+            const childAngleRange = (childValue / totalChildValue) * (nodeEndAngle - nodeStartAngle)
+            const childEndAngle = childStartAngle + childAngleRange
+
+            // 传递父节点的基础颜色（未经深度调整的颜色）
+            drawNode(
+              child,
+              depth + 1,
+              childStartAngle,
+              childEndAngle,
+              colorIndex,
+              baseColor  // 传递基础颜色给子节点继承
+            )
+
+            childStartAngle = childEndAngle
+          })
+        }
+      }
+
+      // 计算顶层节点的总值
+      const totalValue = sunburstData.children.reduce((sum, node) => sum + calculateNodeValue(node), 0)
+
+      // 可选：排序顶层节点
+      let sortedRoots = [...sunburstData.children]
+      if (sortType === 'desc') {
+        sortedRoots.sort((a, b) => calculateNodeValue(b) - calculateNodeValue(a))
+      } else if (sortType === 'asc') {
+        sortedRoots.sort((a, b) => calculateNodeValue(a) - calculateNodeValue(b))
+      }
+
+      // 绘制顶层节点
+      let currentAngle = startAngle
+      sortedRoots.forEach((node, index) => {
+        const nodeValue = calculateNodeValue(node)
+        const angleRange = (nodeValue / totalValue) * Math.PI * 2
+        const nodeEndAngle = currentAngle + angleRange
+
+        drawNode(node, 0, currentAngle, nodeEndAngle, index, null)
+
+        currentAngle = nodeEndAngle
+      })
+    })
+  }
+
+  // ============== 旭日图鼠标事件 ==============
+
+  private handleSunburstMouseMove(x: number, y: number, e: MouseEvent): void {
+    let hoveredSector: string | null = null
+
+    // 遍历所有扇形，检查鼠标是否在扇形内
+    for (const [sectorId, sectorData] of this.sunburstSectorPositions) {
+      const { centerX, centerY, innerRadius, outerRadius, startAngle, endAngle } = sectorData
+
+      // 计算鼠标相对于圆心的位置
+      const dx = x - centerX
+      const dy = y - centerY
+      const dist = Math.sqrt(dx * dx + dy * dy)
+
+      // 检查是否在半径范围内
+      if (dist < innerRadius || dist > outerRadius) continue
+
+      // 计算角度
+      let angle = Math.atan2(dy, dx)
+      // 标准化角度到 [-PI, PI]
+      while (angle < startAngle) angle += Math.PI * 2
+      while (angle > startAngle + Math.PI * 2) angle -= Math.PI * 2
+
+      // 检查是否在角度范围内
+      if (angle >= startAngle && angle <= endAngle) {
+        hoveredSector = sectorId
+        break
+      }
+    }
+
+    if (hoveredSector !== this.hoverSunburstSector) {
+      this.hoverSunburstSector = hoveredSector
+      this.render()
+
+      if (hoveredSector) {
+        const sectorData = this.sunburstSectorPositions.get(hoveredSector)
+        if (sectorData) {
+          this.showSunburstTooltip(e, sectorData.node, sectorData.depth, sectorData.value)
+        }
+      } else {
+        this.hideTooltip()
+      }
+    }
+  }
+
+  private showSunburstTooltip(e: MouseEvent, node: SunburstNode, depth: number, value: number): void {
+    if (!this.tooltipEl) {
+      this.tooltipEl = document.createElement('div')
+      this.tooltipEl.className = 'chart-tooltip'
+      document.body.appendChild(this.tooltipEl)
+    }
+
+    this.tooltipEl.style.cssText = `
+      position: fixed; padding: 8px 12px; background: ${this.colors.tooltipBg}; color: ${this.colors.text};
+      border-radius: 6px; font-size: 12px; pointer-events: none; z-index: 9999;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15); max-width: 200px; line-height: 1.5;
+    `
+
+    let content = `<div style="font-weight:bold;margin-bottom:4px;">${node.name}</div>`
+    content += `<div>值: ${value}</div>`
+    content += `<div>层级: ${depth + 1}</div>`
+    if (node.children && node.children.length > 0) {
+      content += `<div>子节点: ${node.children.length}</div>`
+    }
+
+    this.tooltipEl.innerHTML = content
+    this.tooltipEl.style.display = 'block'
+
+    const tooltipRect = this.tooltipEl.getBoundingClientRect()
+    let left = e.clientX + 15
+    let top = e.clientY - tooltipRect.height / 2
+
+    if (left + tooltipRect.width > window.innerWidth) left = e.clientX - tooltipRect.width - 15
+    if (top < 0) top = 5
+    if (top + tooltipRect.height > window.innerHeight) top = window.innerHeight - tooltipRect.height - 5
+
+    this.tooltipEl.style.left = `${left}px`
+    this.tooltipEl.style.top = `${top}px`
+  }
+
+  // ============== 桑基图绑制 ==============
+
+  private drawSankeySeries(series: SeriesData[]): void {
+    const { renderer, animationProgress, width, height } = this
+    const colors = this.colors
+
+    // 缓动函数
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+
+    // 清空位置信息
+    this.sankeyNodePositions.clear()
+    this.sankeyLinkPositions.clear()
+
+    series.forEach((s) => {
+      const sankeyData = s.sankeyData
+      if (!sankeyData || !sankeyData.nodes || !sankeyData.links) return
+
+      const { nodes, links } = sankeyData
+
+      // 配置
+      const padding = 40
+      const nodeWidth = s.sankeyNodeWidth ?? 20
+      const nodeGap = s.sankeyNodeGap ?? 8
+      const nodeAlign = s.sankeyNodeAlign ?? 'justify'
+      const showLabel = s.sankeyShowLabel !== false
+      const labelPosition = s.sankeyLabelPosition ?? 'right'
+      // const orient = s.sankeyOrient ?? 'horizontal' // 暂时只支持水平方向
+      const curveness = s.sankeyCurveness ?? 0.5
+      const animationType = s.sankeyAnimationType ?? 'flow'
+
+      // 动画进度
+      const easedProgress = easeOutCubic(animationProgress)
+
+      // 构建节点映射
+      const nodeMap = new Map<string, SankeyNode & {
+        depth: number; inValue: number; outValue: number;
+        x: number; y: number; height: number; color: string;
+        inLinks: SankeyLink[]; outLinks: SankeyLink[];
+      }>()
+
+      nodes.forEach((node, i) => {
+        nodeMap.set(node.name, {
+          ...node,
+          depth: node.depth ?? -1,
+          inValue: 0,
+          outValue: 0,
+          x: 0,
+          y: 0,
+          height: 0,
+          color: node.itemStyle?.color ?? SERIES_COLORS[i % SERIES_COLORS.length] ?? '#5470c6',
+          inLinks: [],
+          outLinks: []
+        })
+      })
+
+      // 计算每个节点的输入/输出值
+      links.forEach(link => {
+        const source = nodeMap.get(link.source)
+        const target = nodeMap.get(link.target)
+        if (source && target) {
+          source.outValue += link.value
+          target.inValue += link.value
+          source.outLinks.push(link)
+          target.inLinks.push(link)
+        }
+      })
+
+      // 计算节点深度（拓扑排序）
+      const calculateDepths = () => {
+        // 找出所有源节点（没有入边的节点）
+        const sourceNodes = Array.from(nodeMap.values()).filter(n => n.inValue === 0)
+        sourceNodes.forEach(n => { n.depth = 0 })
+
+        let changed = true
+        let iteration = 0
+        const maxIterations = nodes.length
+
+        while (changed && iteration < maxIterations) {
+          changed = false
+          iteration++
+          links.forEach(link => {
+            const source = nodeMap.get(link.source)
+            const target = nodeMap.get(link.target)
+            if (source && target && source.depth >= 0) {
+              const newDepth = source.depth + 1
+              if (target.depth < 0 || target.depth < newDepth) {
+                target.depth = newDepth
+                changed = true
+              }
+            }
+          })
+        }
+
+        // 处理未分配深度的节点
+        nodeMap.forEach(node => {
+          if (node.depth < 0) node.depth = 0
+        })
+      }
+
+      calculateDepths()
+
+      // 获取最大深度
+      const maxDepth = Math.max(...Array.from(nodeMap.values()).map(n => n.depth))
+
+      // 按深度分组节点
+      type NodeType = SankeyNode & {
+        depth: number; inValue: number; outValue: number;
+        x: number; y: number; height: number; color: string;
+        inLinks: SankeyLink[]; outLinks: SankeyLink[];
+      }
+      const depthGroups: NodeType[][] = []
+      for (let d = 0; d <= maxDepth; d++) {
+        depthGroups[d] = Array.from(nodeMap.values()).filter(n => n.depth === d)
+      }
+
+      // 计算布局区域
+      const chartWidth = width - padding * 2
+      const chartHeight = height - padding * 2
+
+      // 计算每列的 X 位置
+      const columnWidth = (chartWidth - nodeWidth) / Math.max(maxDepth, 1)
+
+      // 计算每列节点的 Y 位置
+      const layoutNodes = () => {
+        depthGroups.forEach((group, depth) => {
+          if (group.length === 0) return
+
+          // 计算该列所有节点的总值
+          const totalValue = group.reduce((sum, n) => sum + Math.max(n.inValue, n.outValue, 1), 0)
+          const availableHeight = chartHeight - (group.length - 1) * nodeGap
+
+          // 分配高度
+          let currentY = padding
+          group.forEach(node => {
+            const nodeValue = Math.max(node.inValue, node.outValue, 1)
+            node.height = Math.max(4, (nodeValue / totalValue) * availableHeight)
+            node.x = padding + depth * columnWidth
+            node.y = currentY
+            currentY += node.height + nodeGap
+          })
+
+          // 对齐调整
+          if (nodeAlign === 'justify' && group.length > 1) {
+            const totalHeight = group.reduce((sum, n) => sum + n.height, 0)
+            const extraSpace = chartHeight - totalHeight
+            const gap = extraSpace / (group.length - 1)
+            let y = padding
+            group.forEach(node => {
+              node.y = y
+              y += node.height + gap
+            })
+          }
+        })
+      }
+
+      layoutNodes()
+
+      // 计算连接的 Y 位置
+      const linkPositions: { link: SankeyLink; sourceY: number; targetY: number; sourceHeight: number; targetHeight: number }[] = []
+
+      nodeMap.forEach(node => {
+        // 计算出边的起始 Y 位置
+        let outY = node.y
+        node.outLinks.forEach(link => {
+          const target = nodeMap.get(link.target)
+          if (!target) return
+          const linkHeight = (link.value / node.outValue) * node.height
+          linkPositions.push({
+            link,
+            sourceY: outY + linkHeight / 2,
+            targetY: 0, // 稍后计算
+            sourceHeight: linkHeight,
+            targetHeight: 0
+          })
+          outY += linkHeight
+        })
+
+        // 计算入边的目标 Y 位置
+        let inY = node.y
+        node.inLinks.forEach(link => {
+          const linkHeight = (link.value / node.inValue) * node.height
+          const pos = linkPositions.find(p => p.link === link)
+          if (pos) {
+            pos.targetY = inY + linkHeight / 2
+            pos.targetHeight = linkHeight
+          }
+          inY += linkHeight
+        })
+      })
+
+      // 应用动画
+      let animatedOpacity = 1
+      let flowProgress = 1
+
+      switch (animationType) {
+        case 'fade':
+          animatedOpacity = easedProgress
+          break
+        case 'grow':
+          flowProgress = easedProgress
+          break
+        case 'flow':
+          flowProgress = easedProgress
+          break
+        case 'none':
+          break
+      }
+
+      // 绘制连接线（先绘制，这样节点在上面）
+      linkPositions.forEach((pos, linkIndex) => {
+        const source = nodeMap.get(pos.link.source)
+        const target = nodeMap.get(pos.link.target)
+        if (!source || !target) return
+
+        const x1 = source.x + nodeWidth
+        const y1 = pos.sourceY
+        const x2 = target.x
+        const y2 = pos.targetY
+        const thickness = Math.min(pos.sourceHeight, pos.targetHeight) * flowProgress
+
+        // 贝塞尔曲线控制点
+        const cx = (x2 - x1) * curveness
+        const cp1x = x1 + cx
+        const cp2x = x2 - cx
+
+        // 计算连接的颜色
+        const linkColor = pos.link.lineStyle?.color || source.color
+        const linkOpacity = (pos.link.lineStyle?.opacity ?? 0.4) * animatedOpacity
+
+        // 判断是否 hover
+        const linkId = `link_${linkIndex}`
+        const isHovered = this.hoverSankeyLink === linkId
+
+        if (flowProgress > 0) {
+          // 绘制连接带（填充区域）
+          const halfThickness = thickness / 2
+          const path = `M ${x1} ${y1 - halfThickness} 
+            C ${cp1x} ${y1 - halfThickness}, ${cp2x} ${y2 - halfThickness}, ${x2} ${y2 - halfThickness}
+            L ${x2} ${y2 + halfThickness}
+            C ${cp2x} ${y2 + halfThickness}, ${cp1x} ${y1 + halfThickness}, ${x1} ${y1 + halfThickness}
+            Z`
+
+          renderer.drawPath(
+            { commands: this.parsePath(path) as any },
+            {
+              fill: linkColor,
+              opacity: isHovered ? linkOpacity * 1.5 : linkOpacity,
+              stroke: 'none'
+            }
+          )
+
+          // 保存连接位置
+          this.sankeyLinkPositions.set(linkId, {
+            link: pos.link,
+            sourceNode: pos.link.source,
+            targetNode: pos.link.target,
+            sourceY: y1,
+            targetY: y2,
+            thickness,
+            color: linkColor
+          })
+        }
+      })
+
+      // 绘制节点
+      nodeMap.forEach((node, nodeName) => {
+        const nodeId = `node_${nodeName}`
+        const isHovered = this.hoverSankeyNode === nodeId
+        const nodeHeight = node.height * flowProgress
+
+        if (nodeHeight > 0) {
+          // 绘制节点矩形
+          renderer.drawRect(
+            { x: node.x, y: node.y, width: nodeWidth, height: nodeHeight },
+            {
+              fill: isHovered ? this.lightenColor(node.color) : node.color,
+              opacity: animatedOpacity,
+              stroke: isHovered ? node.color : 'none',
+              lineWidth: isHovered ? 2 : 0
+            }
+          )
+
+          // 保存节点位置
+          this.sankeyNodePositions.set(nodeId, {
+            node: { name: node.name, itemStyle: node.itemStyle, depth: node.depth },
+            x: node.x,
+            y: node.y,
+            width: nodeWidth,
+            height: nodeHeight,
+            inValue: node.inValue,
+            outValue: node.outValue,
+            color: node.color
+          })
+
+          // 绘制标签
+          if (showLabel && animationProgress > 0.3) {
+            const labelOpacity = Math.min(1, (animationProgress - 0.3) / 0.4) * animatedOpacity
+            let labelX: number
+            let textAlign: CanvasTextAlign = 'left'
+
+            if (labelPosition === 'left') {
+              labelX = node.x - 5
+              textAlign = 'right'
+            } else if (labelPosition === 'inside') {
+              labelX = node.x + nodeWidth / 2
+              textAlign = 'center'
+            } else {
+              labelX = node.x + nodeWidth + 5
+              textAlign = 'left'
+            }
+
+            const labelY = node.y + nodeHeight / 2
+
+            renderer.drawText(
+              { x: labelX, y: labelY, text: node.name },
+              {
+                fill: labelPosition === 'inside' ? '#fff' : colors.text,
+                fontSize: 11,
+                textAlign,
+                textBaseline: 'middle',
+                opacity: labelOpacity
+              }
+            )
+          }
+        }
+      })
+    })
+  }
+
+  // 解析 SVG 路径字符串为命令数组
+  private parsePath(pathString: string): Array<{ type: string; x?: number; y?: number; x1?: number; y1?: number; x2?: number; y2?: number }> {
+    const commands: Array<{ type: string; x?: number; y?: number; x1?: number; y1?: number; x2?: number; y2?: number }> = []
+    const regex = /([MLHVCSQTAZ])([^MLHVCSQTAZ]*)/gi
+    let match
+
+    while ((match = regex.exec(pathString)) !== null) {
+      const type = (match[1] ?? 'M').toUpperCase()
+      const args = (match[2] ?? '').trim().split(/[\s,]+/).map(parseFloat).filter(n => !isNaN(n))
+
+      switch (type) {
+        case 'M':
+          commands.push({ type: 'M', x: args[0], y: args[1] })
+          break
+        case 'L':
+          commands.push({ type: 'L', x: args[0], y: args[1] })
+          break
+        case 'C':
+          commands.push({ type: 'C', x1: args[0], y1: args[1], x2: args[2], y2: args[3], x: args[4], y: args[5] })
+          break
+        case 'Z':
+          commands.push({ type: 'Z' })
+          break
+      }
+    }
+
+    return commands
+  }
+
+  // ============== 桑基图鼠标事件 ==============
+
+  private handleSankeyMouseMove(x: number, y: number, e: MouseEvent): void {
+    let hoveredNode: string | null = null
+    let hoveredLink: string | null = null
+
+    // 检查是否悬停在节点上
+    for (const [nodeId, nodeData] of this.sankeyNodePositions) {
+      if (x >= nodeData.x && x <= nodeData.x + nodeData.width &&
+        y >= nodeData.y && y <= nodeData.y + nodeData.height) {
+        hoveredNode = nodeId
+        break
+      }
+    }
+
+    // 如果没有悬停在节点上，检查连接
+    if (!hoveredNode) {
+      for (const [linkId, linkData] of this.sankeyLinkPositions) {
+        const sourceNode = this.sankeyNodePositions.get(`node_${linkData.sourceNode}`)
+        const targetNode = this.sankeyNodePositions.get(`node_${linkData.targetNode}`)
+        if (!sourceNode || !targetNode) continue
+
+        // 简化的碰撞检测：检查是否在连接的边界框内
+        const minX = sourceNode.x + sourceNode.width
+        const maxX = targetNode.x
+        const minY = Math.min(linkData.sourceY, linkData.targetY) - linkData.thickness / 2
+        const maxY = Math.max(linkData.sourceY, linkData.targetY) + linkData.thickness / 2
+
+        if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
+          hoveredLink = linkId
+          break
+        }
+      }
+    }
+
+    // 更新状态
+    if (hoveredNode !== this.hoverSankeyNode || hoveredLink !== this.hoverSankeyLink) {
+      this.hoverSankeyNode = hoveredNode
+      this.hoverSankeyLink = hoveredLink
+      this.render()
+
+      if (hoveredNode) {
+        const nodeData = this.sankeyNodePositions.get(hoveredNode)
+        if (nodeData) {
+          this.showSankeyTooltip(e, 'node', nodeData.node.name, nodeData.inValue, nodeData.outValue)
+        }
+      } else if (hoveredLink) {
+        const linkData = this.sankeyLinkPositions.get(hoveredLink)
+        if (linkData) {
+          this.showSankeyTooltip(e, 'link', '', linkData.link.value, 0, linkData.sourceNode, linkData.targetNode)
+        }
+      } else {
+        this.hideTooltip()
+      }
+    }
+  }
+
+  private showSankeyTooltip(e: MouseEvent, type: 'node' | 'link', name: string, value: number, outValue: number, source?: string, target?: string): void {
+    if (!this.tooltipEl) {
+      this.tooltipEl = document.createElement('div')
+      this.tooltipEl.className = 'chart-tooltip'
+      document.body.appendChild(this.tooltipEl)
+    }
+
+    this.tooltipEl.style.cssText = `
+      position: fixed; padding: 8px 12px; background: ${this.colors.tooltipBg}; color: ${this.colors.text};
+      border-radius: 6px; font-size: 12px; pointer-events: none; z-index: 9999;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15); max-width: 200px; line-height: 1.5;
+    `
+
+    let content = ''
+    if (type === 'node') {
+      content = `<div style="font-weight:bold;margin-bottom:4px;">${name}</div>`
+      if (value > 0) content += `<div>流入: ${value}</div>`
+      if (outValue > 0) content += `<div>流出: ${outValue}</div>`
+    } else {
+      content = `<div style="font-weight:bold;margin-bottom:4px;">${source} → ${target}</div>`
+      content += `<div>流量: ${value}</div>`
+    }
+
+    this.tooltipEl.innerHTML = content
+    this.tooltipEl.style.display = 'block'
+
+    const tooltipRect = this.tooltipEl.getBoundingClientRect()
+    let left = e.clientX + 15
+    let top = e.clientY - tooltipRect.height / 2
+
+    if (left + tooltipRect.width > window.innerWidth) left = e.clientX - tooltipRect.width - 15
+    if (top < 0) top = 5
+    if (top + tooltipRect.height > window.innerHeight) top = window.innerHeight - tooltipRect.height - 5
+
+    this.tooltipEl.style.left = `${left}px`
+    this.tooltipEl.style.top = `${top}px`
+  }
+
+  // ============== 漏斗图绑制 ==============
+
+  private drawFunnelSeries(series: SeriesData[]): void {
+    const { renderer, animationProgress, width, height } = this
+    const colors = this.colors
+
+    // 缓动函数
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    const easeOutBounce = (t: number) => {
+      if (t < 1 / 2.75) return 7.5625 * t * t
+      if (t < 2 / 2.75) return 7.5625 * (t -= 1.5 / 2.75) * t + 0.75
+      if (t < 2.5 / 2.75) return 7.5625 * (t -= 2.25 / 2.75) * t + 0.9375
+      return 7.5625 * (t -= 2.625 / 2.75) * t + 0.984375
+    }
+
+    // 清空位置信息
+    this.funnelItemPositions.clear()
+
+    series.forEach((s) => {
+      const funnelData = s.funnelData
+      if (!funnelData || funnelData.length === 0) return
+
+      // 配置
+      const padding = 50
+      const gap = s.funnelGap ?? 2
+      const sort = s.funnelSort ?? 'descending'
+      const align = s.funnelAlign ?? 'center'
+      const minSize = (s.funnelMinSize ?? 0) / 100
+      const maxSize = (s.funnelMaxSize ?? 100) / 100
+      const showLabel = s.funnelShowLabel !== false
+      const labelPosition = s.funnelLabelPosition ?? 'right'
+      const animationType = s.funnelAnimationType ?? 'drop'
+
+      // 排序数据
+      let sortedData = [...funnelData]
+      if (sort === 'ascending') {
+        sortedData.sort((a, b) => a.value - b.value)
+      } else if (sort === 'descending') {
+        sortedData.sort((a, b) => b.value - a.value)
+      }
+
+      // 计算布局
+      const chartWidth = width - padding * 2
+      const chartHeight = height - padding * 2
+      const itemCount = sortedData.length
+      const itemHeight = (chartHeight - gap * (itemCount - 1)) / itemCount
+
+      // 计算最大值用于归一化
+      const maxValue = Math.max(...sortedData.map(d => d.value))
+
+      // 动画进度
+      const easedProgress = easeOutCubic(animationProgress)
+
+      // 绘制每个漏斗项
+      sortedData.forEach((item, index) => {
+        // 计算宽度比例
+        const ratio = item.value / maxValue
+        const widthRatio = minSize + ratio * (maxSize - minSize)
+        const nextRatio = index < sortedData.length - 1
+          ? (sortedData[index + 1]?.value ?? 0) / maxValue
+          : widthRatio * 0.6
+        const nextWidthRatio = minSize + nextRatio * (maxSize - minSize)
+
+        const topWidth = chartWidth * widthRatio
+        const bottomWidth = chartWidth * nextWidthRatio
+
+        // 计算位置
+        const y = padding + index * (itemHeight + gap)
+        let x: number
+        if (align === 'left') {
+          x = padding
+        } else if (align === 'right') {
+          x = padding + chartWidth - topWidth
+        } else {
+          x = padding + (chartWidth - topWidth) / 2
+        }
+
+        // 获取颜色
+        const itemColor = item.itemStyle?.color || SERIES_COLORS[index % SERIES_COLORS.length] || '#5470c6'
+        const itemId = `funnel_${index}`
+        const isHovered = this.hoverFunnelItem === itemId
+
+        // 应用动画
+        let animatedY = y
+        let animatedOpacity = 1
+        let animatedScale = 1
+
+        switch (animationType) {
+          case 'drop': {
+            const delay = index * 0.1
+            const itemProgress = Math.max(0, Math.min(1, (animationProgress - delay) / (1 - delay * itemCount / (itemCount + 1))))
+            const bounceProgress = easeOutBounce(itemProgress)
+            animatedY = padding + (y - padding) * bounceProgress - (1 - itemProgress) * 50
+            animatedOpacity = itemProgress
+            break
+          }
+          case 'scale':
+            animatedScale = easedProgress
+            break
+          case 'fade':
+            animatedOpacity = easedProgress
+            break
+          case 'slide': {
+            const delay = index * 0.08
+            const itemProgress = Math.max(0, Math.min(1, (animationProgress - delay) / 0.5))
+            const slideX = (1 - easeOutCubic(itemProgress)) * chartWidth
+            x -= slideX
+            animatedOpacity = itemProgress
+            break
+          }
+          case 'none':
+            break
+        }
+
+        if (animatedOpacity > 0 && animatedScale > 0) {
+          // 计算梯形的四个顶点
+          const scaledTopWidth = topWidth * animatedScale
+          const scaledBottomWidth = bottomWidth * animatedScale
+          const scaledHeight = itemHeight * animatedScale
+
+          let leftTopX: number, rightTopX: number, leftBottomX: number, rightBottomX: number
+          if (align === 'left') {
+            leftTopX = x
+            rightTopX = x + scaledTopWidth
+            leftBottomX = x
+            rightBottomX = x + scaledBottomWidth
+          } else if (align === 'right') {
+            rightTopX = x + topWidth
+            leftTopX = rightTopX - scaledTopWidth
+            rightBottomX = x + topWidth - (topWidth - bottomWidth)
+            leftBottomX = rightBottomX - scaledBottomWidth
+          } else {
+            const centerX = x + topWidth / 2
+            leftTopX = centerX - scaledTopWidth / 2
+            rightTopX = centerX + scaledTopWidth / 2
+            leftBottomX = centerX - scaledBottomWidth / 2
+            rightBottomX = centerX + scaledBottomWidth / 2
+          }
+
+          // 绘制梯形（带边框效果）
+          const path = `M ${leftTopX} ${animatedY}
+            L ${rightTopX} ${animatedY}
+            L ${rightBottomX} ${animatedY + scaledHeight}
+            L ${leftBottomX} ${animatedY + scaledHeight}
+            Z`
+
+          // 绘制阴影/边框效果
+          renderer.drawPath(
+            { commands: this.parsePath(path) as any },
+            {
+              fill: isHovered ? this.lightenColor(itemColor) : itemColor,
+              opacity: animatedOpacity,
+              stroke: isHovered ? this.darkenColor(itemColor) : 'rgba(255,255,255,0.3)',
+              lineWidth: isHovered ? 2 : 1
+            }
+          )
+
+          // 绘制高光效果（顶部）
+          if (!isHovered) {
+            const highlightPath = `M ${leftTopX + 2} ${animatedY + 2}
+              L ${rightTopX - 2} ${animatedY + 2}
+              L ${rightTopX - (rightTopX - rightBottomX) * 0.3 - 2} ${animatedY + scaledHeight * 0.3}
+              L ${leftTopX + (leftTopX - leftBottomX) * 0.3 + 2} ${animatedY + scaledHeight * 0.3}
+              Z`
+            renderer.drawPath(
+              { commands: this.parsePath(highlightPath) as any },
+              {
+                fill: 'rgba(255,255,255,0.15)',
+                opacity: animatedOpacity
+              }
+            )
+          }
+
+          // 保存位置信息
+          this.funnelItemPositions.set(itemId, {
+            item,
+            index,
+            x: leftTopX,
+            y: animatedY,
+            topWidth: scaledTopWidth,
+            bottomWidth: scaledBottomWidth,
+            height: scaledHeight,
+            color: itemColor
+          })
+
+          // 绘制标签
+          if (showLabel && animationProgress > 0.3) {
+            const labelOpacity = Math.min(1, (animationProgress - 0.3) / 0.4) * animatedOpacity
+            let labelX: number
+            let textAlign: CanvasTextAlign = 'left'
+            const labelY = animatedY + scaledHeight / 2
+
+            if (labelPosition === 'left') {
+              labelX = leftTopX - 10
+              textAlign = 'right'
+            } else if (labelPosition === 'inside') {
+              labelX = (leftTopX + rightTopX) / 2
+              textAlign = 'center'
+            } else if (labelPosition === 'outside') {
+              labelX = rightTopX + 10
+              textAlign = 'left'
+            } else {
+              // right
+              labelX = rightTopX + 10
+              textAlign = 'left'
+            }
+
+            // 绘制名称
+            renderer.drawText(
+              { x: labelX, y: labelY - 6, text: item.name },
+              {
+                fill: labelPosition === 'inside' ? '#fff' : colors.text,
+                fontSize: 12,
+                fontWeight: 'bold',
+                textAlign,
+                textBaseline: 'middle',
+                opacity: labelOpacity
+              }
+            )
+
+            // 绘制数值
+            if (labelPosition !== 'inside') {
+              renderer.drawText(
+                { x: labelX, y: labelY + 8, text: `${item.value}` },
+                {
+                  fill: colors.textSecondary,
+                  fontSize: 11,
+                  textAlign,
+                  textBaseline: 'middle',
+                  opacity: labelOpacity
+                }
+              )
+            }
+          }
+        }
+      })
+    })
+  }
+
+  // ============== 漏斗图鼠标事件 ==============
+
+  private handleFunnelMouseMove(x: number, y: number, e: MouseEvent): void {
+    let hoveredItem: string | null = null
+
+    // 检查是否悬停在漏斗项上
+    for (const [itemId, itemData] of this.funnelItemPositions) {
+      // 简化检测：使用边界框
+      if (x >= itemData.x && x <= itemData.x + itemData.topWidth &&
+        y >= itemData.y && y <= itemData.y + itemData.height) {
+        hoveredItem = itemId
+        break
+      }
+    }
+
+    if (hoveredItem !== this.hoverFunnelItem) {
+      this.hoverFunnelItem = hoveredItem
+      this.render()
+
+      if (hoveredItem) {
+        const itemData = this.funnelItemPositions.get(hoveredItem)
+        if (itemData) {
+          this.showFunnelTooltip(e, itemData.item, itemData.index)
+        }
+      } else {
+        this.hideTooltip()
+      }
+    }
+  }
+
+  private showFunnelTooltip(e: MouseEvent, item: FunnelDataItem, index: number): void {
+    if (!this.tooltipEl) {
+      this.tooltipEl = document.createElement('div')
+      this.tooltipEl.className = 'chart-tooltip'
+      document.body.appendChild(this.tooltipEl)
+    }
+
+    this.tooltipEl.style.cssText = `
+      position: fixed; padding: 8px 12px; background: ${this.colors.tooltipBg}; color: ${this.colors.text};
+      border-radius: 6px; font-size: 12px; pointer-events: none; z-index: 9999;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15); max-width: 200px; line-height: 1.5;
+    `
+
+    let content = `<div style="font-weight:bold;margin-bottom:4px;">${item.name}</div>`
+    content += `<div>数值: ${item.value}</div>`
+    content += `<div>排名: 第${index + 1}位</div>`
+
+    this.tooltipEl.innerHTML = content
+    this.tooltipEl.style.display = 'block'
+
+    const tooltipRect = this.tooltipEl.getBoundingClientRect()
+    let left = e.clientX + 15
+    let top = e.clientY - tooltipRect.height / 2
+
+    if (left + tooltipRect.width > window.innerWidth) left = e.clientX - tooltipRect.width - 15
+    if (top < 0) top = 5
+    if (top + tooltipRect.height > window.innerHeight) top = window.innerHeight - tooltipRect.height - 5
+
+    this.tooltipEl.style.left = `${left}px`
+    this.tooltipEl.style.top = `${top}px`
+  }
+
+  // ============== 仪表盘绑制 ==============
+
+  private drawGaugeSeries(series: SeriesData[]): void {
+    const { renderer, animationProgress, width, height } = this
+    const colors = this.colors
+
+    // 缓动函数
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
+    const easeOutElastic = (t: number) => {
+      if (t === 0 || t === 1) return t
+      return Math.pow(2, -10 * t) * Math.sin((t - 0.075) * (2 * Math.PI) / 0.3) + 1
+    }
+
+    const centerX = width / 2
+    const centerY = height / 2
+    const maxRadius = Math.min(width, height) / 2 - 20
+
+    series.forEach((s) => {
+      const gaugeData = s.gaugeData
+      if (!gaugeData || gaugeData.length === 0) return
+
+      // 配置
+      const min = s.gaugeMin ?? 0
+      const max = s.gaugeMax ?? 100
+      const startAngle = ((s.gaugeStartAngle ?? 225) * Math.PI) / 180
+      const endAngle = ((s.gaugeEndAngle ?? -45) * Math.PI) / 180
+      const clockwise = s.gaugeClockwise !== false
+      const splitNumber = s.gaugeSplitNumber ?? 5
+      const radius = maxRadius * (s.gaugeRadius ?? 0.75)
+      const axisLineWidth = s.gaugeAxisLineWidth ?? 20
+      const showGradient = s.gaugeShowGradient !== false
+      const showProgress = s.gaugeShowProgress !== false
+      const progressWidth = s.gaugeProgressWidth ?? axisLineWidth
+      const showPointer = s.gaugeShowPointer !== false
+      const pointerAutoColor = s.gaugePointerAutoColor === true
+      const pointerLength = s.gaugePointerLength ?? 0.6
+      const pointerWidth = s.gaugePointerWidth ?? 6
+      const centerSize = s.gaugeCenterSize ?? 8
+      const showDetail = s.gaugeShowDetail !== false
+      const detailFontSize = s.gaugeDetailFontSize ?? 24
+      const detailOffset = s.gaugeDetailOffset ?? [0, 30]
+      const showTitle = s.gaugeShowTitle !== false
+      const titleOffset = s.gaugeTitleOffset ?? [0, 55]
+      const showAxisLabel = s.gaugeShowAxisLabel !== false
+      const axisLabelDistance = s.gaugeAxisLabelDistance ?? 12
+      const animationType = s.gaugeAnimationType ?? 'sweep'
+      const pointerStyle = s.gaugePointerStyle ?? 'default'
+      const splitLine = s.gaugeSplitLine ?? { show: true, length: 8, lineStyle: { color: colors.text, width: 1 } }
+      const axisTick = s.gaugeAxisTick ?? { show: true, splitNumber: 2, length: 4, lineStyle: { color: colors.textSecondary, width: 1 } }
+
+      // 默认渐变色
+      const axisLineColors = s.gaugeAxisLineColors ?? [
+        { offset: 0.3, color: '#67e0e3' },
+        { offset: 0.7, color: '#37a2da' },
+        { offset: 1, color: '#fd666d' }
+      ]
+
+      // 计算角度范围
+      const angleRange = clockwise ? startAngle - endAngle : endAngle - startAngle
+      const valueRange = max - min
+
+      // 根据动画类型计算进度
+      let easedProgress = animationProgress
+      switch (animationType) {
+        case 'sweep':
+          easedProgress = easeOutCubic(animationProgress)
+          break
+        case 'grow':
+          easedProgress = easeOutCubic(animationProgress)
+          break
+        case 'bounce':
+          easedProgress = easeOutElastic(animationProgress)
+          break
+        case 'fade':
+          easedProgress = animationProgress
+          break
+        case 'none':
+          easedProgress = 1
+          break
+      }
+
+      // 绘制背景圆弧（仪表盘轨道）
+      const trackRadius = radius - axisLineWidth / 2
+      this.drawGaugeArc(centerX, centerY, trackRadius, startAngle, endAngle, clockwise, axisLineWidth, colors.grid, 0.2)
+
+      // 绘制渐变色轨道（可通过 gaugeShowGradient 配置关闭）
+      if (showGradient) {
+        const gradientSteps = 100
+        const innerTrackWidth = axisLineWidth - 6
+        for (let i = 0; i < gradientSteps; i++) {
+          const ratio = i / gradientSteps
+          const nextRatio = (i + 1) / gradientSteps
+          const segStartAngle = clockwise
+            ? startAngle - angleRange * ratio
+            : startAngle + angleRange * ratio
+          const segEndAngle = clockwise
+            ? startAngle - angleRange * nextRatio
+            : startAngle + angleRange * nextRatio
+
+          const color = this.getGradientColor(axisLineColors, ratio)
+          this.drawGaugeArcSegment(centerX, centerY, trackRadius, segStartAngle, segEndAngle, innerTrackWidth, color, 0.85 * easedProgress)
+        }
+      }
+
+      // 绘制分割线和刻度
+      for (let i = 0; i <= splitNumber; i++) {
+        const ratio = i / splitNumber
+        const angle = clockwise
+          ? startAngle - angleRange * ratio
+          : startAngle + angleRange * ratio
+
+        // 分割线（从轨道内边缘向外绘制）
+        if (splitLine.show !== false) {
+          const lineLength = splitLine.length ?? 8
+          const lineWidth = splitLine.lineStyle?.width ?? 1.5
+          const lineColor = splitLine.lineStyle?.color ?? colors.text
+          // 轨道内边缘
+          const innerEdge = radius - axisLineWidth
+          const outerX = centerX + Math.cos(angle) * (innerEdge + lineLength)
+          const outerY = centerY - Math.sin(angle) * (innerEdge + lineLength)
+          const innerX = centerX + Math.cos(angle) * innerEdge
+          const innerY = centerY - Math.sin(angle) * innerEdge
+
+          renderer.drawLine(
+            [{ x: innerX, y: innerY }, { x: outerX, y: outerY }],
+            { stroke: lineColor, lineWidth, opacity: easedProgress * 0.8 }
+          )
+        }
+
+        // 刻度标签（在轨道外侧）
+        if (showAxisLabel) {
+          const labelValue = min + valueRange * ratio
+          const labelRadius = radius + axisLabelDistance
+          const labelX = centerX + Math.cos(angle) * labelRadius
+          const labelY = centerY - Math.sin(angle) * labelRadius
+          // 根据数值范围决定是否显示小数
+          const labelText = valueRange <= 10
+            ? labelValue.toFixed(1)
+            : Math.round(labelValue).toString()
+
+          renderer.drawText(
+            { x: labelX, y: labelY, text: labelText },
+            {
+              fill: colors.textSecondary,
+              fontSize: 9,
+              textAlign: 'center',
+              textBaseline: 'middle',
+              opacity: easedProgress * 0.85
+            }
+          )
+        }
+
+        // 小刻度（在分割线之间，轨道内侧）
+        if (axisTick.show !== false && i < splitNumber) {
+          const tickCount = axisTick.splitNumber ?? 4
+          const tickLength = axisTick.length ?? 4
+          const tickWidth = axisTick.lineStyle?.width ?? 1
+          const tickColor = axisTick.lineStyle?.color ?? colors.textSecondary
+          const tickInnerEdge = radius - axisLineWidth
+
+          for (let j = 1; j < tickCount; j++) {
+            const tickRatio = ratio + (j / tickCount) / splitNumber
+            const tickAngle = clockwise
+              ? startAngle - angleRange * tickRatio
+              : startAngle + angleRange * tickRatio
+            const tickOuterX = centerX + Math.cos(tickAngle) * (tickInnerEdge + tickLength)
+            const tickOuterY = centerY - Math.sin(tickAngle) * (tickInnerEdge + tickLength)
+            const tickInnerX = centerX + Math.cos(tickAngle) * tickInnerEdge
+            const tickInnerY = centerY - Math.sin(tickAngle) * tickInnerEdge
+
+            renderer.drawLine(
+              [{ x: tickInnerX, y: tickInnerY }, { x: tickOuterX, y: tickOuterY }],
+              { stroke: tickColor, lineWidth: tickWidth, opacity: easedProgress * 0.7 }
+            )
+          }
+        }
+      }
+
+      // 绘制每个数据项
+      gaugeData.forEach((item) => {
+        const value = Math.max(min, Math.min(max, item.value))
+        // 数值动画：所有动画类型都支持数值从0增长
+        const animatedValue = animationType !== 'none'
+          ? min + (value - min) * easedProgress
+          : value
+        const valueRatio = (animatedValue - min) / valueRange
+        const targetValueRatio = (value - min) / valueRange
+        const valueAngle = clockwise
+          ? startAngle - angleRange * valueRatio
+          : startAngle + angleRange * valueRatio
+        const pointerAngle = animationType === 'sweep'
+          ? startAngle - angleRange * targetValueRatio * easedProgress
+          : valueAngle
+
+        // 获取当前值对应的渐变色
+        const currentGradientColor = this.getGradientColor(axisLineColors, targetValueRatio)
+
+        // 进度条
+        if (showProgress) {
+          const progressColor = s.gaugeProgressColor || item.itemStyle?.color || currentGradientColor
+          const progressEndAngle = animationType === 'sweep'
+            ? startAngle - angleRange * targetValueRatio * easedProgress
+            : (clockwise ? startAngle - angleRange * valueRatio : startAngle + angleRange * valueRatio)
+
+          this.drawGaugeArc(
+            centerX, centerY,
+            trackRadius,
+            startAngle,
+            progressEndAngle,
+            clockwise,
+            progressWidth,
+            progressColor,
+            0.9
+          )
+        }
+
+        // 指针
+        if (showPointer) {
+          // 指针颜色：支持自动跟随渐变色
+          const pointerColor = pointerAutoColor
+            ? currentGradientColor
+            : (s.gaugePointerColor || item.itemStyle?.color || colors.text)
+          const pLen = radius * pointerLength
+
+          switch (pointerStyle) {
+            case 'arrow':
+            case 'triangle': {
+              const tipX = centerX + Math.cos(pointerAngle) * pLen
+              const tipY = centerY - Math.sin(pointerAngle) * pLen
+              const baseAngle1 = pointerAngle + Math.PI / 2
+              const baseAngle2 = pointerAngle - Math.PI / 2
+              const baseX1 = centerX + Math.cos(baseAngle1) * pointerWidth
+              const baseY1 = centerY - Math.sin(baseAngle1) * pointerWidth
+              const baseX2 = centerX + Math.cos(baseAngle2) * pointerWidth
+              const baseY2 = centerY - Math.sin(baseAngle2) * pointerWidth
+
+              const path = `M ${tipX} ${tipY} L ${baseX1} ${baseY1} L ${baseX2} ${baseY2} Z`
+              renderer.drawPath(
+                { commands: this.parsePath(path) as any },
+                { fill: pointerColor, opacity: easedProgress }
+              )
+              break
+            }
+            case 'rect': {
+              const rectLength = pLen
+              const rectWidth = pointerWidth
+              const tipX = centerX + Math.cos(pointerAngle) * rectLength
+              const tipY = centerY - Math.sin(pointerAngle) * rectLength
+
+              renderer.drawLine(
+                [{ x: centerX, y: centerY }, { x: tipX, y: tipY }],
+                { stroke: pointerColor, lineWidth: rectWidth, opacity: easedProgress }
+              )
+              break
+            }
+            case 'circle': {
+              const circleX = centerX + Math.cos(pointerAngle) * (pLen * 0.7)
+              const circleY = centerY - Math.sin(pointerAngle) * (pLen * 0.7)
+              renderer.drawCircle(
+                { x: circleX, y: circleY, radius: pointerWidth * 1.5 },
+                { fill: pointerColor, opacity: easedProgress }
+              )
+              break
+            }
+            default: {
+              // default 样式 - 渐细指针
+              const tipX = centerX + Math.cos(pointerAngle) * pLen
+              const tipY = centerY - Math.sin(pointerAngle) * pLen
+              const baseAngle1 = pointerAngle + Math.PI / 2
+              const baseAngle2 = pointerAngle - Math.PI / 2
+              const baseX1 = centerX + Math.cos(baseAngle1) * (pointerWidth / 2)
+              const baseY1 = centerY - Math.sin(baseAngle1) * (pointerWidth / 2)
+              const baseX2 = centerX + Math.cos(baseAngle2) * (pointerWidth / 2)
+              const baseY2 = centerY - Math.sin(baseAngle2) * (pointerWidth / 2)
+              const midLen = pLen * 0.8
+              const midX = centerX + Math.cos(pointerAngle) * midLen
+              const midY = centerY - Math.sin(pointerAngle) * midLen
+
+              const path = `M ${tipX} ${tipY} L ${midX + Math.cos(baseAngle1) * 2} ${midY - Math.sin(baseAngle1) * 2} L ${baseX1} ${baseY1} L ${baseX2} ${baseY2} L ${midX + Math.cos(baseAngle2) * 2} ${midY - Math.sin(baseAngle2) * 2} Z`
+              renderer.drawPath(
+                { commands: this.parsePath(path) as any },
+                { fill: pointerColor, opacity: easedProgress }
+              )
+            }
+          }
+        }
+
+        // 数值显示（所有动画类型都支持数值动画）
+        if (showDetail) {
+          // 数值动画：显示动画过程中的值
+          const displayValue = animationType !== 'none' ? animatedValue : item.value
+          // 根据原始值的小数位数格式化
+          const decimals = item.value.toString().includes('.')
+            ? item.value.toString().split('.')[1]?.length || 0
+            : 0
+          const formattedNumber = decimals > 0
+            ? displayValue.toFixed(decimals)
+            : Math.round(displayValue).toString()
+
+          let formattedValue = formattedNumber
+
+          if (s.gaugeDetailFormatter) {
+            if (typeof s.gaugeDetailFormatter === 'function') {
+              formattedValue = s.gaugeDetailFormatter(displayValue)
+            } else {
+              formattedValue = s.gaugeDetailFormatter.replace('{value}', formattedNumber)
+            }
+          }
+
+          // 数值颜色跟随渐变色
+          const detailColor = pointerAutoColor
+            ? currentGradientColor
+            : (item.itemStyle?.color || colors.text)
+
+          renderer.drawText(
+            { x: centerX + detailOffset[0], y: centerY + detailOffset[1], text: formattedValue },
+            {
+              fill: detailColor,
+              fontSize: detailFontSize,
+              fontWeight: 'bold',
+              textAlign: 'center',
+              textBaseline: 'middle',
+              opacity: easedProgress
+            }
+          )
+        }
+
+        // 标题（名称）
+        if (showTitle && item.name) {
+          renderer.drawText(
+            { x: centerX + titleOffset[0], y: centerY + titleOffset[1], text: item.name },
+            {
+              fill: colors.textSecondary,
+              fontSize: 12,
+              textAlign: 'center',
+              textBaseline: 'middle',
+              opacity: easedProgress * 0.8
+            }
+          )
+        }
+      })
+
+      // 中心圆（指针存在时绘制）
+      if (showPointer) {
+        renderer.drawCircle(
+          { x: centerX, y: centerY, radius: centerSize },
+          { fill: colors.text, opacity: easedProgress }
+        )
+        renderer.drawCircle(
+          { x: centerX, y: centerY, radius: centerSize - 2 },
+          { fill: colors.background, opacity: easedProgress }
+        )
+      }
+    })
+  }
+
+  // 绘制仪表盘圆弧（完整弧线）
+  private drawGaugeArc(
+    cx: number, cy: number, radius: number,
+    startAngle: number, endAngle: number,
+    clockwise: boolean, lineWidth: number,
+    color: string, opacity: number
+  ): void {
+    const { renderer } = this
+    const angleRange = clockwise ? startAngle - endAngle : endAngle - startAngle
+    const segments = Math.max(30, Math.ceil(Math.abs(angleRange) * 20))
+    const points: { x: number; y: number }[] = []
+
+    for (let i = 0; i <= segments; i++) {
+      const ratio = i / segments
+      const angle = clockwise
+        ? startAngle - angleRange * ratio
+        : startAngle + angleRange * ratio
+      points.push({
+        x: cx + Math.cos(angle) * radius,
+        y: cy - Math.sin(angle) * radius
+      })
+    }
+
+    if (points.length > 1) {
+      renderer.drawLine(points, { stroke: color, lineWidth, opacity, lineCap: 'butt' })
+    }
+  }
+
+  // 绘制仪表盘弧形段（用于渐变）
+  private drawGaugeArcSegment(
+    cx: number, cy: number, radius: number,
+    startAngle: number, endAngle: number,
+    lineWidth: number, color: string, opacity: number
+  ): void {
+    const { renderer } = this
+    const points: { x: number; y: number }[] = [
+      { x: cx + Math.cos(startAngle) * radius, y: cy - Math.sin(startAngle) * radius },
+      { x: cx + Math.cos(endAngle) * radius, y: cy - Math.sin(endAngle) * radius }
+    ]
+    renderer.drawLine(points, { stroke: color, lineWidth, opacity, lineCap: 'butt' })
+  }
+
+  // 获取渐变色
+  private getGradientColor(colorStops: GaugeAxisLineColor[], ratio: number): string {
+    if (colorStops.length === 0) return '#5470c6'
+    if (colorStops.length === 1) return colorStops[0]!.color
+
+    // 找到ratio所在的区间
+    let startColor = colorStops[0]!
+    let endColor = colorStops[colorStops.length - 1]!
+
+    for (let i = 0; i < colorStops.length - 1; i++) {
+      const curr = colorStops[i]!
+      const next = colorStops[i + 1]!
+      if (ratio >= curr.offset && ratio <= next.offset) {
+        startColor = curr
+        endColor = next
+        break
+      }
+    }
+
+    // 计算插值比例
+    const range = endColor.offset - startColor.offset
+    const localRatio = range > 0 ? (ratio - startColor.offset) / range : 0
+
+    // 颜色插值
+    return this.gaugeInterpolateColor(startColor.color, endColor.color, localRatio)
+  }
+
+  // 仪表盘颜色插值
+  private gaugeInterpolateColor(color1: string, color2: string, ratio: number): string {
+    const hex1 = color1.replace('#', '')
+    const hex2 = color2.replace('#', '')
+
+    const r1 = parseInt(hex1.substring(0, 2), 16)
+    const g1 = parseInt(hex1.substring(2, 4), 16)
+    const b1 = parseInt(hex1.substring(4, 6), 16)
+
+    const r2 = parseInt(hex2.substring(0, 2), 16)
+    const g2 = parseInt(hex2.substring(2, 4), 16)
+    const b2 = parseInt(hex2.substring(4, 6), 16)
+
+    const r = Math.round(r1 + (r2 - r1) * ratio)
+    const g = Math.round(g1 + (g2 - g1) * ratio)
+    const b = Math.round(b1 + (b2 - b1) * ratio)
+
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
   }
 }
